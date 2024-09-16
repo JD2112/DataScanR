@@ -1,25 +1,27 @@
-library(readr)
-library(dplyr)
-library(stringr)
+# Load the external file containing functions
+source("my_functions.R")
+library(dlookr)
+
 # Set the seed for reproducibility
 set.seed(123)
 #############################################
 # READ DATA 
-# read excel file with unit information
+# read file with information
 big_data_file <- "big_data_table.csv"
-big_data <- read_csv(big_data_file)
+big_data <- read_all_csv_separators(big_data_file)
 
 # read other data
 other_data_file <- "Sample_sheet.csv"
-other_data <- read_csv(other_data_file)
+other_data <- read_all_csv_separators(other_data_file)
 
-# Remove newline characters in both columns
-big_data$`Scapis- ID` <- str_replace_all(big_data$`Scapis- ID`, "\\n", "")
-other_data$SUBJID <- str_replace_all(other_data$SUBJID, "\\n", "")
+# clean subject IDs and Sample IDs from leading or ending artefacts
+# i.e trim all next line characters and white spaces
+cleaned_big_data <- trim_values_in_columns(big_data,custom_colnames = c("Scapis..ID"))
+cleaned_other <- trim_values_in_columns(other_data,custom_colnames = c())
 
-# Join df1 and df2 using the 'x' and 'y' columns (ID columns)
-merged_df <- big_data %>%
-  left_join(other_data, by = c("Scapis- ID" = "SUBJID"))
+# merge by subject id columns that have different names
+merged_df <- cleaned_big_data %>%
+  left_join(cleaned_other, by = c("Scapis..ID" = "SUBJID"))
 
 # randomly select 1500 samples
 merged_df %>% sample_n(1500) -> test_data
