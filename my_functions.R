@@ -24,47 +24,57 @@ read_all_csv_separators <- function(file_path) {
     }
   }
   
-  # if no delimiter is detected, throw an error
+  # if no delimiter is detected, throw an error and return empty data frame
   if (is.null(delimiter)) {
     warning("Delimiter could not be determined. Returning an empty data frame.")
-    return(data.frame())  # Return empty data frame
+    return(data.frame())  
   }
   
   # Read the file with the detected delimiter
-  data <- read.table(file_path, sep = delimiter, header = TRUE, stringsAsFactors = FALSE)
-  
-  # Function to convert character columns with commas as decimal points to numeric
-  convert_comma_to_period <- function(column) {
-    if (is.character(column)) {
-      # Replace commas with periods
-      column_with_periods <- gsub(",", ".", column)
-      
-      # Replace empty strings with NA
-      column_with_periods[column_with_periods == ""] <- NA
-      
-      # Try converting to numeric, leaving NAs unchanged
-      numeric_column <- suppressWarnings(as.numeric(column_with_periods))
-      
-      # Check if any non-NA values could not be converted to numeric
-      if (any(!is.na(column_with_periods) & is.na(numeric_column))) {
-        # If conversion failed for any non-NA value, return original character column
-        return(column)
-      } else {
-        # If conversion succeeded or there are only valid numbers/NA, return numeric column
-        return(numeric_column)
-      }
-    }
-    return(column)  # Return column unchanged if not character
+  if (delimiter == ",") {
+    # read.csv reads by default sep = "," and dec = "."
+    data <- read.csv(file_path, sep = delimiter)
   }
-  
-  # Apply the conversion function to each column
-  data <- as.data.frame(lapply(data, convert_comma_to_period))
-  
+  else if (delimiter == ";") {
+    # read.csv reads by default sep = ";" and dec = ","
+    data <- read.csv2(file_path, sep = delimiter)
+  }
+  else { # if delimiter is not , or ; try more custom approach
+    data <- read.table(file_path, sep = delimiter, header = TRUE, stringsAsFactors = FALSE)
+    
+    # Function to convert character columns with commas as decimal points to numeric
+    convert_comma_to_period <- function(column) {
+      if (is.character(column)) {
+        # Replace commas with periods
+        column_with_periods <- gsub(",", ".", column)
+        
+        # Replace empty strings with NA
+        column_with_periods[column_with_periods == ""] <- NA
+        
+        # Try converting to numeric, leaving NAs unchanged
+        numeric_column <- suppressWarnings(as.numeric(column_with_periods))
+        
+        # Check if any non-NA values could not be converted to numeric
+        if (any(!is.na(column_with_periods) & is.na(numeric_column))) {
+          # If conversion failed for any non-NA value, return original character column
+          return(column)
+        } else {
+          # If conversion succeeded or there are only valid numbers/NA, return numeric column
+          return(numeric_column)
+        }
+      }
+      return(column)  # Return column unchanged if not character
+    }
+    
+    # Apply the conversion function to each column
+    data <- as.data.frame(lapply(data, convert_comma_to_period))
+  }
   return(data)
 }
 
 ####################################################################################
 # function to try to identify subject id column and clean it of \n or " "
+# arguments: data frame and vector with column names (strings)
 trim_values_in_columns <- function(df, custom_colnames = c()) {
   # known possible subject id column names
   sample_col_names = c("SampleID","Sample_ID","Sample ID", "Sample-ID","SubjectID","Subject_ID","Subject ID", "Subject-ID","SUBJID")
@@ -93,5 +103,16 @@ trim_values_in_columns <- function(df, custom_colnames = c()) {
 }
 
 #######################################################################################
-
+# function to remove selected columns from data frame
+# arguments: data frame and vector with column names (strings)
+remove_selected_columns <- function(df, custom_colnames = c()) {
+  # ensure the column names exist in the data frame before attempting to remove them
+  cols_to_remove <- custom_colnames[custom_colnames %in% colnames(df)]
+  
+  # remove the columns by their names
+  df <- df[, !colnames(df) %in% cols_to_remove, drop = FALSE]
+  
+  # return the modified data frame
+  return(df)
+}
 

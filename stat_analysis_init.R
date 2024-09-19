@@ -1,6 +1,5 @@
 # Load the external file containing functions
 source("my_functions.R")
-library(dlookr)
 
 # Set the seed for reproducibility
 set.seed(123)
@@ -15,6 +14,7 @@ other_data_file <- "Sample_sheet.csv"
 other_data <- read_all_csv_separators(other_data_file)
 
 # clean subject IDs and Sample IDs from leading or ending artefacts
+# one can add custom colnames to clean
 # i.e trim all next line characters and white spaces
 cleaned_big_data <- trim_values_in_columns(big_data,custom_colnames = c("Scapis..ID"))
 cleaned_other <- trim_values_in_columns(other_data,custom_colnames = c())

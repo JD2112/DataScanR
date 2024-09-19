@@ -1,4 +1,6 @@
-library(readr)
+# Load the external file containing functions
+source("my_functions.R")
+
 library(dplyr)
 library(dlookr)
 # Set the seed for reproducibility
@@ -8,34 +10,33 @@ set.seed(123)
 SHAPIRO_THRESHOLD = 2000
 MISSING_DATA_PCT_THRESHOLD = 40
 
-# ? what is the shapiro result threshold for normal distribution i.e statistic > 0.8 and p >0.05?
+# shapiro threshold for normal distribution p >0.05?
 #############################################
 # READ DATA 
 # read excel file with unit information
 data_file <- "downsampled_data.csv"
-data_original <- read_csv(data_file)
+data_original <- read_all_csv_separators(data_file)
 
 
 ######################################################
-# DATA CLEANING & DATA SUMMARY
+# DATA CLEANING
 diagnostic <- diagnose(data_original)
 
 # get a list of columns that only have one unique value and list of columns that 
 # have more than some threshold percent of missing values and filter them out
-data_filtered <- data_original %>%
+data_filtered_by_missing_threshold <- data_original %>%
   select(-one_of( #select(-one_of(...)) removes the columns from data_original based on the extracted names
     diagnostic %>% # extract the column names where unique_count == 1 or missing % was above threshold
       filter(unique_count == 1 | missing_percent > MISSING_DATA_PCT_THRESHOLD) %>%
       pull(variables)
   ))
+
+# if one knows which columns are not important in the analysis, one can remove them here
+# by column name
+non_informative_columns <- c("X","X.x","Index","X.y")
+data_filtered_columns <- remove_selected_columns(data_filtered_by_missing_threshold,non_informative_columns)
  
-#REMOVE FROM PIPELINE
-# summarize numeric columns (how to exclude indexes? or sample ID? or other that I might not know about...)
-diagnostic_numerical <- diagnose_numeric(data_filtered) # NPX has 113 outliers
-
-
-diagnose_outlier(data_filtered) %>% 
-  filter(outliers_cnt > 0) 
+# we intentionally leave outliers
 
 #PLOT FOR ALL NUMERICAL WITH SKEWNES LINE ggdist (option to plot each col as a single plot or multiple max 6, to compare)
 # bin violin or box
@@ -43,7 +44,7 @@ diagnose_outlier(data_filtered) %>%
 # NPX without outliers looks like a normal distributuion
 # what to do with outliers?
 data_filtered %>%
-  plot_outlier(diagnose_outlier(data_filtered) %>% 
+  plot_outlier(diagnose_outlier(data_filtered_columns) %>% 
                  filter(outliers_ratio >= 0.5) %>% 
                  select(variables) %>% 
                  unlist())
