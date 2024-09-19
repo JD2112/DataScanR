@@ -3,6 +3,9 @@ source("my_functions.R")
 
 library(dplyr)
 library(dlookr)
+library(tidyr)
+library(ggplot2)
+library(ggdist)
 # Set the seed for reproducibility
 set.seed(123)
 
@@ -37,13 +40,80 @@ non_informative_columns <- c("X","X.x","Index","X.y")
 data_filtered_columns <- remove_selected_columns(data_filtered_by_missing_threshold,non_informative_columns)
  
 # we intentionally leave outliers
+cat_diagnosed <- diagnose_category(data_filtered_columns)
+num_diagnosed <- diagnose_numeric(data_filtered_columns)
 
+# should I convert all char columns to factors?
+data_filtered_columns_with_factors <- factor_char_columns(data_filtered_columns)
+
+######################################################
+# PLOT
 #PLOT FOR ALL NUMERICAL WITH SKEWNES LINE ggdist (option to plot each col as a single plot or multiple max 6, to compare)
 # bin violin or box
-# plot outliers
+
+# select 6 test columns to test visualization
+test_columns <- c("dbph2m","sbph2m","dbph6m","sbph6m", "dbph5m", "sbph5m")
+
+# for box plot reshape the data from wide to long format
+df_box <- data_filtered_columns_with_factors %>%
+  select(all_of(test_columns)) %>%   # select only test columns 
+  pivot_longer(cols = everything(), names_to = "Variable", values_to = "Value")
+
+# Set custom order for the x-axis?
+#df_box$Variable <- factor(df_box$Variable, levels = c("dbph2m","sbph2m","dbph6m","sbph6m"))
+
+# box
+ggplot(df_box, aes(x = Variable, y = Value)) +
+  geom_boxplot() +
+  theme_minimal()+
+  theme(
+    axis.title.x = element_blank(), 
+    axis.title.y = element_blank()  
+  )
+#violin
+ggplot(df_box, aes(x = Variable, y = Value)) +
+  geom_violin() +
+  theme_minimal()+
+  theme(
+    axis.title.x = element_blank(), 
+    axis.title.y = element_blank()   
+  )
+# dots interval
+df_box %>%
+  ggplot(aes(y = Value, x = Variable)) +
+  geom_dotsinterval(side ="left") +
+  theme_minimal()+
+  theme(
+    axis.title.x = element_blank(), 
+    axis.title.y = element_blank()  
+  )
+# slab interval
+df_box %>%
+  ggplot(aes(y = Value, x = Variable)) +
+  stat_slabinterval(side = "right") +
+  theme_minimal()+
+  theme(
+    axis.title.x = element_blank(), 
+    axis.title.y = element_blank()  
+  )
+
+# dit +slab
+# slab interval
+df_box %>%
+  ggplot(aes(y = Value, x = Variable)) +
+  geom_dotsinterval(side ="left") +
+  stat_slabinterval(side = "right") +
+  theme_minimal()+
+  theme(
+    axis.title.x = element_blank(), 
+    axis.title.y = element_blank()  
+  )
+
+
+##########################################################################
 # NPX without outliers looks like a normal distributuion
 # what to do with outliers?
-data_filtered %>%
+data_filtered_columns %>%
   plot_outlier(diagnose_outlier(data_filtered_columns) %>% 
                  filter(outliers_ratio >= 0.5) %>% 
                  select(variables) %>% 

@@ -116,3 +116,11 @@ remove_selected_columns <- function(df, custom_colnames = c()) {
   return(df)
 }
 
+#####################################################################################
+factor_char_columns <- function(df) {
+  df <- df %>%
+    mutate(across(where(is.character), as.factor))
+  
+  return(df)
+}
+
