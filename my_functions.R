@@ -109,18 +109,113 @@ remove_selected_columns <- function(df, custom_colnames = c()) {
   # ensure the column names exist in the data frame before attempting to remove them
   cols_to_remove <- custom_colnames[custom_colnames %in% colnames(df)]
   
-  # remove the columns by their names
-  df <- df[, !colnames(df) %in% cols_to_remove, drop = FALSE]
-  
+  if (length(cols_to_remove) > 0)  {
+    # remove the columns by their names
+    df <- df[, !colnames(df) %in% cols_to_remove, drop = FALSE]
+  }
   # return the modified data frame
   return(df)
 }
 
 #####################################################################################
-factor_char_columns <- function(df) {
-  df <- df %>%
-    mutate(across(where(is.character), as.factor))
+# function that will change given columns to factors
+factor_char_columns <- function(df, custom_colnames = c()) {
+  # ensure the column names exist in the data 
+  cols_to_factorize <- custom_colnames[custom_colnames %in% colnames(df)]
   
+  if (length(cols_to_factorize) > 0)  {
+    # Factorize the specified columns
+    df <- df %>%
+      mutate(across(all_of(cols_to_factorize), as.factor))
+  }
   return(df)
 }
 
+######################################################################################
+# function to preview and visually inspect up till 6 variables on a single plot
+preview_basic_distribution <- function(df,type_of_plot = "box", custom_colnames = c()) {
+  
+  # ensure the type of plot is correct
+  possible_plots <- c("box","violin","bar","slab","slab_dot")
+  
+  allowed_plot <- type_of_plot %in% possible_plots
+  
+  if (!allowed_plot) {
+    print("Type of plot not supported")
+    return()
+  }
+  
+  # ensure the column names exist in the data 
+  columns_to_show <- custom_colnames[custom_colnames %in% colnames(df)]
+  
+  if (length(columns_to_show) == 0)  {
+    print("No variables found in the dataset")
+    return()
+  }
+  
+  # reshape the data from wide to long format
+  df_plot <- data_filtered_columns_with_factors %>%
+    select(all_of(columns_to_show)) %>%   # select only test columns 
+    pivot_longer(cols = everything(), names_to = "Variable", values_to = "Value")
+
+  
+  # Set custom order for the x-axis?
+  #df_plot$Variable <- factor(df_box$Variable, levels = c("dbph2m","sbph2m","dbph6m","sbph6m"))
+  
+  # which plot
+  if (type_of_plot == "box") {
+    p <- ggplot(df_plot, aes(x = Variable, y = Value)) +
+      geom_boxplot() +
+      theme_minimal()+
+      theme(
+        axis.title.x = element_blank(), 
+        axis.title.y = element_blank()  
+      )
+    return(p)
+  } # end if box
+  if (type_of_plot == "violin") {
+    p <- ggplot(df_plot, aes(x = Variable, y = Value)) +
+      geom_violin() +
+      theme_minimal()+
+      theme(
+        axis.title.x = element_blank(), 
+        axis.title.y = element_blank()   
+      )
+    return(p)
+  }# end if violin
+  if (type_of_plot == "bar") {
+    df_plot %>%
+      ggplot(aes(y = Variable, x = Value)) +
+      stat_histinterval(orientation = "horizontal", slab_color = "gray45",outline_bars = TRUE) +
+      theme_minimal()+
+      theme(
+        axis.title.x = element_blank(), 
+        axis.title.y = element_blank()  
+      ) -> p
+    return(p)
+  }# end if bar
+  if (type_of_plot == "slab") {
+    df_plot %>%
+      ggplot(aes(y = Value, x = Variable)) +
+      stat_slabinterval(side = "right") +
+      theme_minimal()+
+      theme(
+        axis.title.x = element_blank(), 
+        axis.title.y = element_blank()  
+      ) -> p
+    return(p)
+  }# end if slab
+  if (type_of_plot == "slab_dot") {
+    df_plot %>%
+      ggplot(aes(y = Value, x = Variable)) +
+      geom_dotsinterval(side ="left") +
+      stat_slabinterval(side = "right") +
+      theme_minimal()+
+      theme(
+        axis.title.x = element_blank(), 
+        axis.title.y = element_blank()  
+      ) -> p
+    return(p)
+  }# end if slab
+  
+}

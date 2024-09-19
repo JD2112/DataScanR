@@ -43,8 +43,8 @@ data_filtered_columns <- remove_selected_columns(data_filtered_by_missing_thresh
 cat_diagnosed <- diagnose_category(data_filtered_columns)
 num_diagnosed <- diagnose_numeric(data_filtered_columns)
 
-# should I convert all char columns to factors?
-data_filtered_columns_with_factors <- factor_char_columns(data_filtered_columns)
+# should I convert some columns to factors?
+data_filtered_columns_with_factors <- factor_char_columns(data_filtered_columns, c("Gender", "smoke_yes_no"))
 
 ######################################################
 # PLOT
@@ -53,61 +53,9 @@ data_filtered_columns_with_factors <- factor_char_columns(data_filtered_columns)
 
 # select 6 test columns to test visualization
 test_columns <- c("dbph2m","sbph2m","dbph6m","sbph6m", "dbph5m", "sbph5m")
+# possible plots: "box","violin","bar","slab","slab_dot"
+preview_basic_distribution(data_filtered_columns_with_factors, type_of_plot = "bar", test_columns)
 
-# for box plot reshape the data from wide to long format
-df_box <- data_filtered_columns_with_factors %>%
-  select(all_of(test_columns)) %>%   # select only test columns 
-  pivot_longer(cols = everything(), names_to = "Variable", values_to = "Value")
-
-# Set custom order for the x-axis?
-#df_box$Variable <- factor(df_box$Variable, levels = c("dbph2m","sbph2m","dbph6m","sbph6m"))
-
-# box
-ggplot(df_box, aes(x = Variable, y = Value)) +
-  geom_boxplot() +
-  theme_minimal()+
-  theme(
-    axis.title.x = element_blank(), 
-    axis.title.y = element_blank()  
-  )
-#violin
-ggplot(df_box, aes(x = Variable, y = Value)) +
-  geom_violin() +
-  theme_minimal()+
-  theme(
-    axis.title.x = element_blank(), 
-    axis.title.y = element_blank()   
-  )
-# dots interval
-df_box %>%
-  ggplot(aes(y = Value, x = Variable)) +
-  geom_dotsinterval(side ="left") +
-  theme_minimal()+
-  theme(
-    axis.title.x = element_blank(), 
-    axis.title.y = element_blank()  
-  )
-# slab interval
-df_box %>%
-  ggplot(aes(y = Value, x = Variable)) +
-  stat_slabinterval(side = "right") +
-  theme_minimal()+
-  theme(
-    axis.title.x = element_blank(), 
-    axis.title.y = element_blank()  
-  )
-
-# dit +slab
-# slab interval
-df_box %>%
-  ggplot(aes(y = Value, x = Variable)) +
-  geom_dotsinterval(side ="left") +
-  stat_slabinterval(side = "right") +
-  theme_minimal()+
-  theme(
-    axis.title.x = element_blank(), 
-    axis.title.y = element_blank()  
-  )
 
 
 ##########################################################################
