@@ -50,12 +50,12 @@ data_filtered_columns_with_factors <- factor_char_columns(data_filtered_columns,
 # PLOT
 #PLOT FOR ALL NUMERICAL WITH SKEWNES LINE ggdist (option to plot each col as a single plot or multiple max 6, to compare)
 # bin violin or box
-
+source("my_functions.R")
 # select 6 test columns to test visualization
-test_columns <- c("dbph2m","sbph2m","dbph6m","sbph6m", "dbph5m", "sbph5m")
-# possible plots: "box","violin","bar","slab","slab_dot"
-preview_basic_distribution(data_filtered_columns_with_factors, type_of_plot = "bar", test_columns)
-
+#test_columns <- c("dbph2m","sbph2m","dbph6m","sbph6m", "dbph5m", "sbph5m")
+test_columns <- c("dbph2m","sbph2m","dbph6m","sbph6m","dbph5m", "sbph5m")
+# possible plots: "box","violin","histogram","box_distribution","violin_box"
+preview_basic_distribution(data_filtered_columns_with_factors, type_of_plot = "violin_box", test_columns)
 
 
 ##########################################################################

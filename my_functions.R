@@ -136,7 +136,7 @@ factor_char_columns <- function(df, custom_colnames = c()) {
 preview_basic_distribution <- function(df,type_of_plot = "box", custom_colnames = c()) {
   
   # ensure the type of plot is correct
-  possible_plots <- c("box","violin","bar","slab","slab_dot")
+  possible_plots <- c("box","violin","histogram","box_distribution","violin_box")
   
   allowed_plot <- type_of_plot %in% possible_plots
   
@@ -152,6 +152,11 @@ preview_basic_distribution <- function(df,type_of_plot = "box", custom_colnames 
     print("No variables found in the dataset")
     return()
   }
+  # make sure there are not more than 6 variables
+  if (length(columns_to_show) > 6) {
+    print("Plots max 6 variables at the same time. Select less variables")
+    return()
+  }
   
   # reshape the data from wide to long format
   df_plot <- data_filtered_columns_with_factors %>%
@@ -159,8 +164,8 @@ preview_basic_distribution <- function(df,type_of_plot = "box", custom_colnames 
     pivot_longer(cols = everything(), names_to = "Variable", values_to = "Value")
 
   
-  # Set custom order for the x-axis?
-  #df_plot$Variable <- factor(df_box$Variable, levels = c("dbph2m","sbph2m","dbph6m","sbph6m"))
+  # Keep user specified order for the x-axis?
+  df_plot$Variable <- factor(df_plot$Variable, levels = columns_to_show)
   
   # which plot
   if (type_of_plot == "box") {
@@ -183,10 +188,11 @@ preview_basic_distribution <- function(df,type_of_plot = "box", custom_colnames 
       )
     return(p)
   }# end if violin
-  if (type_of_plot == "bar") {
+  if (type_of_plot == "histogram") {
     df_plot %>%
       ggplot(aes(y = Variable, x = Value)) +
-      stat_histinterval(orientation = "horizontal", slab_color = "gray45",outline_bars = TRUE) +
+      stat_histinterval(orientation = "horizontal", slab_color = "gray45",alpha = 0.6, outline_bars = TRUE, height =1) +
+      stat_slab(color = "black",linewidth = 1.2, fill = NA, height =1) + # line fitted to histogram
       theme_minimal()+
       theme(
         axis.title.x = element_blank(), 
@@ -194,28 +200,29 @@ preview_basic_distribution <- function(df,type_of_plot = "box", custom_colnames 
       ) -> p
     return(p)
   }# end if bar
-  if (type_of_plot == "slab") {
+  if (type_of_plot == "box_distribution") {
     df_plot %>%
       ggplot(aes(y = Value, x = Variable)) +
-      stat_slabinterval(side = "right") +
+      stat_slab(side = "right", color = "black", alpha = 0.6, linewidth = 0.5) + # line fitted
+      geom_boxplot(position = position_nudge(x = -0.1), width = 0.1) +
       theme_minimal()+
       theme(
         axis.title.x = element_blank(), 
         axis.title.y = element_blank()  
       ) -> p
     return(p)
-  }# end if slab
-  if (type_of_plot == "slab_dot") {
+  }# end if box_distribution
+  if (type_of_plot == "violin_box") {
     df_plot %>%
       ggplot(aes(y = Value, x = Variable)) +
-      geom_dotsinterval(side ="left") +
-      stat_slabinterval(side = "right") +
+      geom_violin() +
+      geom_boxplot( width = 0.2) +
       theme_minimal()+
       theme(
         axis.title.x = element_blank(), 
         axis.title.y = element_blank()  
       ) -> p
     return(p)
-  }# end if slab
+  }# end if violin_box
   
 }
