@@ -3,6 +3,8 @@
 
 #library(readr)
 library(dplyr)
+library(ggplot2)
+library(ggdist)
 #library(stringr)
 
 ###########################################################################################
@@ -68,6 +70,11 @@ read_all_csv_separators <- function(file_path) {
     
     # Apply the conversion function to each column
     data <- as.data.frame(lapply(data, convert_comma_to_period))
+  }
+  # lastly check if the first column is numeric
+  if (is.numeric(data[[1]])) {
+    # if numeric than change column name to "sXXX"
+    colnames(data)[1] <- "sXXX"
   }
   return(data)
 }

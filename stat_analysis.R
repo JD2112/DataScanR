@@ -4,8 +4,6 @@ source("my_functions.R")
 library(dplyr)
 library(dlookr)
 library(tidyr)
-library(ggplot2)
-library(ggdist)
 # Set the seed for reproducibility
 set.seed(123)
 
@@ -36,54 +34,75 @@ data_filtered_by_missing_threshold <- data_original %>%
 
 # if one knows which columns are not important in the analysis, one can remove them here
 # by column name
-non_informative_columns <- c("X","X.x","Index","X.y")
+non_informative_columns <- c("sXXX","X.x","Index","X.y")
 data_filtered_columns <- remove_selected_columns(data_filtered_by_missing_threshold,non_informative_columns)
  
-# we intentionally leave outliers
-cat_diagnosed <- diagnose_category(data_filtered_columns)
-num_diagnosed <- diagnose_numeric(data_filtered_columns)
 
-# should I convert some columns to factors?
+# should I convert some columns to factors? what columns?
 data_filtered_columns_with_factors <- factor_char_columns(data_filtered_columns, c("Gender", "smoke_yes_no"))
 
 ######################################################
-# PLOT
-#PLOT FOR ALL NUMERICAL WITH SKEWNES LINE ggdist (option to plot each col as a single plot or multiple max 6, to compare)
-# bin violin or box
-source("my_functions.R")
-# select 6 test columns to test visualization
+# PLOT PREVIEW
+# select up till 6 test columns to test visualization
 #test_columns <- c("dbph2m","sbph2m","dbph6m","sbph6m", "dbph5m", "sbph5m")
 test_columns <- c("dbph2m","sbph2m","dbph6m","sbph6m","dbph5m", "sbph5m")
 # possible plots: "box","violin","histogram","box_distribution","violin_box"
-preview_basic_distribution(data_filtered_columns_with_factors, type_of_plot = "violin_box", test_columns)
+preview_basic_distribution(data_filtered_columns_with_factors, type_of_plot = "box_distribution", test_columns)
+################################################################
 
-
-##########################################################################
-# NPX without outliers looks like a normal distributuion
-# what to do with outliers?
-data_filtered_columns %>%
-  plot_outlier(diagnose_outlier(data_filtered_columns) %>% 
-                 filter(outliers_ratio >= 0.5) %>% 
-                 select(variables) %>% 
-                 unlist())
-
-
-# compute descriptive statistics for numerical data 
 # descriptive statistics help determine the distribution of numerical variables
-describe(data_filtered) # should we group by something?
+# Maybe export to word doc or somewhere...
+stats_preview <- describe(data_filtered_columns_with_factors) # should we group by something?
+# data_filtered_columns_with_factors has 318 columns but stats_preview has only 302 rows
+# some columns were not analyzed
+#missing columns are 
+setdiff(colnames(data_filtered_columns_with_factors), stats_preview$described_variables)
+#"OlinkID"       "UniProt"       "Assay"         "PlateID"       "QC_Warning"    "Normalization" "Assay_Warning"
+#"Scapis..ID"    "Gender"        "smoke_yes_no"  "SX_Spec"       "AnomalSp"      "Day1VisitD"    "Day2VisitD"  
+#"CtVisitD"      "hscrp_resq"  
+#REMOVE THEM?
+#data_filtered_columns_with_factors <- remove_selected_columns(data_filtered_columns_with_factors,problematic_columns)
 
 #################################################################################
-# Test of normality on numeric variables
-# check if there is below SHAPIRO_THRESHOLD observations
-if (nrow(data_filtered) < SHAPIRO_THRESHOLD) { # perform Shapiro-Wilk normality test
+# TEST NORMALITY
+
+#At this point shapiro text failed with error:
+#Error in shapiro.test(x) : all 'x' values are identical
+#Since I already removed columns with only single unique value, shapiro can crash due to not sufficient variation
+# What should be the threshold in unique_count for numerical columns?
+
+#find columns with insufficient variation or those that may only contain a limited range of values
+limited_variation <- sapply(data_filtered_columns_with_factors, function(col) {
+  if (is.numeric(col)) {
+    n_unique <- length(unique(col))
+    n_unique < 3  # Change 3 to a higher number if you want to allow more unique values
+  } else {
+    FALSE
+  }
+})
+# Get names of columns with limited variation
+limited_variation_col_names <- names(data_filtered_columns_with_factors)[limited_variation]
+data_filtered_columns_with_factors <- remove_selected_columns(data_filtered_columns_with_factors,limited_variation_col_names)
+
+# DECIDE ON THE NORMALITY METHOD BASED ON THE THRESHOLD
+# for numerical 
+if (nrow(data_filtered_columns_with_factors) < SHAPIRO_THRESHOLD) {
+  # perform Shapiro-Wilk normality test
   # "statistic" result ranges from 0 to 1
   # A value close to 1 indicates that the data likely follows a normal distribution (if p>0.05?)
-  shapiro_result <- normality(data_filtered)
-  # values that do not follow normal distribution
-  shapiro_result %>%
-    filter(p_value <= 0.01) %>% 
-    arrange(abs(p_value))
-  # plot
-  plot_normality(data_filtered)
-  
-}
+  shapiro_result <- normality(data_filtered_columns_with_factors)
+  # Save column names where values that do not follow normal distribution
+  non_normal_columnnames <- shapiro_result %>%
+    filter(p_value < 0.05) %>% 
+    arrange(abs(p_value)) %>% 
+    pull(vars)
+  # Save column names where values that follow normal distribution
+  normal_columnnames <- shapiro_result %>%
+    filter(p_value >= 0.05) %>% 
+    arrange(abs(p_value)) %>% 
+    pull(vars)
+} # end shapiro normality method
+
+# plot
+plot_normality(data_filtered_columns_with_factors)
+
