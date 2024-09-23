@@ -31,10 +31,39 @@ merged_df %>% sample_n(1500) -> test_data
 # save as a sample to test
 write.csv(test_data, "downsampled_data.csv")
 
-# randomly select 1500 samples for large dataset
+# randomly select 3000 samples for large dataset
 merged_df %>% sample_n(3000) -> test_data_large
 
 # save as a sample to test
 write.csv(test_data_large, "downsampled_large_data.csv")
+
+###########################################
+# Normally distributed dataset for testing
+# Set parameters
+num_rows <- 15000  # Number of rows
+num_cols <- 5    # Number of columns
+mean <- 0        # Mean of the normal distribution
+sd <- 1          # Standard deviation of the normal distribution
+
+# Generate normally distributed data
+data_normal <- data.frame(
+  col1 = rnorm(num_rows, mean, sd),
+  col2 = rnorm(num_rows, mean, sd),
+  col3 = rnorm(num_rows, mean, sd),
+  col4 = rnorm(num_rows, mean, sd),
+  col5 = rnorm(num_rows, mean, sd)
+)
+# randomly select 1500 samples for small dataset
+data_normal %>% sample_n(1500) -> test_data_normal
+
+# save as a sample to test
+write.csv(test_data_normal, "downsampled_data_normal.csv")
+
+# randomly select 3000 samples for large dataset
+data_normal %>% sample_n(3000) -> test_data_normal_large
+
+# save as a sample to test
+write.csv(test_data_normal_large, "downsampled_data_normal_large.csv")
+
 
 

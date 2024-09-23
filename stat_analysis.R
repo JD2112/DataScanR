@@ -19,13 +19,20 @@ if (!dir.exists(OUTPUT_FOLDER)) {
   dir.create(OUTPUT_FOLDER)
 }
 
-#############################################
-# READ DATA 
+#############
+# READ DATA #
+#############
 # read excel file with unit information
-# data_file <- "downsampled_data.csv"
-data_file <- "downsampled_large_data.csv"
+data_file <- "downsampled_data.csv" # 1500 samples from original non normal file
+# data_file <- "downsampled_large_data.csv" # 3000 samples from original non normal file
+# data_file <- "downsampled_data_normal.csv" # 1500 samples from generated normal file
+# data_file <- "downsampled_data_normal_large.csv" # 3000 samples from generated normal file
+
 data_original <- read_all_csv_separators(data_file)
 
+###################
+# DATA FILTRATION #
+###################
 
 ######################################################
 # DATA CLEANING
@@ -49,16 +56,26 @@ data_filtered_columns <- remove_selected_columns(data_filtered_by_missing_thresh
 # should I convert some columns to factors? by column name? by diagnostic criteria, i.e less than 6 unique values?
 data_filtered_columns_with_factors <- factor_columns(data_filtered_columns, c("Gender", "smoke_yes_no"))
 
+#########
+# BASIC #
+#########
+
 ######################################################
 # PLOT PREVIEW
 # select up till 6 test columns to test visualization
-#test_columns <- c("dbph2m","sbph2m","dbph6m","sbph6m", "dbph5m", "sbph5m")
+test_columns <- c("col1","col2","col3","col4", "col5") # test for normal generated file
 test_columns <- c("dbph2m","sbph2m","dbph6m","sbph6m","dbph5m", "sbph5m")
 # possible plots: "box","violin","histogram","box_distribution","violin_box"
 preview_basic_distribution(data_filtered_columns_with_factors, type_of_plot = "box_distribution", test_columns)
+
+# plot selected columns using dlookr ?
+data_filtered_columns_with_factors %>% 
+  select(all_of(test_columns)) %>% 
+  plot_normality()
 ################################################################
 
 # descriptive statistics help determine the distribution of numerical variables (302 numeric variables out of total 318)
+# do we want this?
 stats_preview <- describe(data_filtered_columns_with_factors) # should we group by something?
 # Maybe export to csv or somewhere...
 #write.csv(stats_preview, file.path(OUTPUT_FOLDER, "stats_table.csv"), row.names = FALSE)
@@ -67,7 +84,7 @@ stats_preview <- describe(data_filtered_columns_with_factors) # should we group 
 #   select(where(is.numeric)) %>%
 #   ncol()
 
-#################################################################################
+#################################################################
 # TEST NORMALITY
 
 #At this point shapiro text failed with error:
@@ -101,6 +118,23 @@ if (nrow(data_filtered_columns_with_factors) < SHAPIRO_THRESHOLD) {
   normality_results <- check_normality_ks(data_filtered_columns_with_factors)
 } # end kolmogorov_smirnov test
 
-# plot
-plot_normality(data_filtered_columns_with_factors)
+###################################################
+# CORRELATIONS BASED ON DISTRIBUTION
+# normality of the variables is determined within the calculate_cor function
+
+# up till 10 column names to correlate
+test_columns <- c("dbph2m","sbph2m","dbph6m","sbph6m","dbph5m", "sbph5m","agev1","bmi_n","hdl_res","gluc_res")
+
+# save corr_coef values?
+corr_coefs <- calculate_cor(data_filtered_columns_with_factors, my_columnnames=test_columns,normality_results)
+
+# just plot?
+data_filtered_columns_with_factors %>% 
+  calculate_cor(my_columnnames=test_columns,normality_results) %>% 
+  plot()
+
+#########
+# TESTS #
+#########
+
 
