@@ -126,7 +126,7 @@ remove_selected_columns <- function(df, custom_colnames = c()) {
 
 #####################################################################################
 # function that will change given columns to factors
-factor_char_columns <- function(df, custom_colnames = c()) {
+factor_columns <- function(df, custom_colnames = c()) {
   # ensure the column names exist in the data 
   cols_to_factorize <- custom_colnames[custom_colnames %in% colnames(df)]
   
@@ -232,4 +232,65 @@ preview_basic_distribution <- function(df,type_of_plot = "box", custom_colnames 
     return(p)
   }# end if violin_box
   
+}
+
+###################################################
+# function will apply Shapiro-Wilk normality test for numerical columns and return a list
+# first element of the list is a vector with non_normal_columnnames, second with normal_columnnames
+check_normality_shapiro <- function(df) {
+  # perform normality test
+  shapiro_result <- normality(df)
+  
+  # "statistic" result ranges from 0 to 1
+  # a value close to 1 indicates that the data likely follows a normal distribution ( only if p>0.05)
+  # save column names where values do not follow normal distribution
+  non_normal_columnnames <- shapiro_result %>%
+    filter(p_value < 0.05) %>% 
+    pull(vars)
+  
+  # save column names where values follow normal distribution
+  normal_columnnames <- shapiro_result %>%
+    filter(p_value >= 0.05) %>% 
+    pull(vars)
+  
+  # ensure normal_columnnames is character(0) if no values are found
+  if (length(normal_columnnames) == 0) {
+    normal_columnnames <- character(0)
+  }
+  
+  # Ensure non_normal_columnnames is character(0) if no values are found
+  if (length(non_normal_columnnames) == 0) {
+    non_normal_columnnames <- character(0)
+  }
+  
+  # Return the results as a list
+  return(list(normal_columnnames = normal_columnnames, non_normal_columnnames = non_normal_columnnames))
+}
+
+###################################################
+# function will apply Kolmogorov-Smirnov (KS) test for each numeric column and return a list
+# first element of the list is a vector with non_normal_columnnames, second with normal_columnnames
+check_normality_ks <- function(df) {
+  # find numeric columns in the dataframe
+  numeric_columns <- names(df)[sapply(df, is.numeric)]
+  
+  # initialize empty vectors for normal and non-normal column names
+  non_normal_columnnames <- character(0)
+  normal_columnnames <- character(0)
+  
+  # for each numeric column and perform the KS test
+  for (col in numeric_columns) {
+    # perform KS test with mean and sd of the column
+    ks_test <- ks.test(df[[col]], "pnorm")
+    
+    # categorize based on p-value
+    if (ks_test$p.value < 0.05) {
+      non_normal_columnnames <- c(non_normal_columnnames, col)  # add to non-normal vector
+    } else {
+      normal_columnnames <- c(normal_columnnames, col)  # add to normal vector
+    }
+  }
+  
+  # return both vectors as a list
+  return(list(normal_columnnames = normal_columnnames, non_normal_columnnames = non_normal_columnnames))
 }

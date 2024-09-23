@@ -11,11 +11,19 @@ set.seed(123)
 SHAPIRO_THRESHOLD = 2000
 MISSING_DATA_PCT_THRESHOLD = 40
 
-# shapiro threshold for normal distribution p >0.05?
+OUTPUT_FOLDER <- "_OUTPUT"
+
+################################################
+# CREATE OUTPUT FOLDER FOR RESULTS
+if (!dir.exists(OUTPUT_FOLDER)) {
+  dir.create(OUTPUT_FOLDER)
+}
+
 #############################################
 # READ DATA 
 # read excel file with unit information
-data_file <- "downsampled_data.csv"
+# data_file <- "downsampled_data.csv"
+data_file <- "downsampled_large_data.csv"
 data_original <- read_all_csv_separators(data_file)
 
 
@@ -34,12 +42,12 @@ data_filtered_by_missing_threshold <- data_original %>%
 
 # if one knows which columns are not important in the analysis, one can remove them here
 # by column name
-non_informative_columns <- c("sXXX","X.x","Index","X.y")
+non_informative_columns <- c("sXXX","sXXX.x","X.x","Index","X.y")
 data_filtered_columns <- remove_selected_columns(data_filtered_by_missing_threshold,non_informative_columns)
  
 
-# should I convert some columns to factors? what columns?
-data_filtered_columns_with_factors <- factor_char_columns(data_filtered_columns, c("Gender", "smoke_yes_no"))
+# should I convert some columns to factors? by column name? by diagnostic criteria, i.e less than 6 unique values?
+data_filtered_columns_with_factors <- factor_columns(data_filtered_columns, c("Gender", "smoke_yes_no"))
 
 ######################################################
 # PLOT PREVIEW
@@ -50,18 +58,14 @@ test_columns <- c("dbph2m","sbph2m","dbph6m","sbph6m","dbph5m", "sbph5m")
 preview_basic_distribution(data_filtered_columns_with_factors, type_of_plot = "box_distribution", test_columns)
 ################################################################
 
-# descriptive statistics help determine the distribution of numerical variables
-# Maybe export to word doc or somewhere...
+# descriptive statistics help determine the distribution of numerical variables (302 numeric variables out of total 318)
 stats_preview <- describe(data_filtered_columns_with_factors) # should we group by something?
-# data_filtered_columns_with_factors has 318 columns but stats_preview has only 302 rows
-# some columns were not analyzed
-#missing columns are 
-setdiff(colnames(data_filtered_columns_with_factors), stats_preview$described_variables)
-#"OlinkID"       "UniProt"       "Assay"         "PlateID"       "QC_Warning"    "Normalization" "Assay_Warning"
-#"Scapis..ID"    "Gender"        "smoke_yes_no"  "SX_Spec"       "AnomalSp"      "Day1VisitD"    "Day2VisitD"  
-#"CtVisitD"      "hscrp_resq"  
-#REMOVE THEM?
-#data_filtered_columns_with_factors <- remove_selected_columns(data_filtered_columns_with_factors,problematic_columns)
+# Maybe export to csv or somewhere...
+#write.csv(stats_preview, file.path(OUTPUT_FOLDER, "stats_table.csv"), row.names = FALSE)
+# # debug: how many numeric variables are there ?
+# data_filtered_columns_with_factors %>%
+#   select(where(is.numeric)) %>%
+#   ncol()
 
 #################################################################################
 # TEST NORMALITY
@@ -70,6 +74,7 @@ setdiff(colnames(data_filtered_columns_with_factors), stats_preview$described_va
 #Error in shapiro.test(x) : all 'x' values are identical
 #Since I already removed columns with only single unique value, shapiro can crash due to not sufficient variation
 # What should be the threshold in unique_count for numerical columns?
+# or maybe those should be turned to factors...
 
 #find columns with insufficient variation or those that may only contain a limited range of values
 limited_variation <- sapply(data_filtered_columns_with_factors, function(col) {
@@ -83,25 +88,18 @@ limited_variation <- sapply(data_filtered_columns_with_factors, function(col) {
 # Get names of columns with limited variation
 limited_variation_col_names <- names(data_filtered_columns_with_factors)[limited_variation]
 data_filtered_columns_with_factors <- remove_selected_columns(data_filtered_columns_with_factors,limited_variation_col_names)
-
+#########################################################
 # DECIDE ON THE NORMALITY METHOD BASED ON THE THRESHOLD
 # for numerical 
 if (nrow(data_filtered_columns_with_factors) < SHAPIRO_THRESHOLD) {
-  # perform Shapiro-Wilk normality test
-  # "statistic" result ranges from 0 to 1
-  # A value close to 1 indicates that the data likely follows a normal distribution (if p>0.05?)
-  shapiro_result <- normality(data_filtered_columns_with_factors)
-  # Save column names where values that do not follow normal distribution
-  non_normal_columnnames <- shapiro_result %>%
-    filter(p_value < 0.05) %>% 
-    arrange(abs(p_value)) %>% 
-    pull(vars)
-  # Save column names where values that follow normal distribution
-  normal_columnnames <- shapiro_result %>%
-    filter(p_value >= 0.05) %>% 
-    arrange(abs(p_value)) %>% 
-    pull(vars)
-} # end shapiro normality method
+  # function will perform shapiro test
+  # first element of the list is a vector with non_normal_columnnames, second with normal_columnnames
+  normality_results <- check_normality_shapiro(data_filtered_columns_with_factors)
+} else { # for larger data sets use kolmogorov-Smirnov test to determine normality
+  # function will apply ks test for each numeric column and return a list
+  # first element of the list is a vector with non_normal_columnnames, second with normal_columnnames
+  normality_results <- check_normality_ks(data_filtered_columns_with_factors)
+} # end kolmogorov_smirnov test
 
 # plot
 plot_normality(data_filtered_columns_with_factors)

@@ -23,8 +23,18 @@ cleaned_other <- trim_values_in_columns(other_data,custom_colnames = c())
 merged_df <- cleaned_big_data %>%
   left_join(cleaned_other, by = c("Scapis..ID" = "SUBJID"))
 
-# randomly select 1500 samples
+#########################################################################
+# CREATE TEST DATA FILES
+# randomly select 1500 samples for small dataset
 merged_df %>% sample_n(1500) -> test_data
 
 # save as a sample to test
 write.csv(test_data, "downsampled_data.csv")
+
+# randomly select 1500 samples for large dataset
+merged_df %>% sample_n(3000) -> test_data_large
+
+# save as a sample to test
+write.csv(test_data_large, "downsampled_large_data.csv")
+
+
