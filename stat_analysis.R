@@ -141,10 +141,23 @@ if (nrow(data_filtered_columns_with_factors) < SHAPIRO_THRESHOLD) {
 # save corr_coef values?
 corr_coefs <- calculate_cor_short(data_filtered_columns_with_factors, my_columnnames=test_columns,normality_results)
 
-# just plot?
-data_filtered_columns_with_factors %>% 
-  calculate_cor_short(my_columnnames=test_columns,normality_results) %>% 
-  plot()
+# plot (from dlookr github: https://github.com/choonghyunryu/dlookr/blob/master/R/correlate.R)
+p <- corr_coefs %>%   
+  ggplot(aes(var1, var2, fill = coef_corr, label = round(coef_corr, 2))) +
+  geom_tile(col = "black") + 
+  scale_fill_gradient2(low = "red", mid = "white", high = "blue", 
+                       limits = c(-1, 1)) +
+  geom_text() +
+  scale_x_discrete(expand = c(0, 0)) +
+  scale_y_discrete(expand = c(0, 0)) +
+  labs(fill = "Correlation\nCoefficient") + 
+  coord_equal() +
+  theme(axis.title.x = element_blank(),
+        axis.title.y = element_blank(),
+        axis.text.x = element_text(angle = 40, hjust = 1),
+        panel.grid.major = element_blank())
+p
+
 
 # # !!! takes very long time but produces complete corr matrix for all numerical columns
 # # maybe let's not calculate for all columns at the same time
