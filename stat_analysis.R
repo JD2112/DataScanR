@@ -10,6 +10,8 @@ set.seed(123)
 
 SHAPIRO_THRESHOLD = 2000
 MISSING_DATA_PCT_THRESHOLD = 40
+# manual factorization can be better...
+UNIQUE_NO_TO_FACTOR = 4 # until this many unique values in the column treat it as factor?
 
 OUTPUT_FOLDER <- "_OUTPUT"
 
@@ -49,12 +51,23 @@ data_filtered_by_missing_threshold <- data_original %>%
 
 # if one knows which columns are not important in the analysis, one can remove them here
 # by column name
-non_informative_columns <- c("sXXX","sXXX.x","X.x","Index","X.y")
+non_informative_columns <- c("sXXX","sXXX.x","X.x","Index","X.y","SampleID","Index","filter_.","AscA_ID")
 data_filtered_columns <- remove_selected_columns(data_filtered_by_missing_threshold,non_informative_columns)
  
+# # factorize some data based on no. of unique values
+# # diagnose again after removing some columns
+# diagnostic <- diagnose(data_filtered_columns)
+# data_filtered_columns <- data_filtered_columns %>%
+#   mutate(across( # mutate to apply transformations to specific columns
+#     one_of( # selecting columns based on the extracted names
+#       diagnostic %>% # extract the column names where unique_count < UNIQUE_NO_TO_FACTOR or missing % was above threshold
+#         filter(unique_count < UNIQUE_NO_TO_FACTOR) %>%
+#         pull(variables)
+#     ), as.factor)) # convert selected columns to factors
 
 # should I convert some columns to factors? by column name? by diagnostic criteria, i.e less than 6 unique values?
-data_filtered_columns_with_factors <- factor_columns(data_filtered_columns, c("Gender", "smoke_yes_no"))
+columns_to_factor <- c("Gender", "smoke_yes_no","Case_control")
+data_filtered_columns_with_factors <- factor_columns(data_filtered_columns, columns_to_factor)
 
 #########
 # BASIC #
@@ -64,7 +77,7 @@ data_filtered_columns_with_factors <- factor_columns(data_filtered_columns, c("G
 # PLOT PREVIEW
 # select up till 6 test columns to test visualization
 test_columns <- c("col1","col2","col3","col4", "col5") # test for normal generated file
-test_columns <- c("dbph2m","sbph2m","dbph6m","sbph6m","dbph5m", "sbph5m")
+test_columns <- c("gluc_res","PGlucose","chol_res","tg_res" ,"ldl_res", "hdl_res")
 # possible plots: "box","violin","histogram","box_distribution","violin_box"
 preview_basic_distribution(data_filtered_columns_with_factors, type_of_plot = "box_distribution", test_columns)
 
@@ -123,15 +136,26 @@ if (nrow(data_filtered_columns_with_factors) < SHAPIRO_THRESHOLD) {
 # normality of the variables is determined within the calculate_cor function
 
 # up till 10 column names to correlate
-test_columns <- c("dbph2m","sbph2m","dbph6m","sbph6m","dbph5m", "sbph5m","agev1","bmi_n","hdl_res","gluc_res")
+# test_columns <- c("dbph2m","sbph2m","dbph6m","sbph6m","dbph5m", "sbph5m","agev1","bmi_n","hdl_res","gluc_res")
 
 # save corr_coef values?
-corr_coefs <- calculate_cor(data_filtered_columns_with_factors, my_columnnames=test_columns,normality_results)
+corr_coefs <- calculate_cor_short(data_filtered_columns_with_factors, my_columnnames=test_columns,normality_results)
 
 # just plot?
 data_filtered_columns_with_factors %>% 
-  calculate_cor(my_columnnames=test_columns,normality_results) %>% 
+  calculate_cor_short(my_columnnames=test_columns,normality_results) %>% 
   plot()
+
+# # !!! takes very long time but produces complete corr matrix for all numerical columns
+# # maybe let's not calculate for all columns at the same time
+# complete_corr_matrix <- calculate_corr_matrix_mixed(data_filtered_columns_with_factors,normality_results)
+# corr_plot_from_corr_matrix(complete_corr_matrix,test_columns)
+
+# select some columns
+test_corr_df <- data_filtered_columns_with_factors %>% 
+  select(all_of((test_columns)))
+test_corr_matrix <- calculate_corr_matrix_mixed(test_corr_df,normality_results)
+corr_plot_from_corr_matrix(test_corr_matrix,test_columns)
 
 #########
 # TESTS #
