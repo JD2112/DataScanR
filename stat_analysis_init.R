@@ -45,13 +45,13 @@ num_cols <- 5    # Number of columns
 mean <- 0        # Mean of the normal distribution
 sd <- 1          # Standard deviation of the normal distribution
 
-# Generate normally distributed data
+
 data_normal <- data.frame(
-  col1 = rnorm(num_rows, mean, sd),
-  col2 = rnorm(num_rows, mean, sd),
-  col3 = rnorm(num_rows, mean, sd),
-  col4 = rnorm(num_rows, mean, sd),
-  col5 = rnorm(num_rows, mean, sd)
+  col1 = rnorm(num_rows, mean, sd),   # Generate normally distributed data
+  col2 = rnorm(num_rows, mean, sd),   # Generate normally distributed data
+  col3 = rnorm(num_rows)^2,           # Squaring normal data produces a skewed distribution
+  col4 = rpois(num_rows, lambda = 4), # Poisson distribution with lambda = 4
+  col5 = rnorm(num_rows, mean, sd)    # Generate normally distributed data
 )
 # randomly select 1500 samples for small dataset
 data_normal %>% sample_n(1500) -> test_data_normal
