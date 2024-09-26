@@ -5,6 +5,7 @@
 library(dplyr)
 library(ggplot2)
 library(ggdist)
+library(GGally)
 #library(stringr)
 
 MAX_FOR_PREVIEW_PLOT = 6

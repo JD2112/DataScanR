@@ -66,7 +66,7 @@ data_filtered_columns <- remove_selected_columns(data_filtered_by_missing_thresh
 #     ), as.factor)) # convert selected columns to factors
 
 # should I convert some columns to factors? by column name? by diagnostic criteria, i.e less than 6 unique values?
-columns_to_factor <- c("Gender", "smoke_yes_no","Case_control")
+columns_to_factor <- c("Gender", "smoke_yes_no","smokestatus","Case_control")
 data_filtered_columns_with_factors <- factor_columns(data_filtered_columns, columns_to_factor)
 
 #########
@@ -76,7 +76,7 @@ data_filtered_columns_with_factors <- factor_columns(data_filtered_columns, colu
 ######################################################
 # PLOT PREVIEW
 # select up till 6 test columns to test visualization
-test_columns <- c("col1","col2","col3","col4", "col5") # test for normal generated file
+# test_columns <- c("col1","col2","col3","col4", "col5") # test for normal generated file
 test_columns <- c("gluc_res","PGlucose","chol_res","tg_res" ,"ldl_res", "hdl_res")
 # possible plots: "box","violin","histogram","box_distribution","violin_box"
 preview_basic_distribution(data_filtered_columns_with_factors, type_of_plot = "box_distribution", test_columns)
@@ -173,5 +173,19 @@ corr_plot_from_corr_matrix(test_corr_matrix,test_columns)
 #########
 # TESTS #
 #########
+
+#########################################
+# 1
+# Comparing means, medians distributions
+
+# Wilcoxon rank-sum test
+data_filtered_columns_with_factors %>% 
+  select(all_of(c("bmi_n","Case_control"))) -> data_to_test
+wilcox_result <- wilcox.test(bmi_n ~ Case_control, data = data_to_test, paired = FALSE, alternative = "two.sided")
+# Wilcoxon signed-rank test: Compares paired data (two related samples or repeated measures on a single sample).
+data_filtered_columns_with_factors %>% 
+  select(all_of(c("Mean_syst_morning","Mean_syst_evening"))) -> data_to_test
+wilcox.test(data_filtered_columns_with_factors$Mean_syst_morning, data_filtered_columns_with_factors$Mean_syst_evening, paired = TRUE, alternative = "two.sided")
+
 
 
