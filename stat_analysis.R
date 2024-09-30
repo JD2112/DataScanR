@@ -4,6 +4,7 @@ source("my_functions.R")
 library(dplyr)
 library(dlookr)
 library(tidyr)
+library(rstatix)
 # Set the seed for reproducibility
 set.seed(123)
 
@@ -66,7 +67,7 @@ data_filtered_columns <- remove_selected_columns(data_filtered_by_missing_thresh
 #     ), as.factor)) # convert selected columns to factors
 
 # should I convert some columns to factors? by column name? by diagnostic criteria, i.e less than 6 unique values?
-columns_to_factor <- c("Gender", "smoke_yes_no","smokestatus","Case_control")
+columns_to_factor <- c("Scapis..ID","Gender", "smoke_yes_no","smokestatus","Case_control")
 data_filtered_columns_with_factors <- factor_columns(data_filtered_columns, columns_to_factor)
 
 #########
@@ -178,14 +179,121 @@ corr_plot_from_corr_matrix(test_corr_matrix,test_columns)
 # 1
 # Comparing means, medians distributions
 
-# Wilcoxon rank-sum test
+##################################
+# Non-normal distribution tests: #
+
+########
+# Wilcoxon rank-sum test: Compares the distributions of two independent groups
+# test example: bmi_n by Case_control
 data_filtered_columns_with_factors %>% 
   select(all_of(c("bmi_n","Case_control"))) -> data_to_test
 wilcox_result <- wilcox.test(bmi_n ~ Case_control, data = data_to_test, paired = FALSE, alternative = "two.sided")
-# Wilcoxon signed-rank test: Compares paired data (two related samples or repeated measures on a single sample).
+result_p_val <- wilcox_result$p.value
+# see the medians
+data_to_test %>%
+  group_by(Case_control) %>%
+  get_summary_stats(bmi_n, type = "median")
+# PLOT
+p_text <- ifelse(result_p_val < 0.001, 
+                 "p = < 0.001", 
+                 ifelse(result_p_val < 0.05, 
+                        "p = < 0.005", 
+                        paste("p =", round(result_p_val, 3))))
+data_to_test %>%
+  filter(!is.na(Case_control)) %>%    # Filter out rows with NA values 
+  ggplot(aes(x = Case_control, y = bmi_n)) +
+  geom_boxplot() +
+  theme_minimal() +
+  theme(panel.grid = element_blank()) +
+  labs(
+    subtitle = paste("Wilcoxon rank-sum test, ", p_text)
+  )
+########
+
+########
+# Wilcoxon signed-rank test: Compares paired data (two related samples or repeated measures on a single sample)
+# test example: Mean_syst_morning and Mean_syst_evening
 data_filtered_columns_with_factors %>% 
   select(all_of(c("Mean_syst_morning","Mean_syst_evening"))) -> data_to_test
-wilcox.test(data_filtered_columns_with_factors$Mean_syst_morning, data_filtered_columns_with_factors$Mean_syst_evening, paired = TRUE, alternative = "two.sided")
+wilcox_result <- wilcox.test(data_filtered_columns_with_factors$Mean_syst_morning, data_filtered_columns_with_factors$Mean_syst_evening, paired = TRUE, alternative = "two.sided")
+result_p_val <- wilcox_result$p.value
+# see the medians
+data_to_test %>%
+  summarize(
+    Median_Mean_syst_morning = median(Mean_syst_morning, na.rm = TRUE),
+    Median_Mean_syst_evening = median(Mean_syst_evening, na.rm = TRUE),
+    Count_Mean_syst_morning = sum(!is.na(Mean_syst_morning)),  # Count of non-NA
+    Count_Mean_syst_evening = sum(!is.na(Mean_syst_evening))
+  )
+# PLOT
+p_text <- ifelse(result_p_val < 0.001, 
+                 "p = < 0.001", 
+                 ifelse(result_p_val < 0.05, 
+                        "p = < 0.005", 
+                        paste("p =", round(result_p_val, 3))))
+# Reshape the data from wide to long format
+data_long <- data_to_test %>%
+  pivot_longer(cols = c(Mean_syst_morning, Mean_syst_evening), 
+               names_to = "variable", 
+               values_to = "value")
+data_long %>%
+  ggplot(aes(x = variable, y = value)) +
+  geom_boxplot() +
+  theme_minimal() +
+  theme(panel.grid = element_blank()) +
+  theme(
+    axis.title.x = element_blank(), 
+    axis.title.y = element_blank()  
+  ) +
+  labs(
+    subtitle = paste("Wilcoxon signed-rank test, ", p_text)
+  )
+########
 
+########
+# Kruskal-Wallis test: Non-parametric alternative to one-way ANOVA, compares more than two independent groups
+# test example: bmi_n by smokestatus
+data_filtered_columns_with_factors %>% 
+  select(all_of(c("bmi_n","smokestatus"))) -> data_to_test
+kruskal_result <- kruskal_test(data_to_test, bmi_n ~ smokestatus)
+result_p_val <- kruskal_result$p
+# see the medians
+data_to_test %>%
+  group_by(smokestatus) %>%
+  get_summary_stats(bmi_n, type = "median")
+# PLOT
+p_text <- ifelse(result_p_val < 0.001, 
+                 "p = < 0.001", 
+                 ifelse(result_p_val < 0.05, 
+                        "p = < 0.005", 
+                        paste("p =", round(result_p_val, 3))))
+data_to_test %>%
+  filter(!is.na(smokestatus)) %>%    # Filter out rows with NA values
+  ggplot(aes(x = smokestatus, y = bmi_n)) +
+  geom_boxplot() +
+  theme_minimal() +
+  theme(panel.grid = element_blank()) +  # Remove the grid
+  labs(
+    subtitle = get_test_label(kruskal_result, detailed = TRUE)
+  )
+########
 
+########
+# Friedman test: Non-parametric alternative to repeated measures ANOVA, compares more than two related groups
+# test example: Day1VisitD, Day2VisitD, CtVisitD
+data_filtered_columns_with_factors %>% 
+  select(all_of(c("dbph3m","dbph4m","dbph5m","Scapis..ID"))) -> data_to_test
+res_counts <- data_to_test %>%
+  group_by(Scapis..ID) %>%
+  summarize(count = n()) %>%
+  filter(count == 6)  # Select those with a count of 6
+# single glucose
+individual_data <- data_to_test %>%
+  filter(Scapis..ID == "4-1333")
+# Reshape the data from wide to long format
+data_long <- data_to_test %>%
+  pivot_longer(cols = c(Mean_syst_morning, Mean_syst_evening), 
+               names_to = "variable", 
+               values_to = "value")
+friedman.test(y=data_to_test$score, groups=data_to_test$drug, blocks=data_to_test$Scapis..ID)
 
