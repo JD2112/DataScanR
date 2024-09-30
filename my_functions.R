@@ -142,6 +142,23 @@ factor_columns <- function(df, custom_colnames = c()) {
 } # end factor_columns
 
 ######################################################################################
+# function to keep the first row of duplicates
+keep_first_of_duplicates <- function(df,my_colnames = c(id_columnname,other_column_name)) {
+  duplicates <- df %>%
+    group_by(across(all_of(my_colnames))) %>%
+    tally() %>%
+    filter(n!=1)
+  if (nrow(duplicates) > 0) {
+    df_no_duplicates <- df %>%
+      group_by(across(all_of(my_colnames))) %>%
+      filter(row_number() == 1)  # Keep only the first row of each group
+    
+    return(df_no_duplicates)
+  }
+  return(df)
+} # end keep_first_of_duplicates
+
+######################################################################################
 # function to preview and visually inspect up till 6 variables on a single plot
 preview_basic_distribution <- function(df,type_of_plot = "box", custom_colnames = c()) {
   

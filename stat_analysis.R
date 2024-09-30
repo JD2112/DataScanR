@@ -116,9 +116,22 @@ limited_variation <- sapply(data_filtered_columns_with_factors, function(col) {
     FALSE
   }
 })
-# Get names of columns with limited variation
+# Get names of columns with limited variation (11 columns)
 limited_variation_col_names <- names(data_filtered_columns_with_factors)[limited_variation]
 data_filtered_columns_with_factors <- remove_selected_columns(data_filtered_columns_with_factors,limited_variation_col_names)
+
+
+# DUPLICATES?
+# data_no_ID_duplicates <- keep_first_of_duplicates(data_filtered_columns_with_factors,my_colnames=c("Scapis..ID","gluc_res"))
+# # check the results
+# duplicates <- data_no_ID_duplicates %>% 
+#   group_by(Scapis..ID, gluc_res) %>% 
+#   tally() %>% 
+#   filter(n!=1) # should be empty if every combo of above variables is unique
+# # single 
+# data_no_ID_duplicates %>%
+#   filter(Scapis..ID == "4-1333")
+
 #########################################################
 # DECIDE ON THE NORMALITY METHOD BASED ON THE THRESHOLD
 # for numerical 
