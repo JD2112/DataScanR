@@ -79,7 +79,17 @@ data_filtered_columns_with_factors <- factor_columns(data_filtered_columns, colu
 # select up till 6 test columns to test visualization
 # test_columns <- c("col1","col2","col3","col4", "col5") # test for normal generated file
 test_columns <- c("gluc_res","PGlucose","chol_res","tg_res" ,"ldl_res", "hdl_res")
+
+# remove duplicates first:
+columns_to_keep <- c("Scapis..ID","gluc_res","PGlucose","chol_res","tg_res" ,"ldl_res", "hdl_res")
+data_to_plot <- data_filtered_columns_with_factors %>% 
+  select(all_of(columns_to_keep)) %>% 
+  keep_first_of_duplicates(columns_to_keep) %>% 
+ as.data.frame()
 # possible plots: "box","violin","histogram","box_distribution","violin_box"
+preview_basic_distribution(data_to_plot, type_of_plot = "box_distribution", test_columns)
+
+# compare with duplicates
 preview_basic_distribution(data_filtered_columns_with_factors, type_of_plot = "box_distribution", test_columns)
 
 # plot selected columns using dlookr ?
@@ -136,13 +146,16 @@ data_filtered_columns_with_factors <- remove_selected_columns(data_filtered_colu
 # DECIDE ON THE NORMALITY METHOD BASED ON THE THRESHOLD
 # for numerical 
 if (nrow(data_filtered_columns_with_factors) < SHAPIRO_THRESHOLD) {
+# if (nrow(data_to_plot) < SHAPIRO_THRESHOLD) {
   # function will perform shapiro test
   # first element of the list is a vector with non_normal_columnnames, second with normal_columnnames
   normality_results <- check_normality_shapiro(data_filtered_columns_with_factors)
+  # normality_results <- check_normality_shapiro(data_to_plot)
 } else { # for larger data sets use kolmogorov-Smirnov test to determine normality
   # function will apply ks test for each numeric column and return a list
   # first element of the list is a vector with non_normal_columnnames, second with normal_columnnames
   normality_results <- check_normality_ks(data_filtered_columns_with_factors)
+  # normality_results <- check_normality_ks(data_to_plot)
 } # end kolmogorov_smirnov test
 
 ###################################################
