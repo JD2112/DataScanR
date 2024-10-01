@@ -201,7 +201,8 @@ preview_basic_distribution <- function(df,type_of_plot = "box", custom_colnames 
       theme_minimal()+
       theme(
         axis.title.x = element_blank(), 
-        axis.title.y = element_blank()  
+        axis.title.y = element_blank(), 
+        panel.grid = element_blank()
       )
     return(p)
   } # end if box
@@ -211,7 +212,8 @@ preview_basic_distribution <- function(df,type_of_plot = "box", custom_colnames 
       theme_minimal()+
       theme(
         axis.title.x = element_blank(), 
-        axis.title.y = element_blank()   
+        axis.title.y = element_blank(),
+        panel.grid = element_blank()
       )
     return(p)
   }# end if violin
@@ -223,7 +225,8 @@ preview_basic_distribution <- function(df,type_of_plot = "box", custom_colnames 
       theme_minimal()+
       theme(
         axis.title.x = element_blank(), 
-        axis.title.y = element_blank()  
+        axis.title.y = element_blank(),
+        panel.grid = element_blank()
       ) -> p
     return(p)
   }# end if bar
@@ -235,7 +238,8 @@ preview_basic_distribution <- function(df,type_of_plot = "box", custom_colnames 
       theme_minimal()+
       theme(
         axis.title.x = element_blank(), 
-        axis.title.y = element_blank()  
+        axis.title.y = element_blank(),
+        panel.grid = element_blank()
       ) -> p
     return(p)
   }# end if box_distribution
@@ -247,7 +251,8 @@ preview_basic_distribution <- function(df,type_of_plot = "box", custom_colnames 
       theme_minimal()+
       theme(
         axis.title.x = element_blank(), 
-        axis.title.y = element_blank()  
+        axis.title.y = element_blank(),
+        panel.grid = element_blank()
       ) -> p
     return(p)
   }# end if violin_box

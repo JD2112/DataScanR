@@ -22,6 +22,16 @@ MAX_ROWS_TO_SHOW = 200
 
 server <- function(input, output, session) {
   
+  # Reactive expression to store the modified data
+  modified_data <- reactiveVal(NULL)
+  
+  # Reactive expression to store the data for display (modified data or stats preview)
+  display_data <- reactiveVal(NULL)
+  
+  # Trigger for plotting
+  plot_ready <- reactiveVal(FALSE)  # Reactive flag to control when the plot should be displayed
+
+  
   # Reactive expression to read the uploaded file
   data <- reactive({
     req(input$file1)  # Ensure file is uploaded
@@ -40,21 +50,12 @@ server <- function(input, output, session) {
     return(data_filtered_by_missing_threshold) 
   })
   
-  # Reactive expression to store the modified data
-  modified_data <- reactiveVal(NULL)  # Use reactiveVal to store modified data
-  
-  # Reactive expression to store the data for display (modified data or stats preview)
-  display_data <- reactiveVal(NULL)  # New reactive value to manage display data
-  
-  # Trigger for plotting
-  plot_ready <- reactiveVal(FALSE)  # A reactive flag to control when the plot should be displayed
-  
   # Initialize modified_data when data is available
   observeEvent(data(), {
     modified_data(data())  # Initialize with the cleaned data
     plot_ready(FALSE)  # Reset the plot flag to FALSE when data changes
+    display_data(modified_data())  # Initialize display with modified data
   })
-  
   
   # Initialize modified_data when data is available
   observeEvent(data(), {
@@ -157,6 +158,13 @@ server <- function(input, output, session) {
     display_data(stats_preview())  # Update display_data with stats_preview
   })
   
+  # Change output when the summarize button is clicked
+  observeEvent(input$showDataButton, {
+    req(modified_data())  # Ensure data is available
+    display_data(modified_data())
+    plot_ready(FALSE)
+  })
+  
   # Plot
   # Render the plot after the button is clicked
   observeEvent(input$plotPreviewButton, {
@@ -179,5 +187,19 @@ server <- function(input, output, session) {
     plot <- preview_basic_distribution(modified_data(), type_of_plot = input$plot_type, selected_columns)
     return(plot)  # Return the plot to be rendered
   })
+  
+  
+  ########################################
+  # Show table or plot based on plot_ready
+  output$showTable <- reactive({
+    return(!plot_ready())  # Show table if plot_ready is FALSE
+  })
+  
+  output$showPlot <- reactive({
+    return(plot_ready())  # Show plot if plot_ready is TRUE
+  })
+  # Enable these reactive outputs
+  outputOptions(output, "showTable", suspendWhenHidden = FALSE)
+  outputOptions(output, "showPlot", suspendWhenHidden = FALSE)
   
 } # end server

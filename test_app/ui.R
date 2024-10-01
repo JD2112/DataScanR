@@ -26,13 +26,23 @@ ui <- fluidPage(
       actionButton("removeColButton", "Remove Selected Columns"),  # remove button
       actionButton("factorizeButton", "Factorize Selected Columns"),  # factorize button
       actionButton("summarizeButton", "Summarize Data"), # button to show summary stats
+      actionButton("showDataButton", "Show Data"), # button to show summary stats
       uiOutput("plot_type_selector"), # dropdown with column names
       actionButton("plotPreviewButton", "Preview Selected Columns")
     ),
     
     mainPanel(
-      DTOutput("contents"),  # DataTable output
-      plotOutput("plot")  # Add a plot output to display the ggplot
+      # Conditional panel to show table or plot based on the plot_ready() state
+      conditionalPanel(
+        condition = "output.showTable == true",  # Shows table if showTable is TRUE
+        DTOutput("contents")  # DataTable output
+      ),
+      conditionalPanel(
+        condition = "output.showPlot == true",  # Shows plot if showPlot is TRUE
+        plotOutput("plot")  # Plot output to display the ggplot
+      )
     )
   )
 )
+
+
