@@ -186,7 +186,7 @@ preview_basic_distribution <- function(df,type_of_plot = "box", custom_colnames 
   }
   
   # reshape the data from wide to long format
-  df_plot <- data_filtered_columns_with_factors %>%
+  df_plot <- df %>%
     select(all_of(columns_to_show)) %>%   # select only test columns 
     pivot_longer(cols = everything(), names_to = "Variable", values_to = "Value")
 
