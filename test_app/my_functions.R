@@ -220,7 +220,7 @@ preview_basic_distribution <- function(df,type_of_plot = "box", custom_colnames 
   if (type_of_plot == "histogram") {
     df_plot %>%
       ggplot(aes(y = Variable, x = Value)) +
-      stat_histinterval(orientation = "horizontal", slab_color = "gray45",alpha = 0.6, outline_bars = TRUE, height =1) +
+      stat_histinterval(orientation = "horizontal", slab_color = "gray45",alpha = 0.9, outline_bars = TRUE, height =1) +
       stat_slab(color = "black",linewidth = 1.2, fill = NA, height =1) + # line fitted to histogram
       theme_minimal()+
       theme(

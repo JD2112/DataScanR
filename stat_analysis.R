@@ -5,6 +5,7 @@ library(dplyr)
 library(dlookr)
 library(tidyr)
 library(rstatix)
+
 # Set the seed for reproducibility
 set.seed(123)
 
@@ -52,7 +53,7 @@ data_filtered_by_missing_threshold <- data_original %>%
 
 # if one knows which columns are not important in the analysis, one can remove them here
 # by column name
-non_informative_columns <- c("sXXX","sXXX.x","X.x","Index","X.y","SampleID","Index","filter_.","AscA_ID")
+non_informative_columns <- c("sXXX","sXXX.x","X.x","Index","X.y","SampleID","Index","filter_.","AscA_ID","filter_.")
 data_filtered_columns <- remove_selected_columns(data_filtered_by_missing_threshold,non_informative_columns)
  
 # # factorize some data based on no. of unique values
@@ -87,10 +88,10 @@ data_to_plot <- data_filtered_columns_with_factors %>%
   keep_first_of_duplicates(columns_to_keep) %>% 
  as.data.frame()
 # possible plots: "box","violin","histogram","box_distribution","violin_box"
-preview_basic_distribution(data_to_plot, type_of_plot = "box_distribution", test_columns)
+preview_basic_distribution(data_to_plot, type_of_plot = "histogram", test_columns)
 
 # compare with duplicates
-preview_basic_distribution(data_filtered_columns_with_factors, type_of_plot = "box_distribution", test_columns)
+preview_basic_distribution(data_filtered_columns_with_factors, type_of_plot = "histogram", test_columns)
 
 # plot selected columns using dlookr ?
 data_filtered_columns_with_factors %>% 
@@ -305,21 +306,21 @@ data_to_test %>%
 ########
 
 ########
-# Friedman test: Non-parametric alternative to repeated measures ANOVA, compares more than two related groups
-# test example: Day1VisitD, Day2VisitD, CtVisitD
-data_filtered_columns_with_factors %>% 
-  select(all_of(c("dbph3m","dbph4m","dbph5m","Scapis..ID"))) -> data_to_test
-res_counts <- data_to_test %>%
-  group_by(Scapis..ID) %>%
-  summarize(count = n()) %>%
-  filter(count == 6)  # Select those with a count of 6
-# single glucose
-individual_data <- data_to_test %>%
-  filter(Scapis..ID == "4-1333")
-# Reshape the data from wide to long format
-data_long <- data_to_test %>%
-  pivot_longer(cols = c(Mean_syst_morning, Mean_syst_evening), 
-               names_to = "variable", 
-               values_to = "value")
-friedman.test(y=data_to_test$score, groups=data_to_test$drug, blocks=data_to_test$Scapis..ID)
+# # Friedman test: Non-parametric alternative to repeated measures ANOVA, compares more than two related groups
+# # test example: Day1VisitD, Day2VisitD, CtVisitD
+# data_filtered_columns_with_factors %>% 
+#   select(all_of(c("dbph3m","dbph4m","dbph5m","Scapis..ID"))) -> data_to_test
+# res_counts <- data_to_test %>%
+#   group_by(Scapis..ID) %>%
+#   summarize(count = n()) %>%
+#   filter(count == 6)  # Select those with a count of 6
+# # single glucose
+# individual_data <- data_to_test %>%
+#   filter(Scapis..ID == "4-1333")
+# # Reshape the data from wide to long format
+# data_long <- data_to_test %>%
+#   pivot_longer(cols = c(Mean_syst_morning, Mean_syst_evening), 
+#                names_to = "variable", 
+#                values_to = "value")
+# friedman.test(y=data_to_test$score, groups=data_to_test$drug, blocks=data_to_test$Scapis..ID)
 
