@@ -162,38 +162,9 @@ data_filtered_columns_with_factors <- remove_selected_columns(data_filtered_colu
 # for numerical 
 # test normality results to show in the app
 # SHAPIRO
-shapiro_result <- normality(data_filtered_columns_with_factors)
-shapiro_result_sorted <- data_filtered_columns_with_factors %>% 
-  normality() %>% 
-  arrange(abs(p_value))
+shapiro_result <- get_normality_shapiro(data_filtered_columns_with_factors)
 # KS
-# find numeric columns in the dataframe
-numeric_columns <- names(data_filtered_columns_with_factors)[sapply(data_filtered_columns_with_factors, is.numeric)]
-# Initialize an empty data frame to store the results
-ks_results_df <- data.frame(
-  vars = character(),
-  statistic = numeric(),
-  p_value = numeric(),
-  sample = integer(),
-  stringsAsFactors = FALSE
-)
-
-# Loop through each column in numeric_columns
-for (col in numeric_columns) {
-  # Perform KS test with mean and sd of the column
-  ks_test <- ks.test(data_filtered_columns_with_factors[[col]], "pnorm")
-  
-  # Add the results as a new row in the data frame
-  ks_results_df <- rbind(ks_results_df, data.frame(
-    vars = col,
-    statistic = ks_test$statistic,
-    p_value = ks_test$p.value,
-    sample = nrow(data_filtered_columns_with_factors),
-    stringsAsFactors = FALSE
-  ))
-}
-# Reset the row names to avoid having them indexed
-rownames(ks_results_df) <- NULL
+ks_result <- get_normality_ks(data_filtered_columns_with_factors)
 ###############################################################
 if (nrow(data_filtered_columns_with_factors) < SHAPIRO_THRESHOLD) {
 # if (nrow(data_to_plot) < SHAPIRO_THRESHOLD) {

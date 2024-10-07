@@ -303,6 +303,16 @@ check_normality_shapiro <- function(df) {
   return(list(normal_columnnames = normal_columnnames, non_normal_columnnames = non_normal_columnnames))
 } # end check_normality_shapiro
 
+#########################################
+# function to return normality values (statistic + p value)
+get_normality_shapiro <- function(df) {
+  shapiro_result_sorted <- df %>% 
+    normality() %>% 
+    arrange(abs(p_value))
+  # Return the results as a list
+  return(shapiro_result_sorted)
+} # end get_normality_shapiro
+
 ###################################################
 # function will apply Kolmogorov-Smirnov (KS) test for each numeric column and return a list
 # first element of the list is a vector with non_normal_columnnames, second with normal_columnnames
@@ -330,6 +340,43 @@ check_normality_ks <- function(df) {
   # return both vectors as a list
   return(list(normal_columnnames = normal_columnnames, non_normal_columnnames = non_normal_columnnames))
 } # end check_normality_ks
+
+############################################
+# function to return normality values (statistic + p value)
+get_normality_ks <- function(df) {
+  # find numeric columns in the dataframe
+  numeric_columns <- names(df)[sapply(df, is.numeric)]
+  # Initialize an empty data frame to store the results
+  ks_results_df <- data.frame(
+    vars = character(),
+    statistic = numeric(),
+    p_value = numeric(),
+    sample = integer(),
+    stringsAsFactors = FALSE
+  )
+  
+  # Loop through each column in numeric_columns
+  for (col in numeric_columns) {
+    # Perform KS test with mean and sd of the column
+    ks_test <- ks.test(df[[col]], "pnorm")
+    
+    # Add the results as a new row in the data frame
+    ks_results_df <- rbind(ks_results_df, data.frame(
+      vars = col,
+      statistic = ks_test$statistic,
+      p_value = ks_test$p.value,
+      sample = nrow(df),
+      stringsAsFactors = FALSE
+    ))
+  }
+  # Reset the row names to avoid having them indexed
+  rownames(ks_results_df) <- NULL
+  ks_results_df_sorted <- ks_results_df %>% 
+    arrange(abs(p_value))
+  
+  # return both vectors as a list
+  return(ks_results_df_sorted)
+} # end get_normality_ks
 
 ######################################################################################
 # function to calculate correlation of up till 10 variables, group_by till 2 variables
