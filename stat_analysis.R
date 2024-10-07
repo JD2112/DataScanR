@@ -5,6 +5,8 @@ library(dplyr)
 library(dlookr)
 library(tidyr)
 library(rstatix)
+# install.packages("data.table")
+library(data.table)
 
 # Set the seed for reproducibility
 set.seed(123)
@@ -33,7 +35,11 @@ data_file <- "downsampled_data.csv" # 1500 samples from original non normal file
 # data_file <- "downsampled_data_normal_large.csv" # 3000 samples from generated normal file
 
 data_original <- read_all_csv_separators(data_file)
+data_original <- fread(data_file) # fread reads separators automatically
 
+# clean content of text column values
+char_columnnames <- names(data_original)[sapply(data_original, is.character)]
+data_original <- trim_values_in_columns(data_original,custom_colnames=char_columnnames)
 ###################
 # DATA FILTRATION #
 ###################

@@ -87,27 +87,39 @@ read_all_csv_separators <- function(file_path) {
 # arguments: data frame and vector with column names (strings)
 trim_values_in_columns <- function(df, custom_colnames = c()) {
   # known possible subject id column names
-  sample_col_names = c("SampleID","Sample_ID","Sample ID", "Sample-ID","SubjectID","Subject_ID","Subject ID", "Subject-ID","SUBJID")
-  # characters to trim
+  sample_col_names = c("SampleID", "Sample_ID", "Sample ID", "Sample-ID", 
+                       "SubjectID", "Subject_ID", "Subject ID", "Subject-ID", "SUBJID")
+  
+  # characters to trim (including space, \n, \r)
   things_to_trim <- c("\n", "\r", " ")
-  # merge with user supplied column names 
+  
+  # merge with user supplied column names
   all_sample_col_names <- unique(c(sample_col_names, custom_colnames))
+  
   # Identify which columns to trim
   columns_to_trim <- colnames(df)[colnames(df) %in% all_sample_col_names]
   
   # Function to trim values in a column
-  # Function to trim values in a column
   trim_column_values <- function(column) {
     if (is.character(column)) {
-      # create a regex pattern to match the characters to trim
-      trim_pattern <- paste0("[", paste(things_to_trim, collapse = ""), "]")
+      # Create a regex pattern to match and clean multiple occurrences of the characters
+      trim_pattern <- paste0("[", paste(things_to_trim, collapse = ""), "]+")  # + means one or more occurrences
+      # Replace one or more occurrences of unwanted characters with a single space
       return(trimws(gsub(trim_pattern, "", column)))
     }
     return(column)  # Return the column unchanged if it's not character
   }
   
-  # Apply trimming to specified columns
-  df[columns_to_trim] <- lapply(df[columns_to_trim], trim_column_values)
+  # Check if the input data is a data.table
+  if (is.data.table(df)) {
+    # Apply the function to each column
+    for (col in columns_to_trim) {
+      set(df, j = col, value = trim_column_values(df[[col]]))
+    }
+  } else {
+    # Apply trimming to specified columns (for data.frames)
+    df[columns_to_trim] <- lapply(df[columns_to_trim], trim_column_values)
+  }
   
   return(df)
 } # end trim_values_in_columns
@@ -121,7 +133,7 @@ remove_selected_columns <- function(df, custom_colnames = c()) {
   
   if (length(cols_to_remove) > 0)  {
     # remove the columns by their names
-    df <- df[, !colnames(df) %in% cols_to_remove, drop = FALSE]
+    df <- df %>% select(-all_of(cols_to_remove))
   }
   # return the modified data frame
   return(df)
