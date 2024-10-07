@@ -133,7 +133,7 @@ remove_selected_columns <- function(df, custom_colnames = c()) {
   
   if (length(cols_to_remove) > 0)  {
     # remove the columns by their names
-    df <- df[, !colnames(df) %in% cols_to_remove, drop = FALSE]
+    df <- df %>% select(-all_of(cols_to_remove))
   }
   # return the modified data frame
   return(df)
@@ -201,7 +201,7 @@ preview_basic_distribution <- function(df,type_of_plot = "box", custom_colnames 
   df_plot <- df %>%
     select(all_of(columns_to_show)) %>%   # select only test columns 
     pivot_longer(cols = everything(), names_to = "Variable", values_to = "Value")
-
+  
   
   # Keep user specified order for the x-axis?
   df_plot$Variable <- factor(df_plot$Variable, levels = columns_to_show)
@@ -213,7 +213,8 @@ preview_basic_distribution <- function(df,type_of_plot = "box", custom_colnames 
       theme_minimal()+
       theme(
         axis.title.x = element_blank(), 
-        axis.title.y = element_blank()  
+        axis.title.y = element_blank(), 
+        panel.grid = element_blank()
       )
     return(p)
   } # end if box
@@ -223,7 +224,8 @@ preview_basic_distribution <- function(df,type_of_plot = "box", custom_colnames 
       theme_minimal()+
       theme(
         axis.title.x = element_blank(), 
-        axis.title.y = element_blank()   
+        axis.title.y = element_blank(),
+        panel.grid = element_blank()
       )
     return(p)
   }# end if violin
@@ -235,7 +237,8 @@ preview_basic_distribution <- function(df,type_of_plot = "box", custom_colnames 
       theme_minimal()+
       theme(
         axis.title.x = element_blank(), 
-        axis.title.y = element_blank()  
+        axis.title.y = element_blank(),
+        panel.grid = element_blank()
       ) -> p
     return(p)
   }# end if bar
@@ -247,7 +250,8 @@ preview_basic_distribution <- function(df,type_of_plot = "box", custom_colnames 
       theme_minimal()+
       theme(
         axis.title.x = element_blank(), 
-        axis.title.y = element_blank()  
+        axis.title.y = element_blank(),
+        panel.grid = element_blank()
       ) -> p
     return(p)
   }# end if box_distribution
@@ -259,7 +263,8 @@ preview_basic_distribution <- function(df,type_of_plot = "box", custom_colnames 
       theme_minimal()+
       theme(
         axis.title.x = element_blank(), 
-        axis.title.y = element_blank()  
+        axis.title.y = element_blank(),
+        panel.grid = element_blank()
       ) -> p
     return(p)
   }# end if violin_box
@@ -361,7 +366,7 @@ calculate_cor_short <- function(df, my_columnnames = c(), normality_results) {
     correlation_df <- data.frame()
   }
   return(correlation_df)
- 
+  
 } # end calculate_cor
 
 ##########################################################################

@@ -48,6 +48,7 @@ cards <- list(
   
 ) # end cards
 #######################################################
+# UI part
 ui <- page_sidebar(
   title = "Exploratory Data Analysis",
   sidebar = sidebar(
@@ -58,6 +59,7 @@ ui <- page_sidebar(
                 "text/comma-separated-values,text/plain",
                 ".csv")
     ),
+    actionButton("diagnoseButton", "Diagnose All Data"), # button to show diagnostics
     selectInput("columns", "Select Columns:",  # Predefine an empty selectInput for columns
                 choices = c(),  # Empty choices initially
                 multiple = TRUE
@@ -66,18 +68,25 @@ ui <- page_sidebar(
     actionButton("showColButton", "Show Selected Columns"),  # show selected button
     actionButton("summarizeSelectedButton", "Summarize Selected Data"), # button to show summary stats
     actionButton("summarizeButton", "Summarize All Data"), # button to show summary stats
-    actionButton("plotPreviewButton", "Preview Selected Columns"),
+    actionButton("plotMissingButton", "Preview Missing Values"),
+    selectInput("plot_missing",
+                label = "Select Missing Values Plot Type",
+                choices = c("pareto","intersect"),
+                selected = "pareto",
+                multiple = FALSE), # dropdown with available plot types
+    actionButton("plotPreviewButton", "Preview Distributions for Selected Columns"),
     selectInput("plot_type",
                 label = "Select Preview Plot Type",
                 choices = c("box","violin","histogram","box_distribution","violin_box"),
-                selected = "violin_box", 
+                selected = "violin_box",
                 multiple = FALSE), # dropdown with available plot types
     actionButton("showDataButton", "Show All Current Data"), # button to show summary stats
     actionButton("showOriginalButton", "Restore Original Data"),  # restore button
   ), # end sidebar
   !!!cards
 )
-
+###################################################################################
+# SERVER
 server <- function(input, output,session) {
   # Reactive expression to read the uploaded file
   data <- reactive({
@@ -97,7 +106,8 @@ server <- function(input, output,session) {
   display_data <- reactiveVal(NULL)
   modified_data <- reactiveVal(NULL)
   original_data <- reactiveVal(NULL)
-  currently_selected_columns <- reactiveVal()
+  currently_selected_columns <- reactiveVal(NULL)
+  current_plot <- reactiveVal("empty")
   
   # observe when the file is uploaded
   observeEvent(data(), {
@@ -117,13 +127,20 @@ server <- function(input, output,session) {
     updateSelectInput(session, "columns", choices = column_names, selected = c())  # Populate dropdown
   })
   
+  # perform data diagnostics
+  observeEvent(input$diagnoseButton, {
+    req(modified_data())  # Ensure data is available
+    new_data <- diagnose(modified_data())  # Remove selected columns
+      display_data(new_data)
+  }) # end diagnostic
+  
   # remove selected columns
   observeEvent(input$removeColButton, {
     req(modified_data())  # Ensure data is available
     selected_columns <- input$columns  # Get selected columns from dropdown
     
     if (length(selected_columns) > 0) {
-      new_data <- remove_selected_columns(data(), selected_columns)  # Remove selected columns
+      new_data <- remove_selected_columns(modified_data(), selected_columns)  # Remove selected columns
       modified_data(new_data)  # Update the reactive value
       display_data(new_data)
     }
@@ -161,22 +178,38 @@ server <- function(input, output,session) {
   ####################################################
   # Plot
   # Render the plot after the button is clicked
+  observeEvent(input$plotMissingButton, {
+    req(modified_data())  # Ensure modified data is available
+    req(input$plot_missing)  # Ensure plot type is selected
+    new_data <- modified_data() %>% 
+      plot_na_pareto(plot = FALSE)
+    display_data(new_data)
+    current_plot(input$plot_missing)  # Set the current plot type to 'missing'
+  })
+  # Render the plot after the button is clicked
   observeEvent(input$plotPreviewButton, {
     req(modified_data())  # Ensure modified data is available
     req(input$columns)
     selected_columns <- input$columns  # Get selected columns from dropdown
     # Store selected columns in the reactiveVal
     currently_selected_columns(selected_columns)
+    current_plot("preview")  # Set the current plot type to 'preview'
   })
-  # Render the plot conditionally
+  # Render the plot
   output$plot <- renderPlot({
     req(modified_data())  # Ensure modified data is available
-    req(input$plot_type)  # Ensure plot type is selected
-    req(currently_selected_columns())  # Ensure columns are selected
-    
-    # Call the plotting function
-    plot <- preview_basic_distribution(modified_data(), type_of_plot = input$plot_type, currently_selected_columns())
-    return(plot)  # Return the plot to be rendered
+    # Check which plot type is selected and render accordingly
+    if (current_plot() == "pareto") {
+      plot_na_pareto(modified_data())
+    } else if (current_plot() == "intersect") {
+      plot_na_intersect(modified_data())
+    } else if (current_plot() == "preview") {
+      req(input$plot_type)  # Ensure plot type is selected
+      req(currently_selected_columns())  # Ensure columns are selected
+      # Call the plotting function
+      plot <- preview_basic_distribution(modified_data(), type_of_plot = input$plot_type, currently_selected_columns())
+      return(plot)  # Return the plot to be rendered
+    } 
   })
   #######################################################
   # Show all current data

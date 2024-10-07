@@ -47,6 +47,14 @@ data_original <- trim_values_in_columns(data_original,custom_colnames=char_colum
 ######################################################
 # DATA CLEANING
 diagnostic <- diagnose(data_original)
+# get missing 
+qc <- data_original %>% 
+  plot_na_pareto(plot = FALSE)
+
+sorted_qc <- qc %>%
+  arrange(cumulative)
+data_original %>% 
+  plot_na_intersect(only_na = FALSE, n_intersacts = 7)
 
 # get a list of columns that only have one unique value and list of columns that 
 # have more than some threshold percent of missing values and filter them out
@@ -61,7 +69,7 @@ data_filtered_by_missing_threshold <- data_original %>%
 # by column name
 non_informative_columns <- c("sXXX","sXXX.x","X.x","Index","X.y","SampleID","Index","filter_.","AscA_ID","filter_.")
 data_filtered_columns <- remove_selected_columns(data_filtered_by_missing_threshold,non_informative_columns)
- 
+
 # # factorize some data based on no. of unique values
 # # diagnose again after removing some columns
 # diagnostic <- diagnose(data_filtered_columns)
@@ -152,6 +160,41 @@ data_filtered_columns_with_factors <- remove_selected_columns(data_filtered_colu
 #########################################################
 # DECIDE ON THE NORMALITY METHOD BASED ON THE THRESHOLD
 # for numerical 
+# test normality results to show in the app
+# SHAPIRO
+shapiro_result <- normality(data_filtered_columns_with_factors)
+shapiro_result_sorted <- data_filtered_columns_with_factors %>% 
+  normality() %>% 
+  arrange(abs(p_value))
+# KS
+# find numeric columns in the dataframe
+numeric_columns <- names(data_filtered_columns_with_factors)[sapply(data_filtered_columns_with_factors, is.numeric)]
+# Initialize an empty data frame to store the results
+ks_results_df <- data.frame(
+  vars = character(),
+  statistic = numeric(),
+  p_value = numeric(),
+  sample = integer(),
+  stringsAsFactors = FALSE
+)
+
+# Loop through each column in numeric_columns
+for (col in numeric_columns) {
+  # Perform KS test with mean and sd of the column
+  ks_test <- ks.test(data_filtered_columns_with_factors[[col]], "pnorm")
+  
+  # Add the results as a new row in the data frame
+  ks_results_df <- rbind(ks_results_df, data.frame(
+    vars = col,
+    statistic = ks_test$statistic,
+    p_value = ks_test$p.value,
+    sample = nrow(data_filtered_columns_with_factors),
+    stringsAsFactors = FALSE
+  ))
+}
+# Reset the row names to avoid having them indexed
+rownames(ks_results_df) <- NULL
+###############################################################
 if (nrow(data_filtered_columns_with_factors) < SHAPIRO_THRESHOLD) {
 # if (nrow(data_to_plot) < SHAPIRO_THRESHOLD) {
   # function will perform shapiro test
