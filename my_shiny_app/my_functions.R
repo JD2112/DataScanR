@@ -6,9 +6,12 @@ library(dplyr)
 library(ggplot2)
 library(ggdist)
 library(GGally)
+library(dlookr)
 #library(stringr)
 
 MAX_FOR_PREVIEW_PLOT = 6
+UNIQUE_FOR_VARIATION = 3
+MISSING_DATA_PCT_THRESHOLD = 40
 MAX_FOR_CORR = 10
 ###########################################################################################
 # a function to read a csv file with all known csv separators, or return empty data frame
@@ -175,7 +178,7 @@ keep_first_of_duplicates <- function(df,my_colnames = c(id_columnname,other_colu
 preview_basic_distribution <- function(df,type_of_plot = "box", custom_colnames = c()) {
   
   # ensure the type of plot is correct
-  possible_plots <- c("box","violin","histogram","box_distribution","violin_box")
+  possible_plots <- c("box","violin","histogram","box_distribution","violin_box","normality_diagnosis")
   
   allowed_plot <- type_of_plot %in% possible_plots
   
@@ -201,7 +204,7 @@ preview_basic_distribution <- function(df,type_of_plot = "box", custom_colnames 
   df_plot <- df %>%
     select(all_of(columns_to_show)) %>%   # select only test columns 
     pivot_longer(cols = everything(), names_to = "Variable", values_to = "Value")
-
+  
   
   # Keep user specified order for the x-axis?
   df_plot$Variable <- factor(df_plot$Variable, levels = columns_to_show)
@@ -268,8 +271,48 @@ preview_basic_distribution <- function(df,type_of_plot = "box", custom_colnames 
       ) -> p
     return(p)
   }# end if violin_box
+  if (type_of_plot == "normality_diagnosis") {
+    if (length(columns_to_show) == 1) { # show only one at a time
+      p <- plot_normality(df,columns_to_show)
+      return(p)
+    } else {
+      print("For normality_diagnosis, select only one variable at a time.")
+    }
+  }# end if normality_diagnosis
   
 } # end preview_basic_distribution
+
+##########################################
+# function to filter data by missing % threshold
+remove_missing_data_columns_by_threshold <- function(df, my_threshold=MISSING_DATA_PCT_THRESHOLD ) {
+  # get a list of columns that only have one unique value and list of columns that 
+  # have more than some threshold percent of missing values and filter them out
+  diagnostic <- diagnose(df)
+  data_filtered<- df %>%
+    select(-one_of( #select(-one_of(...)) removes the columns from data_original based on the extracted names
+      diagnostic %>% #  missing % was above threshold
+        filter(missing_percent > my_threshold) %>%
+        pull(variables)
+    ))
+  return(data_filtered)
+}
+######################################################
+# function to remove columns with limited variation
+remove_limited_variation <- function(df,min_unique=UNIQUE_FOR_VARIATION) {
+  #find columns with insufficient variation or those that may only contain a limited range of values
+  limited_variation <- sapply(df, function(col) {
+    if (is.numeric(col)) {
+      n_unique <- length(unique(col))
+      n_unique < min_unique  # Change 3 to a higher number if you want to allow more unique values
+    } else {
+      FALSE
+    }
+  })
+  # Get names of columns with limited variation (11 columns)
+  limited_variation_col_names <- names(df)[limited_variation]
+  data_filtered <- remove_selected_columns(df,limited_variation_col_names)
+  return(data_filtered)
+} # end remove_limited_variation
 
 ###################################################
 # function will apply Shapiro-Wilk normality test for numerical columns and return a list
@@ -413,7 +456,7 @@ calculate_cor_short <- function(df, my_columnnames = c(), normality_results) {
     correlation_df <- data.frame()
   }
   return(correlation_df)
- 
+  
 } # end calculate_cor
 
 ##########################################################################

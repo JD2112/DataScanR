@@ -4,11 +4,15 @@
 #library(readr)
 library(dplyr)
 library(ggplot2)
+library(hrbrthemes)
 library(ggdist)
 library(GGally)
+library(dlookr)
 #library(stringr)
 
 MAX_FOR_PREVIEW_PLOT = 6
+UNIQUE_FOR_VARIATION = 3
+MISSING_DATA_PCT_THRESHOLD = 40
 MAX_FOR_CORR = 10
 ###########################################################################################
 # a function to read a csv file with all known csv separators, or return empty data frame
@@ -175,7 +179,7 @@ keep_first_of_duplicates <- function(df,my_colnames = c(id_columnname,other_colu
 preview_basic_distribution <- function(df,type_of_plot = "box", custom_colnames = c()) {
   
   # ensure the type of plot is correct
-  possible_plots <- c("box","violin","histogram","box_distribution","violin_box")
+  possible_plots <- c("box","violin","histogram","box_distribution","violin_box","normality_diagnosis")
   
   allowed_plot <- type_of_plot %in% possible_plots
   
@@ -268,8 +272,48 @@ preview_basic_distribution <- function(df,type_of_plot = "box", custom_colnames 
       ) -> p
     return(p)
   }# end if violin_box
+  if (type_of_plot == "normality_diagnosis") {
+    if (length(columns_to_show) == 1) { # show only one at a time
+      p <- plot_normality(df,columns_to_show)
+      return(p)
+    } else {
+      print("For normality_diagnosis, select only one variable at a time.")
+    }
+  }# end if normality_diagnosis
   
 } # end preview_basic_distribution
+
+##########################################
+# function to filter data by missing % threshold
+remove_missing_data_columns_by_threshold <- function(df, my_threshold=MISSING_DATA_PCT_THRESHOLD ) {
+  # get a list of columns that only have one unique value and list of columns that 
+  # have more than some threshold percent of missing values and filter them out
+  diagnostic <- diagnose(df)
+  data_filtered<- df %>%
+    select(-one_of( #select(-one_of(...)) removes the columns from data_original based on the extracted names
+      diagnostic %>% # extract the column names where unique_count == 1 or missing % was above threshold
+        filter(missing_percent > my_threshold) %>%
+        pull(variables)
+    ))
+  return(data_filtered)
+}
+######################################################
+# function to remove columns with limited variation
+remove_limited_variation <- function(df,min_unique=UNIQUE_FOR_VARIATION) {
+  #find columns with insufficient variation or those that may only contain a limited range of values
+  limited_variation <- sapply(df, function(col) {
+    if (is.numeric(col)) {
+      n_unique <- length(unique(col))
+      n_unique < min_unique  # Change 3 to a higher number if you want to allow more unique values
+    } else {
+      FALSE
+    }
+  })
+  # Get names of columns with limited variation (11 columns)
+  limited_variation_col_names <- names(df)[limited_variation]
+  data_filtered <- remove_selected_columns(df,limited_variation_col_names)
+  return(data_filtered)
+} # end remove_limited_variation
 
 ###################################################
 # function will apply Shapiro-Wilk normality test for numerical columns and return a list
@@ -492,4 +536,101 @@ corr_plot_from_corr_matrix <- function(corr_matrix, my_columnnames = c()) {
   return(p)
   
 }# end corr_plot_from_corr_matrix
+
+plot_na_pareto_modified <- function (x, only_na = FALSE, relative = FALSE, main = NULL, col = "black",
+                            grade = list(Good = 0.05, OK = 0.1, NotBad = 0.2, Bad = 0.5, Remove = 1),
+                            plot = TRUE, typographic = TRUE, base_family = NULL)
+{
+  if (sum(is.na(x)) == 0) {
+    stop("Data have no missing value.")
+  }
+  
+  info_na <- purrr::map_int(x, function(x) sum(is.na(x))) %>% 
+    tibble::enframe() %>% 
+    dplyr::rename(variable = name, frequencies = value) %>% 
+    arrange(desc(frequencies), variable) %>% 
+    mutate(ratio = frequencies / nrow(x)) %>% 
+    mutate(grade = cut(ratio, breaks = c(-1, unlist(grade)), labels = names(grade))) %>% 
+    mutate(cumulative = cumsum(frequencies) / sum(frequencies) * 100) %>% 
+    #mutate(variable = forcats::fct_reorder(variable, frequencies, .desc = TRUE)) 
+    arrange(desc(frequencies)) %>% 
+    mutate(variable = factor(variable, levels = variable))
+  
+  if (only_na) {
+    info_na <- info_na %>% 
+      filter(frequencies > 0)
+    xlab <- "Variable Names with Missing Value"
+  } else {
+    xlab <- "All Variable Names"
+  }
+  
+  if (relative) {
+    info_na$frequencies <- info_na$frequencies / nrow(x)
+    ylab <- "Relative Frequency of Missing Values"
+  } else {
+    ylab <- "Frequency of Missing Values"
+  }
+  
+  if (is.null(main)) 
+    main = "Pareto chart with missing values"
+  
+  scaleRight <- max(info_na$cumulative) / info_na$frequencies[1]
+  
+  if (!plot) {
+    return(info_na)
+  }
+  
+  labels_grade <- paste0(names(grade),paste0("\n(<=", unlist(grade) * 100, "%)"))
+  n_pal <- length(labels_grade)
+  
+  if (n_pal <= 3) {
+    pals <- c("#FFEDA0", "#FEB24C", "#F03B20")
+  } else if (n_pal == 4) {
+    pals <- c("#FFFFB2", "#FECC5C", "#FD8D3C", "#E31A1C")
+  } else if (n_pal == 5) {
+    pals <- c("#FFFFB2", "#FECC5C", "#FD8D3C", "#F03B20", "#BD0026")
+  } else if (n_pal == 6) {
+    pals <- c("#FFFFB2", "#FED976", "#FEB24C", "#FD8D3C", "#F03B20", "#BD0026")
+  } else if (n_pal == 7) {    
+    pals <- c("#FFFFB2", "#FED976", "#FEB24C", "#FD8D3C", "#FC4E2A", "#E31A1C", 
+              "#B10026")
+  } else if (n_pal == 8) {
+    pals <- c("#FFFFCC", "#FFEDA0", "#FED976", "#FEB24C", "#FD8D3C", "#FC4E2A", 
+              "#E31A1C", "#B10026")
+  } else if (n_pal >= 9) {
+    pals <- c("#FFFFCC", "#FFEDA0", "#FED976", "#FEB24C", "#FD8D3C", "#FC4E2A", 
+              "#E31A1C", "#BD0026", "#800026")
+  }  
+  
+  p <- ggplot(info_na, aes(x = variable)) +
+    geom_bar(aes(y = frequencies, fill = grade), color = "darkgray", stat = "identity") +
+    geom_text(aes(y = frequencies, 
+                  label = paste(round(ratio * 100, 1), "%")),
+              position = position_dodge(width = 0.9), vjust = -0.25) + 
+    geom_path(aes(y = cumulative / scaleRight, group = 1), 
+              colour = col, size = 0.4) +
+    geom_point(aes(y = cumulative / scaleRight, group = 1), 
+               colour = col, size = 1.5) +
+    scale_y_continuous(sec.axis = sec_axis(~.*scaleRight, name = "Cumulative (%)")) +
+    labs(title = main, x = xlab, y = ylab) + 
+    theme_grey(base_family = base_family) +    
+    theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1),
+          legend.position = "top") +
+    scale_fill_manual(values = pals, 
+                      drop = FALSE,
+                      name = "Missing Grade", 
+                      labels = labels_grade)
+  
+  if (typographic) {
+    p <- p +
+      theme_ipsum(base_family = "Roboto Condensed") +
+      theme(legend.position = "top",
+            axis.title.x = element_text(size = 12),
+            axis.title.y = element_text(size = 12),
+            axis.title.y.right = element_text(size = 12),
+            axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1))
+  }
+  
+  suppressWarnings(p)
+}
 

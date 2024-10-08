@@ -14,6 +14,8 @@ library(dlookr)
 library(tidyr)
 
 SIDEBAR_WIDTH_CLEAN_DATA = 350
+SHAPIRO_THRESHOLD = 2000 # max rows to use shapiro for normality
+MAX_FOR_PREVIEW_PLOT = 6
 #############################
 # sidebars for cleaning data
 sidebar_data <- layout_sidebar(
@@ -50,8 +52,13 @@ sidebar_plots <- layout_sidebar(
                 choices = c("pareto","intersect"),
                 selected = "intersect",
                 multiple = FALSE), # dropdown with available plot types
+    sliderInput("missing_pct", "Allow Max % Of Missing Data:",
+                min = 0, max = 100,
+                value = 100, step = 1,
+                post="%"),
+    actionButton("applyMissingThresholdButton", "Refresh Data")  # restore button
   ), # end sidebar
-  plotOutput("plot") 
+  plotOutput("plot_data_cleaning") 
 ) # end layout_sidebar
 ###########################
 # cards for cleaning data
@@ -67,55 +74,76 @@ cards_cleaning_data <- list(
     sidebar_plots
   )
 ) # end cards
-#############################
-# sidebar for normality part
-sidebar_normality <- page_sidebar(
-  title="Normality",
-  sidebar = sidebar(
-  selectInput("columns_plot", "Select Columns:",  # Predefine an empty selectInput for columns
-              choices = c(),  # Empty choices initially
-              multiple = TRUE
-  ),
-  selectInput("plot_type",
-              label = "Select Preview Plot Type",
-              choices = c("box","violin","histogram","box_distribution","violin_box"),
-              selected = "violin_box",
-              multiple = FALSE), # dropdown with available plot types
-  actionButton("plotPreviewButton", "Preview Distributions for Selected Columns")
-  ) # end sidebar
-)
 ###########################
-# cards for cleaning data
+# cards for normality part data
 cards_normality <- list(
   card(
     full_screen = TRUE,
-    card_header("Data")
+    card_header("Data"),
+    card_body(DT::dataTableOutput("normality_table") ) # Output placeholder for the interactive table
   ), # end card Data
   card(
     full_screen = TRUE,
-    card_header("Plot")
+    card_header("Plot"),
+    plotOutput("plot_normality") 
   )
 ) # end cards
+#############################
+# sidebar for normality part
+sidebar_normality <- layout_sidebar(
+  title="Normality",
+  sidebar = sidebar(
+    selectInput("columns_plot_normality", "Select Columns:",  # Predefine an empty selectInput for columns
+                choices = c(),  # Empty choices initially
+                multiple = TRUE
+    ),
+    selectInput("plot_type",
+                label = "Select Preview Plot Type",
+                choices = c("box","violin","histogram","box_distribution","violin_box","normality_diagnosis"),
+                selected = "violin_box",
+                multiple = FALSE), # dropdown with available plot types
+    actionButton("previewNormalityButton", "Preview Normality Results for Selected Columns"),
+    actionButton("showAllNormalityButton", "Show Complete Normality Results")
+    ), # end sidebar
+    layout_columns(cards_normality[[1]],
+                   cards_normality[[2]])
+) # end layout_sidebar
 #######################################################
 # UI part
 ui <- page_navbar(
   title = "Exploratory Data Analysis",
+  id = "nav_tabs",  # Set an ID to observe selected panel
   # nav_spacer(),
   nav_panel("Data Cleaning", 
-            # !!!cards_cleaning_data
-            layout_columns(
-              col_widths = c(-1,10,-1,-1,10,-1),# negative numbers mean space around each card
-              row_heights = c(1, 1.2),
-              cards_cleaning_data[[1]],
-              cards_cleaning_data[[2]]
-            )
-            ),
+            !!!cards_cleaning_data
+            # layout_columns(
+            #   col_widths = c(-1,10,-1,-1,10,-1),# negative numbers mean space around each card
+            #   row_heights = c(1, 1.2),
+            #   cards_cleaning_data[[1]],
+            #   cards_cleaning_data[[2]]
+            # )
+            ), # end nav_panel
   nav_panel("Normality",
-            sidebar_normality)
-)
+            sidebar_normality
+            ) # end nav_panel
+)# end page_navbar
 ###################################################################################
 # SERVER
 server <- function(input, output,session) {
+  # Reactive values 
+  display_data <- reactiveVal(NULL)
+  modified_data <- reactiveVal(NULL)
+  original_data <- reactiveVal(NULL)
+  currently_selected_columns_data <- reactiveVal(c())
+  removed_columns_data <- reactiveVal(c())
+  # currently_selected_columns_plot <- reactiveVal(c())
+  current_plot <- reactiveVal("empty")
+  normality_results <- reactiveVal(NULL)
+  normality_df <- reactiveVal(NULL)
+  display_data_normality <- reactiveVal(NULL)
+  #Debounce the slider input to react only when the user stops sliding
+  # debounced_missing_pct <- debounce(reactive(input$missing_pct), 2000)  # 500 ms delay
+  
   # Reactive expression to read the uploaded file
   data <- reactive({
     req(input$data_file)  # Ensure file is uploaded
@@ -127,16 +155,9 @@ server <- function(input, output,session) {
     if (is.numeric(data_original[[1]])) {
       colnames(data_original)[1] <- "sXXX"
     }
+    removed_columns_data(c()) # reset previously removed columns after new data is loaded
     return(data_original) 
   })
-  
-  # Reactive values 
-  display_data <- reactiveVal(NULL)
-  modified_data <- reactiveVal(NULL)
-  original_data <- reactiveVal(NULL)
-  currently_selected_columns_data <- reactiveVal(c())
-  # currently_selected_columns_plot <- reactiveVal(c())
-  current_plot <- reactiveVal("empty")
   
   # observe when the file is uploaded
   observeEvent(data(), {
@@ -174,7 +195,9 @@ server <- function(input, output,session) {
   observeEvent(input$removeColButton, {
     req(modified_data())  # Ensure data is available
     selected_columns <- input$columns_data  # Get selected columns from dropdown
-    
+    previously_removed <- removed_columns_data()
+    updated_removed <- c(previously_removed, selected_columns)
+    removed_columns_data(updated_removed)
     if (length(selected_columns) > 0) {
       new_data <- remove_selected_columns(modified_data(), selected_columns)  # Remove selected columns
       modified_data(new_data)  # Update the reactive value
@@ -190,7 +213,7 @@ server <- function(input, output,session) {
     if (length(selected_columns) > 0) {
       new_data <- modified_data() 
       currently_selected_columns_data(selected_columns)
-      currently_selected_columns_plot(selected_columns)
+      # currently_selected_columns_plot(selected_columns)
       display_data(new_data[, ..selected_columns])
     }
   }) # end show only selected columns
@@ -203,7 +226,7 @@ server <- function(input, output,session) {
     if (length(selected_columns) > 0) {
       new_data <- modified_data()
       currently_selected_columns_data(selected_columns)
-      currently_selected_columns_plot(selected_columns)
+      # currently_selected_columns_plot(selected_columns)
       stats_preview <- describe(new_data[, ..selected_columns])
       display_data(stats_preview) # set display_data
     }
@@ -230,7 +253,28 @@ server <- function(input, output,session) {
     column_names <- colnames(original_data())  # Get column names from the loaded data
     updateSelectInput(session, "columns_data", choices = column_names, selected = c())  # Populate dropdown
     # updateSelectInput(session, "columns_plot", choices = column_names, selected = c())  # Populate dropdown
+    removed_columns_data(c()) # reset previously removed columns after data is reset
   }) # end reset to original
+  
+  observeEvent(input$applyMissingThresholdButton, {
+    req(original_data())
+    req(modified_data())
+    req(input$missing_pct)
+    # the user might want to go from hogh threshold, back to lower
+    # go back to the original data, check what columns were removed and create new "modified data"
+    # apply new threshold
+    new_data <- original_data()
+    if (length(removed_columns_data()) > 0) {
+      new_data <- remove_selected_columns(new_data, removed_columns_data())  # Remove selected columns
+    }
+    # apply new threshold
+    new_data <- remove_missing_data_columns_by_threshold(new_data,input$missing_pct)
+    display_data(new_data)
+    modified_data(new_data)
+    # update the column selector when the data is loaded
+    column_names <- colnames(new_data)  # Get column names from the loaded data
+    updateSelectInput(session, "columns_data", choices = column_names, selected = c())  # Populate dropdown
+  })
   
   # Render the interactive DataTable based on the selected columns
   output$data_table <- DT::renderDataTable({
@@ -270,7 +314,7 @@ server <- function(input, output,session) {
   #   current_plot("preview")  # Set the current plot type to 'preview'
   # })
   # Render the plot
-  output$plot <- renderPlot({
+  output$plot_data_cleaning <- renderPlot({
     req(modified_data())  # Ensure modified data is available
     current_plot(input$plot_missing)
     # Check which plot type is selected and render accordingly
@@ -286,7 +330,8 @@ server <- function(input, output,session) {
     #   plot <- preview_basic_distribution(modified_data(), type_of_plot = input$plot_type, currently_selected_columns_plot())
     #   return(plot)  # Return the plot to be rendered
     # } 
-  })
+  }) # end render plot
+  
   observeEvent(input$plot_missing, {
     req(modified_data())
     req(input$plot_missing)  # Ensure plot type is selected
@@ -299,7 +344,7 @@ server <- function(input, output,session) {
     } else if (current_plot() == "intersect") {
       plot_na_intersect(modified_data())
     } 
-  })
+  }) 
   ########################################################
   # # sync selected column names in both data and plot part
   # observeEvent(currently_selected_columns_data(), {
@@ -313,6 +358,105 @@ server <- function(input, output,session) {
   #   updateSelectInput(session, "columns_data", choices = column_names, selected = currently_selected_columns_plot())  # update selected columns in data
   #   # updateSelectInput(session, "columns_plot", choices = column_names, selected = c())  # Populate dropdown
   # })
+  ###############################################################################################################
+  # Observe when the selected nav panel changes
+  observeEvent(input$nav_tabs, {
+    selected_tab <- input$nav_tabs  # Access the currently selected tab
+    if (selected_tab == "Normality") {
+      # Perform action for Normality tab
+      print("Normality tab selected!")
+      current_data <- modified_data()
+      if (! is.null(current_data) && nrow(current_data) > 0) {
+        # do normality test
+        current_data <- remove_limited_variation(current_data,3)
+        if (nrow(current_data) < SHAPIRO_THRESHOLD) {
+          # if (nrow(data_to_plot) < SHAPIRO_THRESHOLD) {
+          # function will perform shapiro test
+          # first element of the list is a vector with non_normal_columnnames, second with normal_columnnames
+          my_normality_results <- check_normality_shapiro(current_data)
+          my_normality_df <- get_normality_shapiro(current_data)
+          normality_results(my_normality_results)
+          normality_df(my_normality_df)
+        } else { # for larger data sets use kolmogorov-Smirnov test to determine normality
+          # function will apply ks test for each numeric column and return a list
+          # first element of the list is a vector with non_normal_columnnames, second with normal_columnnames
+          my_normality_results <- check_normality_ks(current_data)
+          my_normality_df <- get_normality_ks(current_data)
+          normality_results(my_normality_results)
+          normality_df(my_normality_df)
+        } # end kolmogorov_smirnov test
+      } # end if there was modified data in the app
+     
+    } # end if "Normality tab was selected
+  }) # end observe which tab is selected
+  
+  observeEvent(normality_df(), {
+    # Dynamically update the column selector when the data is loaded
+    column_names <- colnames(modified_data())  # Get column names from the loaded data
+    updateSelectInput(session, "columns_plot_normality", choices = column_names, selected = c())  # Populate dropdown
+    display_data_normality(normality_df())
+  }) # end observe data
+  
+  observeEvent(input$previewNormalityButton, {
+    req(modified_data())  # Ensure modified data is available
+    req(normality_df())
+    req(input$columns_plot_normality)
+    # show only normality for selected
+    df <- normality_df() %>%
+      filter(vars %in% input$columns_plot_normality)
+    display_data_normality(df)
+  })
+  
+  observeEvent(input$showAllNormalityButton, {
+    req(modified_data())  # Ensure modified data is available
+    req(normality_df())
+    display_data_normality(normality_df())
+  })
+  
+  # Render the interactive DataTable based on the selected columns
+  output$normality_table <- DT::renderDataTable({
+    req(display_data_normality())  # Ensure data is available
+    table_data <- display_data_normality()
+    
+    # Render the table using DT for interactivity
+    DT::datatable(
+      table_data,
+      options = list(
+        pageLength = 100,   # Show n rows by default
+        autoWidth = TRUE,  # Auto-adjust column width
+        dom = 'Bfrtip',    # Search box, pagination, etc.
+        buttons = c( 'csv', 'excel', 'pdf')  # Add export buttons
+      ),
+      extensions = 'Buttons'  # Enable export options
+    )
+  }) # end table
+  #########################################################################
+  # PLOT
+  # Render the plot
+  output$plot_normality <- renderPlot({
+    req(modified_data())  # Ensure modified data is available
+    req(input$columns_plot_normality)
+    req(input$plot_type)  # Ensure plot type is selected
+    if (length(input$columns_plot_normality) <= MAX_FOR_PREVIEW_PLOT && input$plot_type != "normality_diagnosis") {
+      # Call the plotting function
+      plot <- preview_basic_distribution(modified_data(), type_of_plot = input$plot_type, input$columns_plot_normality)
+      return(plot)  # Return the plot to be rendered
+    } else if (length(input$columns_plot_normality) == 1 && input$plot_type == "normality_diagnosis") {
+      plot <- preview_basic_distribution(modified_data(), type_of_plot = input$plot_type, input$columns_plot_normality)
+      return(plot)  # Return the plot to be rendered
+    } else if (length(input$columns_plot_normality) > 1 && input$plot_type == "normality_diagnosis") {
+      # Create an empty plot
+      plot.new()  # Start a new plot
+      # Add text to the plot
+      text(0.5, 0.5, "For normality_diagnosis plot, select only one variable at a time.", cex = 1.5, col = "red", adj = c(0.5, 0.5))
+    } else {
+      # Create an empty plot
+      plot.new()  # Start a new plot
+      # Add text to the plot
+      text(0.5, 0.5, "Select max 6 variables at a time.", cex = 1.5, col = "red", adj = c(0.5, 0.5))
+    }
+  }) # end render plot
+  
 } # end server
 
 
