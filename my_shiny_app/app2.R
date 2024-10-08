@@ -6,6 +6,7 @@
 source("my_functions.R")
 library(shiny)
 library(ggplot2)
+library(plotly)
 library(bslib)
 # library(rlang)
 # library(curl)
@@ -50,7 +51,7 @@ sidebar_plots <- layout_sidebar(
     selectInput("plot_missing",
                 label = "Select Missing Values Plot Type",
                 choices = c("pareto","intersect"),
-                selected = "intersect",
+                selected = "pareto",
                 multiple = FALSE), # dropdown with available plot types
     sliderInput("missing_pct", "Allow Max % Of Missing Data:",
                 min = 0, max = 100,
@@ -58,7 +59,7 @@ sidebar_plots <- layout_sidebar(
                 post="%"),
     actionButton("applyMissingThresholdButton", "Refresh Data")  # restore button
   ), # end sidebar
-  plotOutput("plot_data_cleaning") 
+  plotlyOutput("plot_data_cleaning") 
 ) # end layout_sidebar
 ###########################
 # cards for cleaning data
@@ -314,14 +315,16 @@ server <- function(input, output,session) {
   #   current_plot("preview")  # Set the current plot type to 'preview'
   # })
   # Render the plot
-  output$plot_data_cleaning <- renderPlot({
+  output$plot_data_cleaning <- renderPlotly({
     req(modified_data())  # Ensure modified data is available
     current_plot(input$plot_missing)
     # Check which plot type is selected and render accordingly
     if (current_plot() == "pareto") {
-      plot_na_pareto(modified_data())
+      plot_na_pareto_modified(modified_data())
+      # plot_na_pareto(modified_data())
     } else if (current_plot() == "intersect") {
-      plot_na_intersect(modified_data())
+      plot_na_intersect_modified(modified_data())
+      # plot_na_intersect(modified_data())
     } 
     # else if (current_plot() == "preview") {
     #   req(input$plot_type)  # Ensure plot type is selected
@@ -340,9 +343,9 @@ server <- function(input, output,session) {
       new_data <- modified_data() %>% 
         plot_na_pareto(plot = FALSE)
       display_data(new_data)
-      plot_na_pareto(modified_data())
+      plot_na_pareto_modified(modified_data())
     } else if (current_plot() == "intersect") {
-      plot_na_intersect(modified_data())
+      plot_na_intersect_modified(modified_data())
     } 
   }) 
   ########################################################

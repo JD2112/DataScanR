@@ -4,6 +4,9 @@
 #library(readr)
 library(dplyr)
 library(ggplot2)
+library(plotly)
+library(patchwork)
+library(hrbrthemes)
 library(ggdist)
 library(GGally)
 library(dlookr)
@@ -290,7 +293,7 @@ remove_missing_data_columns_by_threshold <- function(df, my_threshold=MISSING_DA
   diagnostic <- diagnose(df)
   data_filtered<- df %>%
     select(-one_of( #select(-one_of(...)) removes the columns from data_original based on the extracted names
-      diagnostic %>% #  missing % was above threshold
+      diagnostic %>% # extract the column names where unique_count == 1 or missing % was above threshold
         filter(missing_percent > my_threshold) %>%
         pull(variables)
     ))
@@ -536,3 +539,352 @@ corr_plot_from_corr_matrix <- function(corr_matrix, my_columnnames = c()) {
   
 }# end corr_plot_from_corr_matrix
 
+#########################################################################################################
+# from dlookr github: https://github.com/choonghyunryu/dlookr/blob/HEAD/R/missing.R
+plot_na_pareto_modified <- function (x, only_na = FALSE, relative = FALSE, main = NULL, col = "black",
+                                     grade = list(Good = 0.05, OK = 0.1, NotBad = 0.2, Bad = 0.5, Remove = 1),
+                                     plot = TRUE, typographic = TRUE, base_family = NULL)
+{
+  if (sum(is.na(x)) == 0) {
+    stop("Data have no missing value.")
+  }
+  
+  info_na <- purrr::map_int(x, function(x) sum(is.na(x))) %>% 
+    tibble::enframe() %>% 
+    dplyr::rename(variable = name, frequencies = value) %>% 
+    arrange(desc(frequencies), variable) %>% 
+    mutate(ratio = frequencies / nrow(x)) %>% 
+    mutate(grade = cut(ratio, breaks = c(-1, unlist(grade)), labels = names(grade))) %>% 
+    mutate(cumulative = cumsum(frequencies) / sum(frequencies) * 100) %>% 
+    #mutate(variable = forcats::fct_reorder(variable, frequencies, .desc = TRUE)) 
+    arrange(desc(frequencies)) %>% 
+    mutate(variable = factor(variable, levels = variable))
+  
+  if (only_na) {
+    info_na <- info_na %>% 
+      filter(frequencies > 0)
+    xlab <- "Variable Names with Missing Value"
+  } else {
+    xlab <- "All Variables"
+  }
+  
+  if (relative) {
+    info_na$frequencies <- info_na$frequencies / nrow(x)
+    ylab <- "Relative Frequency of Missing Values"
+  } else {
+    ylab <- "Frequency of Missing Values"
+  }
+  
+  if (is.null(main)) 
+    main = "Pareto chart with missing values"
+  
+  scaleRight <- max(info_na$cumulative) / info_na$frequencies[1]
+  
+  if (!plot) {
+    return(info_na)
+  }
+  
+  labels_grade <- paste0(names(grade),paste0("\n(<=", unlist(grade) * 100, "%)"))
+  n_pal <- length(labels_grade)
+  
+  if (n_pal <= 3) {
+    pals <- c("#FFEDA0", "#FEB24C", "#F03B20")
+  } else if (n_pal == 4) {
+    pals <- c("#FFFFB2", "#FECC5C", "#FD8D3C", "#E31A1C")
+  } else if (n_pal == 5) {
+    pals <- c("#FFFFB2", "#FECC5C", "#FD8D3C", "#F03B20", "#BD0026")
+  } else if (n_pal == 6) {
+    pals <- c("#FFFFB2", "#FED976", "#FEB24C", "#FD8D3C", "#F03B20", "#BD0026")
+  } else if (n_pal == 7) {    
+    pals <- c("#FFFFB2", "#FED976", "#FEB24C", "#FD8D3C", "#FC4E2A", "#E31A1C", 
+              "#B10026")
+  } else if (n_pal == 8) {
+    pals <- c("#FFFFCC", "#FFEDA0", "#FED976", "#FEB24C", "#FD8D3C", "#FC4E2A", 
+              "#E31A1C", "#B10026")
+  } else if (n_pal >= 9) {
+    pals <- c("#FFFFCC", "#FFEDA0", "#FED976", "#FEB24C", "#FD8D3C", "#FC4E2A", 
+              "#E31A1C", "#BD0026", "#800026")
+  }  
+  
+  p <- ggplot(info_na, aes(x = variable)) +
+    geom_bar(aes(y = frequencies, fill = grade,
+                 text = paste0("Variable: ", variable, "\nGrade: ", grade,
+                               "\nFrequency: ", frequencies,
+                               "\nPercentage: ", round(ratio * 100, 1), "%")
+                 ), color = "darkgray", stat = "identity") +
+    # geom_text(aes(y = frequencies, 
+    #               label = paste(round(ratio * 100, 1), "%")),
+    #           position = position_dodge(width = 0.9), vjust = -0.25) + 
+    geom_path(aes(y = cumulative / scaleRight, group = 1), 
+              colour = col, size = 0.4) +
+    geom_point(aes(y = cumulative / scaleRight, group = 1), 
+               colour = col, size = 1.5) +
+    scale_y_continuous(sec.axis = sec_axis(~.*scaleRight, name = "Cumulative (%)")) +
+    labs(title = main, x = xlab, y = ylab) + 
+    theme_grey(base_family = base_family) +    
+    theme(
+      axis.text.x = element_blank(),
+      # axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1),
+          legend.position = "top") +
+    scale_fill_manual(values = pals,
+                      drop = FALSE,
+                      name = "Missing Grade",
+                      labels = labels_grade)
+  
+  if (typographic) {
+    p <- p +
+      theme_ipsum(base_family = "Roboto Condensed") +
+      theme(legend.position = "top",
+            axis.title.x = element_text(size = 12),
+            axis.title.y = element_text(size = 12),
+            axis.title.y.right = element_text(size = 12),
+            axis.text.x = element_blank()
+            # axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1)
+            )
+  }
+  
+  ggplotly(p,tooltip = "text")
+}
+
+#########################################################################################
+plot_na_intersect_modified <- function (x, only_na = TRUE, n_intersacts = NULL, 
+                                        n_vars = NULL, main = NULL, typographic = TRUE,
+                                        base_family = NULL)
+{
+  N <- nrow(x)
+  
+  if (sum(is.na(x)) == 0) {
+    stop("Data have no missing value.")
+  }
+  
+  if (only_na) {
+    na_obs <- x %>% 
+      apply(1, function(x) any(is.na(x))) %>% 
+      which()
+    
+    x <- x[na_obs, ]
+  } 
+  
+  marginal_var <- purrr::map_int(x, function(x) sum(is.na(x))) %>% 
+    tibble::enframe(name = "name_var", value = "n_var") %>% 
+    filter(n_var > 0) %>% 
+    arrange(desc(n_var)) %>% 
+    mutate(Var1 = seq(name_var))
+  
+  N_var_na <- nrow(marginal_var)
+  
+  if (!is.null(n_vars)) {
+    marginal_var <- marginal_var %>% 
+      head(n = n_vars)
+  }
+  
+  na_variable <- marginal_var$name_var
+  
+  if (length(na_variable) == 1) {
+    stop("Supported only when the number of variables including missing values is 2 or more.")
+  }  
+  
+  x <- x %>% 
+    select_at(vars(na_variable)) %>% 
+    is.na() %>% 
+    as.data.frame() %>% 
+    group_by_at(na_variable) %>% 
+    tally() %>% 
+    arrange(desc(n))
+  
+  N_na <- sum(x$n[which(apply(select(x, -n), 1, sum) > 0)])
+  
+  if (!is.null(n_intersacts)) {
+    if (n_intersacts < nrow (x)) {
+      x <- x[seq(n_intersacts), ]
+      x <- x[, which(apply(x, 2, function(x) sum(x) > 0))]
+      
+      marginal_var <- marginal_var %>% 
+        filter(name_var %in% names(x)) %>% 
+        mutate(Var1 = seq(name_var))
+      
+      na_variable <- setdiff(names(x), "n")
+    }  
+  }
+  
+  dframe <- get_melt(x) %>%
+    filter(value > 0) %>% 
+    filter(!Var1 %in% c("n")) %>% 
+    mutate(Var1 = as.numeric(Var1))
+  
+  flag <- x %>% 
+    select(-n) %>% 
+    apply(1, function(x) factor(ifelse(sum(x), "#F8766D", "#00BFC4")))
+  
+  marginal_obs <- data.frame(Var2 = seq(x$n), n_obs = x$n)
+  
+  N_complete <- N - N_na
+  
+  breaks <- pretty(marginal_obs$n_obs)
+  
+  if (is.null(main)) 
+    main = "Missing with intersection of variables"
+  
+  # Create center plot
+  body <- ggplot(dframe, aes(x = Var1, y = Var2)) + 
+    geom_tile(aes(fill = value), color = "black", size = 0.5) + 
+    scale_fill_gradient(low = "grey", high = "red") +
+    scale_x_continuous(breaks = seq(length(na_variable)), 
+                       labels = na_variable,
+                       limits = c(0, length(na_variable)) + 0.5) +
+    scale_y_continuous(breaks = seq(nrow(marginal_obs)), 
+                       labels = marginal_obs$Var2,
+                       limits = c(0, nrow(marginal_obs)) + 0.5) +    
+    xlab("Variables")
+  
+  # Create plot of top
+  top <- ggplot(marginal_var, aes(x = Var1, y = n_var)) +
+    geom_col(fill = "#69b3a2", color = "darkgray") +
+    ylab("Frequency")
+  
+  # for display the axis label
+  max_char <- max(nchar(na_variable))
+  
+  formula <- paste0("%", max_char , "s")
+  breaks_label <- sprintf(formula, breaks)
+  
+  # Create plot of right
+  right <- ggplot(marginal_obs, aes(x = Var2, y = n_obs)) +
+    geom_col(fill = "#69b3a2", color = "darkgray") +
+    coord_flip() +
+    ylab("Frequency")
+  
+  legend_txt <- paste(c("#Missing Vars:", "#Missing Obs:", "#Complete Obs:"), 
+                      c(N_var_na, N_na, N_complete))
+  legend_df <- data.frame(x = c(0.1, 0.1, 0.1), y = c(0.1, 0.3, 0.5), 
+                          txt = factor(legend_txt, labels = legend_txt))
+  
+  # Create information plot
+  blank <- ggplot(data = legend_df, aes(x, y, label = txt)) + 
+    geom_label(fill = c("steelblue", "#F8766D", "#F8766D"), colour = "white", 
+               fontface = "bold", size = 3, hjust = 0) + 
+    xlim(c(0, 1)) +
+    ylim(c(0, 0.6)) +
+    theme(legend.position = "none",
+          plot.background = element_blank(), 
+          panel.grid.major = element_blank(),
+          panel.grid.minor = element_blank(), 
+          panel.border = element_blank(),
+          panel.background = element_blank(),
+          axis.title.x = element_blank(),
+          axis.title.y = element_blank(),
+          axis.text.x = element_blank(), 
+          axis.text.y = element_blank(),
+          axis.ticks = element_blank(),
+          axis.line = element_blank()
+    )
+  
+  if (typographic) {
+    top <- top +
+      theme_ipsum(base_family = "Roboto Condensed") +
+      scale_x_continuous(breaks = seq(marginal_var$Var1), 
+                         labels = marginal_var$n_var,
+                         limits = c(0, length(na_variable)) + 0.5) +
+      scale_y_continuous(position = "left") + 
+      theme(axis.title.x = element_blank(),
+            axis.title.y = element_blank(),
+            axis.text.y = element_blank(),
+            plot.margin = margin(10, 10, 0, 10))
+    
+    body <- body +
+      theme_ipsum(base_family = "Roboto Condensed") +
+      theme(legend.position = "none",
+            axis.title.x = element_text(size = 12),
+            axis.title.y = element_blank(),
+            axis.text.y = element_blank(),
+            axis.text.x = element_text(angle = 45, hjust = 1),
+            plot.margin = margin(0, 10, 30, 10))
+    
+    right <- right +
+      theme_ipsum(base_family = "Roboto Condensed") +
+      scale_x_continuous(breaks = seq(marginal_obs$Var2), 
+                         labels = marginal_obs$n_obs,
+                         limits = c(0, nrow(marginal_obs)) + 0.5) +    
+      scale_y_continuous(breaks = breaks, 
+                         labels = breaks_label,
+                         limits = range(c(0, breaks))) +    
+      theme(axis.title.y = element_blank(),
+            axis.title.x = element_text(color = "transparent"),
+            axis.text.x = element_text(color = "transparent"),
+            plot.margin = margin(0, 10, 30, 0))
+    
+    if (is.null(base_family)) {
+      base_family <- "Roboto Condensed" 
+    }
+    
+    main <- grid::textGrob(main, gp = grid::gpar(fontfamily = base_family, 
+                                                 fontsize = 18, font = 2),
+                           x = unit(0.075, "npc"), just = "left")
+    
+  } else {
+    body <- body +
+      theme_grey(base_family = base_family) +
+      theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1,
+                                       family = "mono"),
+            axis.title.y = element_blank(), axis.text.y = element_blank(),
+            axis.ticks.y = element_blank(),
+            legend.position = "none")
+    
+    top <- top +
+      scale_y_continuous(position = "right") + 
+      scale_x_continuous(breaks = seq(marginal_var$Var1), 
+                         labels = marginal_var$n_var,
+                         limits = c(0, length(na_variable)) + 0.5) +
+      theme_grey(base_family = base_family) +
+      theme(axis.ticks.x = element_blank(), axis.title.x = element_blank(),
+            axis.title.y = element_blank(), axis.text.y = element_blank(),
+            axis.ticks.y = element_blank())
+    
+    right <- right +
+      scale_x_continuous(breaks = seq(marginal_obs$Var2), 
+                         labels = marginal_obs$n_obs,
+                         limits = c(0, nrow(marginal_obs)) + 0.5) +    
+      scale_y_continuous(breaks = breaks, 
+                         labels = breaks_label,
+                         limits = range(c(0, breaks))) +
+      theme_grey(base_family = base_family) +
+      theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1, 
+                                       family = "mono", color = "transparent"),
+            axis.ticks.x = element_blank(),
+            axis.ticks.y = element_blank(), 
+            axis.title.y = element_blank(),
+            legend.position = "none",
+            axis.title.x = element_text(color = "transparent"))
+  }
+  
+  suppressWarnings(gridExtra::grid.arrange(top, blank, body, right,
+                                           ncol = 2, nrow = 2, widths = c(9, 2), heights = c(1, 5),
+                                           top = main))
+} 
+
+# for replace reshape2::melt()
+#' @importFrom purrr map_dbl
+#' @importFrom tibble is_tibble
+get_melt <- function(x) {
+  if (is.data.frame(x)) {
+    if (tibble::is_tibble(x))
+      x <- as.data.frame(x)
+    
+    df <- data.frame(
+      Var1 = factor(rep(names(x), times = nrow(x)), levels = colnames(x)),
+      Var2 = as.integer(rep(row.names(x), each = ncol(x))),
+      value = numeric(nrow(x) * ncol(x))
+    ) 
+  } else if (is.matrix(x)) {
+    df <- data.frame(
+      Var1 = factor(rep(colnames(x), times = nrow(x)), levels = colnames(x)),
+      Var2 = as.integer(rep(row.names(x), each = ncol(x))),
+      value = numeric(nrow(x) * ncol(x))
+    ) 
+  }
+  
+  df$value <- seq(nrow(df)) %>% 
+    purrr::map_dbl(function(i) x[df$Var2[i], df$Var1[i]])
+  
+  df
+} 

@@ -50,6 +50,8 @@ diagnostic <- diagnose(data_original)
 # get missing 
 plot_na_pareto_modified(data_original)
 plot_na_pareto(data_original)
+plot_na_intersect_modified(data_original)
+plot_na_intersect(data_original)
 qc <- data_original %>% 
   plot_na_pareto(plot = FALSE)
 
