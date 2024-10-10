@@ -568,7 +568,14 @@ server <- function(input, output,session) {
     req(normality_df())
     display_data_normality(normality_df())
   })
-  
+  observeEvent(input$normality_table_rows_selected, {
+    req(input$normality_table_rows_selected)
+    req(display_data_normality())
+    selected <- input$normality_table_rows_selected  # Get the index of selected rows
+    if (length((selected))> 0) {
+      print(display_data_normality()[selected, ]) # Show the selected rowsinput$tableId_cells_selected)
+    }
+  })
   # Render the interactive DataTable based on the selected columns
   output$normality_table <- DT::renderDataTable({
     req(display_data_normality())  # Ensure data is available
@@ -583,6 +590,7 @@ server <- function(input, output,session) {
         dom = 'Bfrtip',    # Search box, pagination, etc.
         buttons = c( 'csv', 'excel', 'pdf')  # Add export buttons
       ),
+      selection = 'multiple',
       extensions = 'Buttons'  # Enable export options
     )
   }) # end table
