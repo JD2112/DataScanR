@@ -635,7 +635,7 @@ plot_na_pareto_modified <- function (x, only_na = FALSE, relative = FALSE, main 
   
   if (typographic) {
     p <- p +
-      theme_ipsum(base_family = "Roboto Condensed") +
+      # theme_ipsum(base_family = "Roboto Condensed") +
       theme(legend.position = "top",
             axis.title.x = element_text(size = 12),
             axis.title.y = element_text(size = 12),
@@ -752,17 +752,17 @@ plot_na_intersect_modified <- function (x, only_na = TRUE, n_intersacts = NULL,
     layout(
       title = list(
         text = main,  # Set your title here
-        font = list(size = 30, 
+        font = list(size = 16, 
                     color = "black",
                     family = "Times New Roman"),  # Customize title font size and color
-        x = 0.1,  # Left-align title (0 = far left, 1 = far right)
-        y = 1.01  # Position title slightly above the plot
+        x = 0,  # Left-align title (0 = far left, 1 = far right)
+        y = 1.5  # Position title slightly above the plot
       ),
-      margin = list(t = 100, b = 100),  # Add margin above the title (adjust value as needed)
+      margin = list(t = 40, b = 10,l=0),  # Add margin above the title (adjust value as needed)
       xaxis = list(
         title = list(
           text = "Variables",
-          font = list(family = "Times New Roman", size = 18)  # Set font for x-axis title
+          font = list(family = "Times New Roman", size = 16)  # Set font for x-axis title
         ),
         zeroline = FALSE, 
         gridcolor = "black",  # Set grid line color
@@ -776,6 +776,11 @@ plot_na_intersect_modified <- function (x, only_na = TRUE, n_intersacts = NULL,
         showgrid = TRUE,  # Show grid lines
         tickvals = NULL, 
         ticktext = NULL
+      ),
+      hoverlabel = list(
+        bgcolor = "white",  # Set hover label background color to white
+        bordercolor = "black",  # Optional: Set border color for the hover label
+        font = list(color = "black")  # Optional: Set font color for the hover text
       ),
       # plot_bgcolor = "#e8e8e8",  # White background for cleaner look
       plot_bgcolor = "white",  # White background for cleaner look

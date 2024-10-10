@@ -43,24 +43,24 @@ sidebar_data <- layout_sidebar(
   ), # end sidebar
   card_body(DT::dataTableOutput("data_table") ) # Output placeholder for the interactive table
 ) # end layout_sidebar
-sidebar_plots <- layout_sidebar(
-  fillable = TRUE,
-  sidebar = sidebar(
-    # title = "Data Visualization",
-    width = SIDEBAR_WIDTH_CLEAN_DATA,
-    selectInput("plot_missing",
-                label = "Select Missing Values Plot Type",
-                choices = c("pareto","intersect"),
-                selected = "pareto",
-                multiple = FALSE), # dropdown with available plot types
-    sliderInput("missing_pct", "Allow Max % Of Missing Data:",
-                min = 0, max = 100,
-                value = c(0,100), step = 1,
-                post="%"),
-    actionButton("applyMissingThresholdButton", "Refresh Data")  # restore button
-  ), # end sidebar
-  plotlyOutput("plot_data_cleaning")
-) # end layout_sidebar
+# sidebar_plots <- layout_sidebar(
+#   fillable = TRUE,
+#   sidebar = sidebar(
+#     # title = "Data Visualization",
+#     width = SIDEBAR_WIDTH_CLEAN_DATA,
+#     selectInput("plot_missing",
+#                 label = "Select Missing Values Plot Type",
+#                 choices = c("pareto","intersect"),
+#                 selected = "pareto",
+#                 multiple = FALSE), # dropdown with available plot types
+#     sliderInput("missing_pct", "Allow Max % Of Missing Data:",
+#                 min = 0, max = 100,
+#                 value = c(0,100), step = 1,
+#                 post="%"),
+#     actionButton("applyMissingThresholdButton", "Refresh Data")  # restore button
+#   ), # end sidebar
+#   plotlyOutput("plot_data_cleaning")
+# ) # end layout_sidebar
 ###########################
 # cards for cleaning data
 cards_cleaning_data <- list(
@@ -72,7 +72,61 @@ cards_cleaning_data <- list(
   card(
     full_screen = TRUE,
     card_header("Plot"),
-    sidebar_plots
+    # sidebar_plots
+    # Main panel only with inputs and plot
+    # Custom CSS for smaller font sizes in different components
+    tags$head(
+      tags$style(HTML("
+                  /* Set font size for selectInput */
+                  .selectize-input, .selectize-dropdown {
+                    font-size: 12px !important; /* Font size for dropdowns */
+                  }
+                  /* Set font size for sliderInput */
+                  .slider {
+                    font-size: 12px !important; /* Font size for slider */
+                  }
+                  /* Set font size for actionButton */
+                  .action-button, .btn {
+                    font-size: 12px !important; /* Font size for buttons */
+                  }
+                  /* Set font size for input fields */
+                  input[type='text'], input[type='file'] {
+                    font-size: 12px !important; /* Font size for text and file inputs */
+                  }
+                  /* Add space between inputs and plot */
+                  .plot-output {
+                    margin-top: 20px; /* Adjust the value for more/less space */
+                  }
+                "))
+    ),
+    # Main panel only with inputs and plot
+    div(
+      # Create a fluid row for inputs above the plot
+      fluidRow(
+        column(12, 
+               selectInput("plot_missing",
+                           label = "Select Missing Values Plot Type",
+                           choices = c("pareto", "intersect"),
+                           selected = "intersect",
+                           multiple = FALSE),  # dropdown with available plot types
+               sliderInput("missing_pct", 
+                           "Allow Max % Of Missing Data:",
+                           min = 0, 
+                           max = 100,
+                           value = c(0, 100), 
+                           step = 1,
+                           post="%"),
+               actionButton("applyMissingThresholdButton", 
+                            "Refresh Data")  # restore button
+        )
+      )
+    ),  # end inputs div
+    
+    # Output for the plot below the inputs
+    div(
+      plotlyOutput("plot_data_cleaning"),  # Specify height for the plot
+      class = "plot-output"  # Add class for margin
+    )  # end plot div
   )
 ) # end cards
 ###########################
