@@ -48,10 +48,11 @@ data_original <- trim_values_in_columns(data_original,custom_colnames=char_colum
 # DATA CLEANING
 diagnostic <- diagnose(data_original)
 # get missing 
-plot_na_pareto_modified(data_original)
-plot_na_pareto(data_original)
+source("my_functions.R")
 plot_na_intersect_modified(data_original)
 plot_na_intersect(data_original)
+plot_na_pareto_modified(data_original)
+plot_na_pareto(data_original)
 qc <- data_original %>% 
   plot_na_pareto(plot = FALSE)
 
@@ -62,7 +63,7 @@ data_original %>%
 
 # get a list of columns that only have one unique value and list of columns that 
 # have more than some threshold percent of missing values and filter them out
-data_filtered_by_missing_threshold <- remove_missing_data_columns_by_threshold(data_original,MISSING_DATA_PCT_THRESHOLD)
+data_filtered_by_missing_threshold <- remove_missing_data_columns_by_threshold(data_original,c(1,MISSING_DATA_PCT_THRESHOLD))
 
 diagnostic <- diagnose(data_filtered_by_missing_threshold)
 
@@ -112,6 +113,7 @@ data_to_plot <- data_filtered_columns_with_factors %>%
  as.data.frame()
 # possible plots: "box","violin","histogram","box_distribution","violin_box", normality_diagnosis
 preview_basic_distribution(data_to_plot, type_of_plot = "histogram", test_columns)
+preview_basic_distribution(data_filtered_columns_with_factors, type_of_plot = "violin_box", test_columns)
 
 # compare with duplicates
 test_dlookr_normality_col <- c("ldl_res")
@@ -206,6 +208,13 @@ p
 # select some columns
 test_corr_df <- data_filtered_columns_with_factors %>% 
   select(all_of((test_columns)))
+test_corr_df <- as.data.frame(test_corr_df)
+df_numeric <- test_corr_df[sapply(test_corr_df, is.numeric)]
+cor_result <- cor.test(df_numeric[, names(df_numeric)[1]],df_numeric[, names(df_numeric)[2]],
+                       method = "spearman",
+                       na.action = na.omit
+                       # exact = FALSE
+                       )
 test_corr_matrix <- calculate_corr_matrix_mixed(test_corr_df,normality_results)
 corr_plot_from_corr_matrix(test_corr_matrix,test_columns)
 

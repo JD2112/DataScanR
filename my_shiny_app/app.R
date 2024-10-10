@@ -254,13 +254,15 @@ server <- function(input, output,session) {
     updateSelectInput(session, "columns_data", choices = column_names, selected = c())  # Populate dropdown
     # updateSelectInput(session, "columns_plot", choices = column_names, selected = c())  # Populate dropdown
     removed_columns_data(c()) # reset previously removed columns after data is reset
+    # reset the threshold slider
+    updateSliderInput(session, "missing_pct", value = 100)
   }) # end reset to original
   
   observeEvent(input$applyMissingThresholdButton, {
     req(original_data())
     req(modified_data())
     req(input$missing_pct)
-    # the user might want to go from hogh threshold, back to lower
+    # the user might want to go from high threshold, back to lower
     # go back to the original data, check what columns were removed and create new "modified data"
     # apply new threshold
     new_data <- original_data()
@@ -448,7 +450,7 @@ server <- function(input, output,session) {
       # Create an empty plot
       plot.new()  # Start a new plot
       # Add text to the plot
-      text(0.5, 0.5, "For normality_diagnosis plot, select only one variable at a time.", cex = 1.5, col = "red", adj = c(0.5, 0.5))
+      text(0.5, 0.5, "For normality_diagnosis plot,\nselect only one variable at a time.", cex = 1.5, col = "red", adj = c(0.5, 0.5))
     } else {
       # Create an empty plot
       plot.new()  # Start a new plot

@@ -287,14 +287,16 @@ preview_basic_distribution <- function(df,type_of_plot = "box", custom_colnames 
 
 ##########################################
 # function to filter data by missing % threshold
-remove_missing_data_columns_by_threshold <- function(df, my_threshold=MISSING_DATA_PCT_THRESHOLD ) {
+remove_missing_data_columns_by_threshold <- function(df, my_threshold=c(0,MISSING_DATA_PCT_THRESHOLD)) {
+  min_threshold <- my_threshold[1]
+  max_threshold <- my_threshold[2]
+  diagnostic <- diagnose(df)
   # get a list of columns that only have one unique value and list of columns that 
   # have more than some threshold percent of missing values and filter them out
-  diagnostic <- diagnose(df)
   data_filtered<- df %>%
     select(-one_of( #select(-one_of(...)) removes the columns from data_original based on the extracted names
       diagnostic %>% # extract the column names where unique_count == 1 or missing % was above threshold
-        filter(missing_percent > my_threshold) %>%
+        filter(missing_percent > max_threshold | missing_percent < min_threshold) %>%
         pull(variables)
     ))
   return(data_filtered)
@@ -472,6 +474,7 @@ calculate_corr_matrix_mixed <- function(df, normality_results) {
   normal_cols <- normality_results$normal_columnnames
   non_normal_cols <- normality_results$non_normal_columnnames
   
+  df <- as.data.frame(df)
   # Filter the data to include only numeric columns
   df_numeric <- df[sapply(df, is.numeric)]
   
@@ -496,11 +499,16 @@ calculate_corr_matrix_mixed <- function(df, normality_results) {
         # Determine the correlation method
         method <- cor_method(names(df_numeric)[i], names(df_numeric)[j])
         
-        # Subset the two columns to pass into correlate
-        sub_data <- df_numeric[, c(names(df_numeric)[i], names(df_numeric)[j])]
-        
-        # Use dlookr's correlate function for two columns
-        cor_result <- correlate(sub_data, method = method)
+        ###################################################
+        # # Subset the two columns to pass into correlate
+        # sub_data <- df_numeric[, c(names(df_numeric)[i], names(df_numeric)[j])]
+        # 
+        # # Use dlookr's correlate function for two columns
+        # cor_result <- correlate(sub_data, method = method)
+        #######################################################
+        cor_result <- cor.test(df_numeric[, names(df_numeric)[i]],df_numeric[, names(df_numeric)[j]],
+                               method = method)
+        print(cor_result)
         
         # Extract the correlation value (it will be in the second column of the result)
         cor_value <- cor_result$coef_corr[1]
@@ -542,8 +550,8 @@ corr_plot_from_corr_matrix <- function(corr_matrix, my_columnnames = c()) {
 #########################################################################################################
 # from dlookr github: https://github.com/choonghyunryu/dlookr/blob/HEAD/R/missing.R
 plot_na_pareto_modified <- function (x, only_na = FALSE, relative = FALSE, main = NULL, col = "black",
-                            grade = list(Good = 0.05, OK = 0.1, NotBad = 0.2, Bad = 0.5, Remove = 1),
-                            plot = TRUE, typographic = TRUE, base_family = NULL)
+                                     grade = list(Good = 0.05, OK = 0.1, NotBad = 0.2, Bad = 0.5, Remove = 1),
+                                     plot = TRUE, typographic = TRUE, base_family = NULL)
 {
   if (sum(is.na(x)) == 0) {
     stop("Data have no missing value.")
@@ -565,7 +573,7 @@ plot_na_pareto_modified <- function (x, only_na = FALSE, relative = FALSE, main 
       filter(frequencies > 0)
     xlab <- "Variable Names with Missing Value"
   } else {
-    xlab <- "All Variable Names"
+    xlab <- "All Variables"
   }
   
   if (relative) {
@@ -607,10 +615,14 @@ plot_na_pareto_modified <- function (x, only_na = FALSE, relative = FALSE, main 
   }  
   
   p <- ggplot(info_na, aes(x = variable)) +
-    geom_bar(aes(y = frequencies, fill = grade), color = "darkgray", stat = "identity") +
-    geom_text(aes(y = frequencies, 
-                  label = paste(round(ratio * 100, 1), "%")),
-              position = position_dodge(width = 0.9), vjust = -0.25) + 
+    geom_bar(aes(y = frequencies, fill = grade,
+                 text = paste0("Variable: ", variable, "\nGrade: ", grade,
+                               "\nFrequency: ", frequencies,
+                               "\nPercentage: ", round(ratio * 100, 1), "%")
+    ), color = "darkgray", stat = "identity") +
+    # geom_text(aes(y = frequencies, 
+    #               label = paste(round(ratio * 100, 1), "%")),
+    #           position = position_dodge(width = 0.9), vjust = -0.25) + 
     geom_path(aes(y = cumulative / scaleRight, group = 1), 
               colour = col, size = 0.4) +
     geom_point(aes(y = cumulative / scaleRight, group = 1), 
@@ -618,11 +630,13 @@ plot_na_pareto_modified <- function (x, only_na = FALSE, relative = FALSE, main 
     scale_y_continuous(sec.axis = sec_axis(~.*scaleRight, name = "Cumulative (%)")) +
     labs(title = main, x = xlab, y = ylab) + 
     theme_grey(base_family = base_family) +    
-    theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1),
-          legend.position = "top") +
-    scale_fill_manual(values = pals, 
+    theme(
+      axis.text.x = element_blank(),
+      # axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1),
+      legend.position = "top") +
+    scale_fill_manual(values = pals,
                       drop = FALSE,
-                      name = "Missing Grade", 
+                      name = "Missing Grade",
                       labels = labels_grade)
   
   if (typographic) {
@@ -632,18 +646,18 @@ plot_na_pareto_modified <- function (x, only_na = FALSE, relative = FALSE, main 
             axis.title.x = element_text(size = 12),
             axis.title.y = element_text(size = 12),
             axis.title.y.right = element_text(size = 12),
-            axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1))
+            axis.text.x = element_blank()
+            # axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1)
+      )
   }
   
-  suppressWarnings(p)
-  return(ggplotly(p))
+  ggplotly(p,tooltip = "text")
 }
-
 #########################################################################################
 plot_na_intersect_modified <- function (x, only_na = TRUE, n_intersacts = NULL, 
-                                        n_vars = NULL, main = NULL, typographic = TRUE,
-                                        base_family = NULL)
+                                                 n_vars = NULL, main = NULL)
 {
+  base_family = "Roboto Condensed"
   N <- nrow(x)
   
   if (sum(is.na(x)) == 0) {
@@ -699,7 +713,7 @@ plot_na_intersect_modified <- function (x, only_na = TRUE, n_intersacts = NULL,
       na_variable <- setdiff(names(x), "n")
     }  
   }
-
+  
   dframe <- get_melt(x) %>%
     filter(value > 0) %>% 
     filter(!Var1 %in% c("n")) %>% 
@@ -717,165 +731,164 @@ plot_na_intersect_modified <- function (x, only_na = TRUE, n_intersacts = NULL,
   
   if (is.null(main)) 
     main = "Missing with intersection of variables"
+  # Create a plotly object with tiles as rectangles
+  # Create a plotly object
+  # p <- plot_ly()
+  # my_variable_names <- names(x) 
+  # # Create hover text combining value and corresponding name
+  # dframe$hover_text <- paste("Value:", dframe$value, "<br>Name:", my_variable_names[dframe$Var1])
+  # # Define an empty list to hold shape objects (tiles)
+  # shapes <- list()
+  # 
+  # # Loop over data to create individual tiles (rectangles)
+  # for (i in 1:nrow(dframe)) {
+  #   # fill_color <- ifelse(is.na(dframe$value[i]), "grey", "orange")  # NA = grey, otherwise green
+  #   
+  #   # Add each rectangle as a shape
+  #   shapes[[i]] <- list(
+  #     type = "rect",
+  #     x0 = dframe$Var1[i] - 0.5, x1 = dframe$Var1[i] + 0.5,
+  #     y0 = dframe$Var2[i] - 0.5, y1 = dframe$Var2[i] + 0.5,
+  #     line = list(width=0.5,color = "black"),  # Border color
+  #     fillcolor = "#f5b041"       # Static fill color
+  #   )
+  # }
+  # 
+  # # Add all the shapes to the plot layout
+  # p <- p %>%
+  #   layout(
+  #     title = list(
+  #       text = main,  # Set your title here
+  #       font = list(size = 16, color = "black",
+  #                   family = "Helvetica",  
+  #                   weight = "bold"),  # Customize title font size and color
+  #       x = 0.02,  # Left-align title (0 = far left, 1 = far right)
+  #       y = 1.01  # Position title slightly above the plot
+  #     ),
+  #     margin = list(t = 100,b=100),  # Add margin above the title (adjust value as needed)
+  #     xaxis = list(title = list(text="Variables",
+  #                               ont = list(
+  #                                 family = "Helvetica",   # Set font family for x-axis title
+  #                                 size = 12          # Set font size for x-axis title
+  #                                 )
+  #                               ),
+  #                               zeroline = FALSE,tickvals = NULL,ticktext = NULL),
+  #     yaxis = list(zeroline = FALSE,tickvals = NULL,ticktext = NULL),
+  #     shapes = shapes,  # Add the shapes (rectangles) to the layout
+  #     plot_bgcolor = "#e8e8e8",  # White background for cleaner look
+  #     showlegend = FALSE       # No legend needed for static color
+  #   )
+  # # Add scatter trace for hover text
+  # p <- p %>%
+  #   add_trace(
+  #     x = dframe$Var1,
+  #     y = dframe$Var2,
+  #     text = dframe$hover_text,  # Hover text from the data frame
+  #     mode = "markers",  # Invisible markers
+  #     marker = list(size = 0, opacity = 0),  # Set size to 0 for invisibility
+  #     hoverinfo = "text",  # Show only text on hover
+  #     hoverlabel = list(
+  #       bgcolor = "#e8e8e8",  # Set hover text background to gray
+  #       bordercolor = "#e8e8e8",  # Set hover text border to gray
+  #       font = list(color = "black")  # Optional: Change font color
+  #     )
+  #   )
+  ##############################################################################
+  # Create a plotly object
+  p <- plot_ly()
+  # Create hover text combining value and corresponding name
+  my_variable_names <- names(x) 
+  dframe$hover_text <- paste("Value:", dframe$value, "<br>Name:", my_variable_names[dframe$Var1])
   
-  # Create center plot
-  body <- ggplot(dframe, aes(x = Var1, y = Var2)) + 
-    geom_tile(aes(fill = value), color = "black", size = 0.5) + 
-    scale_fill_gradient(low = "grey", high = "red") +
-    scale_x_continuous(breaks = seq(length(na_variable)), 
-                       labels = na_variable,
-                       limits = c(0, length(na_variable)) + 0.5) +
-    scale_y_continuous(breaks = seq(nrow(marginal_obs)), 
-                       labels = marginal_obs$Var2,
-                       limits = c(0, nrow(marginal_obs)) + 0.5) +    
-    xlab("Variables")
-  
-  # Create plot of top
-  top <- ggplot(marginal_var, aes(x = Var1, y = n_var)) +
-    geom_col(fill = "#69b3a2", color = "darkgray") +
-    ylab("Frequency")
-  
-  # for display the axis label
-  max_char <- max(nchar(na_variable))
-  
-  formula <- paste0("%", max_char , "s")
-  breaks_label <- sprintf(formula, breaks)
-  
-  # Create plot of right
-  right <- ggplot(marginal_obs, aes(x = Var2, y = n_obs)) +
-    geom_col(fill = "#69b3a2", color = "darkgray") +
-    coord_flip() +
-    ylab("Frequency")
-  
-  legend_txt <- paste(c("#Missing Vars:", "#Missing Obs:", "#Complete Obs:"), 
-                      c(N_var_na, N_na, N_complete))
-  legend_df <- data.frame(x = c(0.1, 0.1, 0.1), y = c(0.1, 0.3, 0.5), 
-                          txt = factor(legend_txt, labels = legend_txt))
-  
-  # Create information plot
-  blank <- ggplot(data = legend_df, aes(x, y, label = txt)) + 
-    geom_label(fill = c("steelblue", "#F8766D", "#F8766D"), colour = "white", 
-               fontface = "bold", size = 3, hjust = 0) + 
-    xlim(c(0, 1)) +
-    ylim(c(0, 0.6)) +
-    theme(legend.position = "none",
-          plot.background = element_blank(), 
-          panel.grid.major = element_blank(),
-          panel.grid.minor = element_blank(), 
-          panel.border = element_blank(),
-          panel.background = element_blank(),
-          axis.title.x = element_blank(),
-          axis.title.y = element_blank(),
-          axis.text.x = element_blank(), 
-          axis.text.y = element_blank(),
-          axis.ticks = element_blank(),
-          axis.line = element_blank()
+  # Add trace for tile representation using scatter plot
+  p <- p %>%
+    add_trace(
+      x = dframe$Var1,
+      y = dframe$Var2,
+      mode = "markers",
+      marker = list(
+        size = 5,  # Adjust marker size as needed for visibility
+        color = "#f5b041",  # Use a static color for all markers
+        showscale = FALSE,  # No color scale needed since we are using a static color
+        line = list(color = "black", width = 0.5),  # Border for the markers
+        symbol = "square"
+      ),
+      text = dframe$hover_text,  # Use your hover text
+      hoverinfo = "text"  # Show hover text on hover
+    ) %>%
+    layout(
+      title = list(
+        text = main,  # Set your title here
+        font = list(size = 16, color = "black",
+                    family = "Helvetica",  
+                    weight = "bold"),  # Customize title font size and color
+        x = 0.02,  # Left-align title (0 = far left, 1 = far right)
+        y = 1.01  # Position title slightly above the plot
+      ),
+      margin = list(t = 100, b = 100),  # Add margin above the title (adjust value as needed)
+      xaxis = list(
+        title = list(
+          text = "Variables",
+          font = list(family = "Helvetica", size = 12)  # Set font for x-axis title
+        ),
+        zeroline = FALSE, 
+        gridcolor = "black",  # Set grid line color
+        showgrid = TRUE,  # Show grid lines
+        tickvals = NULL, 
+        ticktext = NULL
+      ),
+      yaxis = list(
+        zeroline = FALSE, 
+        gridcolor = "black",  # Set grid line color
+        showgrid = TRUE,  # Show grid lines
+        tickvals = NULL, 
+        ticktext = NULL
+      ),
+      plot_bgcolor = "#e8e8e8",  # White background for cleaner look
+      showlegend = FALSE  # No legend needed for static color
     )
   
-  if (typographic) {
-    top <- top +
-      theme_ipsum(base_family = "Roboto Condensed") +
-      scale_x_continuous(breaks = seq(marginal_var$Var1), 
-                         labels = marginal_var$n_var,
-                         limits = c(0, length(na_variable)) + 0.5) +
-      scale_y_continuous(position = "left") + 
-      theme(axis.title.x = element_blank(),
-            axis.title.y = element_blank(),
-            axis.text.y = element_blank(),
-            plot.margin = margin(10, 10, 0, 10))
-    
-    body <- body +
-      theme_ipsum(base_family = "Roboto Condensed") +
-      theme(legend.position = "none",
-            axis.title.x = element_text(size = 12),
-            axis.title.y = element_blank(),
-            axis.text.y = element_blank(),
-            axis.text.x = element_text(angle = 45, hjust = 1),
-            plot.margin = margin(0, 10, 30, 10))
-    
-    right <- right +
-      theme_ipsum(base_family = "Roboto Condensed") +
-      scale_x_continuous(breaks = seq(marginal_obs$Var2), 
-                         labels = marginal_obs$n_obs,
-                         limits = c(0, nrow(marginal_obs)) + 0.5) +    
-      scale_y_continuous(breaks = breaks, 
-                         labels = breaks_label,
-                         limits = range(c(0, breaks))) +    
-      theme(axis.title.y = element_blank(),
-            axis.title.x = element_text(color = "transparent"),
-            axis.text.x = element_text(color = "transparent"),
-            plot.margin = margin(0, 10, 30, 0))
-    
-    if (is.null(base_family)) {
-      base_family <- "Roboto Condensed" 
-    }
-    
-    main <- grid::textGrob(main, gp = grid::gpar(fontfamily = base_family, 
-                                                 fontsize = 18, font = 2),
-                           x = unit(0.075, "npc"), just = "left")
-    
-  } else {
-    body <- body +
-      theme_grey(base_family = base_family) +
-      theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1,
-                                       family = "mono"),
-            axis.title.y = element_blank(), axis.text.y = element_blank(),
-            axis.ticks.y = element_blank(),
-            legend.position = "none")
-    
-    top <- top +
-      scale_y_continuous(position = "right") + 
-      scale_x_continuous(breaks = seq(marginal_var$Var1), 
-                         labels = marginal_var$n_var,
-                         limits = c(0, length(na_variable)) + 0.5) +
-      theme_grey(base_family = base_family) +
-      theme(axis.ticks.x = element_blank(), axis.title.x = element_blank(),
-            axis.title.y = element_blank(), axis.text.y = element_blank(),
-            axis.ticks.y = element_blank())
-    
-    right <- right +
-      scale_x_continuous(breaks = seq(marginal_obs$Var2), 
-                         labels = marginal_obs$n_obs,
-                         limits = c(0, nrow(marginal_obs)) + 0.5) +    
-      scale_y_continuous(breaks = breaks, 
-                         labels = breaks_label,
-                         limits = range(c(0, breaks))) +
-      theme_grey(base_family = base_family) +
-      theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1, 
-                                       family = "mono", color = "transparent"),
-            axis.ticks.x = element_blank(),
-            axis.ticks.y = element_blank(), 
-            axis.title.y = element_blank(),
-            legend.position = "none",
-            axis.title.x = element_text(color = "transparent"))
-  }
+  # Display the plot
+  p
+  #########################################################
   
-  # suppressWarnings(gridExtra::grid.arrange(top, blank, body, right,
-  #                                          ncol = 2, nrow = 2, widths = c(9, 2), heights = c(1, 5),
-  #                                          top = main))
-  
-  # # Combine the plots into a single plot using patchwork
-  # combined_plot <- (top + blank + body + right) + plot_layout(ncol = 2, widths = c(9, 2),heights = c(1, 5))
-  
-  # Convert individual ggplot objects to plotly
-  plotly_top <- ggplotly(top)
-  plotly_blank <- ggplotly(blank)
-  plotly_body <- ggplotly(body)
-  plotly_right <- ggplotly(right)
-  
-  # Use subplot to arrange them according to your specified layout
-  final_plot <- subplot(
-    plotly_top, plotly_blank, 
-    plotly_body, plotly_right,
-    nrows = 2,
-    widths = c(0.9, 0.1),  # Adjusts the widths relative to each column
-    heights = c(0.2, 0.8), # Adjusts the heights relative to each row
-    margin = 0.05          # Space between plots
-  )
-  
-  # Display the final plot
-  final_plot
-} 
+  # my_variable_names <- names(x) 
+  # # Create center plot
+  # body <- ggplot(dframe, aes(x = Var1, y = Var2)) + 
+  #   
+  #   geom_tile(aes(fill = value,
+  #                           text = paste0("Variable: ",my_variable_names[Var1],
+  #                                         "\nValue: ",value)),
+  #             color = "black", size = 0.5) +
+  # 
+  #   scale_fill_gradient2(low = "grey", high = "red") +
+  #   scale_x_continuous(breaks = seq(length(na_variable)),
+  #                      labels = na_variable,
+  #                      limits = c(0, length(na_variable)) + 0.5) +
+  #   scale_y_continuous(breaks = seq(nrow(marginal_obs)),
+  #                      labels = marginal_obs$Var2,
+  #                      limits = c(0, nrow(marginal_obs)) + 0.5) +
+  #   xlab("Variables")
+  # 
+  # legend_txt <- paste(c("#Missing Vars:", "#Missing Obs:", "#Complete Obs:"), 
+  #                     c(N_var_na, N_na, N_complete))
+  # legend_df <- data.frame(x = c(0.1, 0.1, 0.1), y = c(0.1, 0.3, 0.5), 
+  #                         txt = factor(legend_txt, labels = legend_txt))
+  #   
+  #   body <- body +
+  #     # theme_ipsum(base_family = "Roboto Condensed") +
+  #     theme(legend.position = "none",
+  #           axis.title.x = element_text(size = 12),
+  #           axis.title.y = element_blank(),
+  #           axis.text.y = element_blank(),
+  #           axis.text.x = element_blank(),
+  #           # axis.text.x = element_text(angle = 45, hjust = 1),
+  #           plot.margin = margin(0, 10, 30, 10))
+  #   
+  #   # ggplotly(body,tooltip = "text")
+  #   ggplotly(body)
+  #   # body
+} # end na_intercept
 
 # for replace reshape2::melt()
 #' @importFrom purrr map_dbl

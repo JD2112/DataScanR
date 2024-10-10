@@ -14,14 +14,14 @@ library(data.table)
 library(dlookr)
 library(tidyr)
 
-SIDEBAR_WIDTH_CLEAN_DATA = 350
+SIDEBAR_WIDTH_CLEAN_DATA = 200
 SHAPIRO_THRESHOLD = 2000 # max rows to use shapiro for normality
 MAX_FOR_PREVIEW_PLOT = 6
 #############################
 # sidebars for cleaning data
 sidebar_data <- layout_sidebar(
   sidebar = sidebar(
-    title = "Data Viewing",
+    # title = "Data Viewing",
     width = SIDEBAR_WIDTH_CLEAN_DATA,
     fileInput("data_file", "Choose CSV File:",
               accept = c(
@@ -46,7 +46,7 @@ sidebar_data <- layout_sidebar(
 sidebar_plots <- layout_sidebar(
   fillable = TRUE,
   sidebar = sidebar(
-    title = "Data Visualization",
+    # title = "Data Visualization",
     width = SIDEBAR_WIDTH_CLEAN_DATA,
     selectInput("plot_missing",
                 label = "Select Missing Values Plot Type",
@@ -55,11 +55,11 @@ sidebar_plots <- layout_sidebar(
                 multiple = FALSE), # dropdown with available plot types
     sliderInput("missing_pct", "Allow Max % Of Missing Data:",
                 min = 0, max = 100,
-                value = 100, step = 1,
+                value = c(0,100), step = 1,
                 post="%"),
     actionButton("applyMissingThresholdButton", "Refresh Data")  # restore button
   ), # end sidebar
-  plotlyOutput("plot_data_cleaning") 
+  plotlyOutput("plot_data_cleaning")
 ) # end layout_sidebar
 ###########################
 # cards for cleaning data
@@ -114,9 +114,88 @@ sidebar_normality <- layout_sidebar(
 ui <- page_navbar(
   title = "Exploratory Data Analysis",
   id = "nav_tabs",  # Set an ID to observe selected panel
-  # nav_spacer(),
+  # Add custom CSS for ensuring modal is always in front
+  # Custom CSS to lower the full-screen card z-index
+  tags$head(
+    # CSS to force modal z-index higher
+    tags$style(HTML("
+      /* Ensure the modal has the highest z-index */
+      .modal {
+        z-index: 1100 !important;  /* Even higher z-index for modal */
+      }
+      .modal-backdrop {
+        z-index: 1099 !important;  /* Backdrop below modal */
+      }
+
+      /* Lower z-index for full-screen cards */
+      .bslib-full-screen {
+        z-index: 1050 !important;  /* Lower z-index for full-screen cards */
+      }
+      
+      /* Style for file input placeholder text */
+      .sidebar input[type='file'] {
+        font-size: 12px !important; /* Adjusts the font size for the file input */
+      }
+      .sidebar .shiny-file-input {
+        font-size: 12px !important; /* General styling for the file input */
+      }
+      .sidebar .shiny-file-input-text {
+        font-size: 12px !important; /* Adjusts example text in the file input */
+      }
+
+      /* Adjust DT table font sizes */
+      .dataTable {
+        font-size: 10px !important; /* Table font size */
+      }
+      .dataTable th {
+        font-size: 10px !important; /* Table header font size */
+      }
+      /* Sidebar Layout Input Font Sizes */
+      .sidebar .shiny-input-container {
+        font-size: 12px !important; /* General font size for inputs in the sidebar */
+      }
+      .sidebar .action-button,
+      .sidebar .btn {
+        font-size: 12px !important; /* Font size for action buttons */
+      }
+      .sidebar .selectize-input {
+        font-size: 12px !important; /* Font size for select inputs */
+      }
+      .sidebar .selectize-dropdown {
+        font-size: 12px !important; /* Font size for dropdown items */
+      }
+      .sidebar .form-group {
+        font-size: 12px !important; /* Font size for file inputs */
+      }
+    ")),
+    
+    # jQuery for dynamically adjusting modal and full-screen z-index
+    tags$script(HTML("
+      // Ensure modal z-index is always higher when shown
+      $(document).on('shown.bs.modal', function() {
+        $('.modal').css('z-index', 1100);  /* Higher z-index for modal */
+        $('.modal-backdrop').css('z-index', 1099);  /* Backdrop behind modal */
+      });
+      
+      // Adjust full-screen card z-index when entering full screen
+      $(document).on('click', '.bslib-full-screen-enter', function() {
+        $(this).css('z-index', 1050);  /* Lower full-screen card z-index */
+      });
+
+      // Continuously check if modal needs higher z-index
+      setInterval(function() {
+        if ($('.modal').is(':visible')) {
+          $('.modal').css('z-index', 1100);  /* Keep modal on top */
+          $('.modal-backdrop').css('z-index', 1099);  /* Keep backdrop right below */
+        }
+      }, 500);  /* Check every 500ms */
+    "))
+  ),
+  
   nav_panel("Data Cleaning", 
-            !!!cards_cleaning_data
+            layout_columns(cards_cleaning_data[[1]],
+                           cards_cleaning_data[[2]])
+            # !!!cards_cleaning_data
             # layout_columns(
             #   col_widths = c(-1,10,-1,-1,10,-1),# negative numbers mean space around each card
             #   row_heights = c(1, 1.2),
@@ -255,6 +334,8 @@ server <- function(input, output,session) {
     updateSelectInput(session, "columns_data", choices = column_names, selected = c())  # Populate dropdown
     # updateSelectInput(session, "columns_plot", choices = column_names, selected = c())  # Populate dropdown
     removed_columns_data(c()) # reset previously removed columns after data is reset
+    # reset the threshold slider
+    updateSliderInput(session, "missing_pct", value = c(0,100))
   }) # end reset to original
   
   observeEvent(input$applyMissingThresholdButton, {
@@ -269,7 +350,7 @@ server <- function(input, output,session) {
       new_data <- remove_selected_columns(new_data, removed_columns_data())  # Remove selected columns
     }
     # apply new threshold
-    new_data <- remove_missing_data_columns_by_threshold(new_data,input$missing_pct)
+    new_data <- remove_missing_data_columns_by_threshold(new_data,c(input$missing_pct[1],input$missing_pct[2]))
     display_data(new_data)
     modified_data(new_data)
     # update the column selector when the data is loaded
@@ -320,11 +401,29 @@ server <- function(input, output,session) {
     current_plot(input$plot_missing)
     # Check which plot type is selected and render accordingly
     if (current_plot() == "pareto") {
-      plot_na_pareto_modified(modified_data())
-      # plot_na_pareto(modified_data())
+      tryCatch({
+        plot_na_pareto_modified(modified_data())  # Attempt to plot
+      }, error = function(e) {
+        # Handle error
+        showModal(modalDialog(
+          # Add the icon before the title
+          title = HTML(paste0(bsicons::bs_icon("exclamation", fill = "#4597ee ", size = 50), " Message")),
+          footer = modalButton("OK"),
+          HTML(paste0("No missing data to show! ",bsicons::bs_icon("emoji-tear",fill = "#4597ee ")))
+        ))
+      })# end try/catch
     } else if (current_plot() == "intersect") {
-      plot_na_intersect_modified(modified_data())
-      # plot_na_intersect(modified_data())
+      tryCatch({
+        plot_na_intersect_modified(modified_data())  # Attempt to plot
+      }, error = function(e) {
+        # Handle error
+        showModal(modalDialog(
+          # Add the icon before the title
+          title = HTML(paste0(bsicons::bs_icon("exclamation", fill = "#4597ee ", size = 50), " Message")),
+          footer = modalButton("OK"),
+          HTML(paste0("No missing data to show! ",bsicons::bs_icon("emoji-tear",fill = "#4597ee ")))
+        ))
+      })# end try/catch
     } 
     # else if (current_plot() == "preview") {
     #   req(input$plot_type)  # Ensure plot type is selected
@@ -451,7 +550,7 @@ server <- function(input, output,session) {
       # Create an empty plot
       plot.new()  # Start a new plot
       # Add text to the plot
-      text(0.5, 0.5, "For normality_diagnosis plot, select only one variable at a time.", cex = 1.5, col = "red", adj = c(0.5, 0.5))
+      text(0.5, 0.5, "For normality_diagnosis plot,\nselect only one variable at a time.", cex = 1.5, col = "red", adj = c(0.5, 0.5))
     } else {
       # Create an empty plot
       plot.new()  # Start a new plot

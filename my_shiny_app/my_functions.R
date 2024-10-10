@@ -287,14 +287,16 @@ preview_basic_distribution <- function(df,type_of_plot = "box", custom_colnames 
 
 ##########################################
 # function to filter data by missing % threshold
-remove_missing_data_columns_by_threshold <- function(df, my_threshold=MISSING_DATA_PCT_THRESHOLD ) {
+remove_missing_data_columns_by_threshold <- function(df, my_threshold=c(0,MISSING_DATA_PCT_THRESHOLD)) {
+  min_threshold <- my_threshold[1]
+  max_threshold <- my_threshold[2]
+  diagnostic <- diagnose(df)
   # get a list of columns that only have one unique value and list of columns that 
   # have more than some threshold percent of missing values and filter them out
-  diagnostic <- diagnose(df)
   data_filtered<- df %>%
     select(-one_of( #select(-one_of(...)) removes the columns from data_original based on the extracted names
       diagnostic %>% # extract the column names where unique_count == 1 or missing % was above threshold
-        filter(missing_percent > my_threshold) %>%
+        filter(missing_percent > max_threshold | missing_percent < min_threshold) %>%
         pull(variables)
     ))
   return(data_filtered)
@@ -648,8 +650,7 @@ plot_na_pareto_modified <- function (x, only_na = FALSE, relative = FALSE, main 
 
 #########################################################################################
 plot_na_intersect_modified <- function (x, only_na = TRUE, n_intersacts = NULL, 
-                                        n_vars = NULL, main = NULL, typographic = TRUE,
-                                        base_family = NULL)
+                                        n_vars = NULL, main = NULL)
 {
   N <- nrow(x)
   
@@ -725,142 +726,66 @@ plot_na_intersect_modified <- function (x, only_na = TRUE, n_intersacts = NULL,
   if (is.null(main)) 
     main = "Missing with intersection of variables"
   
-  # Create center plot
-  body <- ggplot(dframe, aes(x = Var1, y = Var2)) + 
-    geom_tile(aes(fill = value), color = "black", size = 0.5) + 
-    scale_fill_gradient(low = "grey", high = "red") +
-    scale_x_continuous(breaks = seq(length(na_variable)), 
-                       labels = na_variable,
-                       limits = c(0, length(na_variable)) + 0.5) +
-    scale_y_continuous(breaks = seq(nrow(marginal_obs)), 
-                       labels = marginal_obs$Var2,
-                       limits = c(0, nrow(marginal_obs)) + 0.5) +    
-    xlab("Variables")
+  ##############################################################################
+  # Create a plotly object
+  p <- plot_ly()
+  # Create hover text combining value and corresponding name
+  my_variable_names <- names(x) 
+  dframe$hover_text <- paste("Value:", dframe$value, "<br>Name:", my_variable_names[dframe$Var1])
   
-  # Create plot of top
-  top <- ggplot(marginal_var, aes(x = Var1, y = n_var)) +
-    geom_col(fill = "#69b3a2", color = "darkgray") +
-    ylab("Frequency")
-  
-  # for display the axis label
-  max_char <- max(nchar(na_variable))
-  
-  formula <- paste0("%", max_char , "s")
-  breaks_label <- sprintf(formula, breaks)
-  
-  # Create plot of right
-  right <- ggplot(marginal_obs, aes(x = Var2, y = n_obs)) +
-    geom_col(fill = "#69b3a2", color = "darkgray") +
-    coord_flip() +
-    ylab("Frequency")
-  
-  legend_txt <- paste(c("#Missing Vars:", "#Missing Obs:", "#Complete Obs:"), 
-                      c(N_var_na, N_na, N_complete))
-  legend_df <- data.frame(x = c(0.1, 0.1, 0.1), y = c(0.1, 0.3, 0.5), 
-                          txt = factor(legend_txt, labels = legend_txt))
-  
-  # Create information plot
-  blank <- ggplot(data = legend_df, aes(x, y, label = txt)) + 
-    geom_label(fill = c("steelblue", "#F8766D", "#F8766D"), colour = "white", 
-               fontface = "bold", size = 3, hjust = 0) + 
-    xlim(c(0, 1)) +
-    ylim(c(0, 0.6)) +
-    theme(legend.position = "none",
-          plot.background = element_blank(), 
-          panel.grid.major = element_blank(),
-          panel.grid.minor = element_blank(), 
-          panel.border = element_blank(),
-          panel.background = element_blank(),
-          axis.title.x = element_blank(),
-          axis.title.y = element_blank(),
-          axis.text.x = element_blank(), 
-          axis.text.y = element_blank(),
-          axis.ticks = element_blank(),
-          axis.line = element_blank()
+  # Add trace for tile representation using scatter plot
+  p <- p %>%
+    add_trace(
+      x = dframe$Var1,
+      y = dframe$Var2,
+      mode = "markers",
+      marker = list(
+        size = 5,  # Adjust marker size as needed for visibility
+        color = "#f5b041",  # Use a static color for all markers
+        showscale = FALSE,  # No color scale needed since we are using a static color
+        line = list(color = "black", width = 0.5),  # Border for the markers
+        symbol = "square"
+      ),
+      text = dframe$hover_text,  # Use your hover text
+      hoverinfo = "text"  # Show hover text on hover
+    ) %>%
+    layout(
+      title = list(
+        text = main,  # Set your title here
+        font = list(size = 30, 
+                    color = "black",
+                    family = "Times New Roman"),  # Customize title font size and color
+        x = 0.1,  # Left-align title (0 = far left, 1 = far right)
+        y = 1.01  # Position title slightly above the plot
+      ),
+      margin = list(t = 100, b = 100),  # Add margin above the title (adjust value as needed)
+      xaxis = list(
+        title = list(
+          text = "Variables",
+          font = list(family = "Times New Roman", size = 18)  # Set font for x-axis title
+        ),
+        zeroline = FALSE, 
+        gridcolor = "black",  # Set grid line color
+        showgrid = TRUE,  # Show grid lines
+        tickvals = NULL, 
+        ticktext = NULL
+      ),
+      yaxis = list(
+        zeroline = FALSE, 
+        gridcolor = "black",  # Set grid line color
+        showgrid = TRUE,  # Show grid lines
+        tickvals = NULL, 
+        ticktext = NULL
+      ),
+      # plot_bgcolor = "#e8e8e8",  # White background for cleaner look
+      plot_bgcolor = "white",  # White background for cleaner look
+      showlegend = FALSE  # No legend needed for static color
     )
   
-  if (typographic) {
-    top <- top +
-      theme_ipsum(base_family = "Roboto Condensed") +
-      scale_x_continuous(breaks = seq(marginal_var$Var1), 
-                         labels = marginal_var$n_var,
-                         limits = c(0, length(na_variable)) + 0.5) +
-      scale_y_continuous(position = "left") + 
-      theme(axis.title.x = element_blank(),
-            axis.title.y = element_blank(),
-            axis.text.y = element_blank(),
-            plot.margin = margin(10, 10, 0, 10))
-    
-    body <- body +
-      theme_ipsum(base_family = "Roboto Condensed") +
-      theme(legend.position = "none",
-            axis.title.x = element_text(size = 12),
-            axis.title.y = element_blank(),
-            axis.text.y = element_blank(),
-            axis.text.x = element_text(angle = 45, hjust = 1),
-            plot.margin = margin(0, 10, 30, 10))
-    
-    right <- right +
-      theme_ipsum(base_family = "Roboto Condensed") +
-      scale_x_continuous(breaks = seq(marginal_obs$Var2), 
-                         labels = marginal_obs$n_obs,
-                         limits = c(0, nrow(marginal_obs)) + 0.5) +    
-      scale_y_continuous(breaks = breaks, 
-                         labels = breaks_label,
-                         limits = range(c(0, breaks))) +    
-      theme(axis.title.y = element_blank(),
-            axis.title.x = element_text(color = "transparent"),
-            axis.text.x = element_text(color = "transparent"),
-            plot.margin = margin(0, 10, 30, 0))
-    
-    if (is.null(base_family)) {
-      base_family <- "Roboto Condensed" 
-    }
-    
-    main <- grid::textGrob(main, gp = grid::gpar(fontfamily = base_family, 
-                                                 fontsize = 18, font = 2),
-                           x = unit(0.075, "npc"), just = "left")
-    
-  } else {
-    body <- body +
-      theme_grey(base_family = base_family) +
-      theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1,
-                                       family = "mono"),
-            axis.title.y = element_blank(), axis.text.y = element_blank(),
-            axis.ticks.y = element_blank(),
-            legend.position = "none")
-    
-    top <- top +
-      scale_y_continuous(position = "right") + 
-      scale_x_continuous(breaks = seq(marginal_var$Var1), 
-                         labels = marginal_var$n_var,
-                         limits = c(0, length(na_variable)) + 0.5) +
-      theme_grey(base_family = base_family) +
-      theme(axis.ticks.x = element_blank(), axis.title.x = element_blank(),
-            axis.title.y = element_blank(), axis.text.y = element_blank(),
-            axis.ticks.y = element_blank())
-    
-    right <- right +
-      scale_x_continuous(breaks = seq(marginal_obs$Var2), 
-                         labels = marginal_obs$n_obs,
-                         limits = c(0, nrow(marginal_obs)) + 0.5) +    
-      scale_y_continuous(breaks = breaks, 
-                         labels = breaks_label,
-                         limits = range(c(0, breaks))) +
-      theme_grey(base_family = base_family) +
-      theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1, 
-                                       family = "mono", color = "transparent"),
-            axis.ticks.x = element_blank(),
-            axis.ticks.y = element_blank(), 
-            axis.title.y = element_blank(),
-            legend.position = "none",
-            axis.title.x = element_text(color = "transparent"))
-  }
+  # Display the plot
+  p
   
-  suppressWarnings(gridExtra::grid.arrange(top, blank, body, right,
-                                           ncol = 2, nrow = 2, widths = c(9, 2), heights = c(1, 5),
-                                           top = main))
-} 
+} # end na_intercept
 
 # for replace reshape2::melt()
 #' @importFrom purrr map_dbl
