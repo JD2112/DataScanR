@@ -17,6 +17,7 @@ library(tidyr)
 SIDEBAR_WIDTH_CLEAN_DATA = 200
 SHAPIRO_THRESHOLD = 2000 # max rows to use shapiro for normality
 MAX_FOR_PREVIEW_PLOT = 6
+MESSAGE_COLOR = " #488fda"
 #############################
 # sidebars for cleaning data
 sidebar_data <- layout_sidebar(
@@ -270,13 +271,12 @@ server <- function(input, output,session) {
   original_data <- reactiveVal(NULL)
   currently_selected_columns_data <- reactiveVal(c())
   removed_columns_data <- reactiveVal(c())
-  # currently_selected_columns_plot <- reactiveVal(c())
   current_plot <- reactiveVal("empty")
   normality_results <- reactiveVal(NULL)
   normality_df <- reactiveVal(NULL)
   display_data_normality <- reactiveVal(NULL)
-  #Debounce the slider input to react only when the user stops sliding
-  # debounced_missing_pct <- debounce(reactive(input$missing_pct), 2000)  # 500 ms delay
+  missing_data_exists <- reactiveVal(TRUE)
+  error_displayed <- reactiveVal(FALSE)
   
   # Reactive expression to read the uploaded file
   data <- reactive({
@@ -405,6 +405,9 @@ server <- function(input, output,session) {
     }
     # apply new threshold
     new_data <- remove_missing_data_columns_by_threshold(new_data,c(input$missing_pct[1],input$missing_pct[2]))
+    # assume there is a chance of missing data
+    missing_data_exists <- TRUE
+    missing_data_exists(missing_data_exists)
     display_data(new_data)
     modified_data(new_data)
     # update the column selector when the data is loaded
@@ -453,32 +456,96 @@ server <- function(input, output,session) {
   output$plot_data_cleaning <- renderPlotly({
     req(modified_data())  # Ensure modified data is available
     current_plot(input$plot_missing)
+    error_displayed <- error_displayed() # if the error was already displayed in this round
     # Check which plot type is selected and render accordingly
-    if (current_plot() == "pareto") {
-      tryCatch({
-        plot_na_pareto_modified(modified_data())  # Attempt to plot
-      }, error = function(e) {
-        # Handle error
-        showModal(modalDialog(
-          # Add the icon before the title
-          title = HTML(paste0(bsicons::bs_icon("exclamation", fill = "#4597ee ", size = 50), " Message")),
-          footer = modalButton("OK"),
-          HTML(paste0("No missing data to show! ",bsicons::bs_icon("emoji-tear",fill = "#4597ee ")))
-        ))
-      })# end try/catch
-    } else if (current_plot() == "intersect") {
-      tryCatch({
-        plot_na_intersect_modified(modified_data())  # Attempt to plot
-      }, error = function(e) {
-        # Handle error
-        showModal(modalDialog(
-          # Add the icon before the title
-          title = HTML(paste0(bsicons::bs_icon("exclamation", fill = "#4597ee ", size = 50), " Message")),
-          footer = modalButton("OK"),
-          HTML(paste0("No missing data to show! ",bsicons::bs_icon("emoji-tear",fill = "#4597ee ")))
-        ))
-      })# end try/catch
-    } 
+    if(missing_data_exists()) {
+      if (current_plot() == "pareto") {
+        tryCatch({
+          error_displayed <- FALSE
+          error_displayed(error_displayed)
+          plot_na_pareto_modified(modified_data())  # Attempt to plot
+        }, error = function(e) {
+          missing_data_exists <- FALSE
+          missing_data_exists(missing_data_exists)
+          error_displayed <- TRUE
+          error_displayed(error_displayed)
+          # Handle error
+          showModal(modalDialog(
+            # Title and icon together in the same div, so we can control their position
+            div(
+              style = "position: relative;",  # Relative positioning to align the title and icon
+              # Title on the left
+              span("Info", style = "font-size: 28px;"),
+              # Icon on the top-right corner
+              span(
+                bsicons::bs_icon("exclamation-triangle", fill = MESSAGE_COLOR, size = 40), 
+                style = "position: absolute; top: 0; right: 0;"
+              )
+            ),
+            # Add a line break using <br>
+            HTML("<br>"),
+            # Add a line break using <br>
+            HTML("<br>"),
+            footer = modalButton("OK"),
+            HTML(paste0("\n\nNo missing data to show ",bsicons::bs_icon("emoji-tear",fill = MESSAGE_COLOR,size=20)))
+          ))
+        })# end try/catch
+      } else if (current_plot() == "intersect") {
+        tryCatch({
+          error_displayed <- FALSE
+          error_displayed(error_displayed)
+          plot_na_intersect_modified(modified_data())  # Attempt to plot
+        }, error = function(e) {
+          missing_data_exists <- FALSE
+          missing_data_exists(missing_data_exists)
+          error_displayed <- TRUE
+          error_displayed(error_displayed)
+          # Handle error
+          showModal(modalDialog(
+            # Title and icon together in the same div, so we can control their position
+            div(
+              style = "position: relative;",  # Relative positioning to align the title and icon
+              # Title on the left
+              span("Info", style = "font-size: 28px;"),
+              # Icon on the top-right corner
+              span(
+                bsicons::bs_icon("exclamation-triangle", fill = MESSAGE_COLOR, size = 40), 
+                style = "position: absolute; top: 0; right: 0;"
+              )
+            ),
+            # Add a line break using <br>
+            HTML("<br>"),
+            # Add a line break using <br>
+            HTML("<br>"),
+            footer = modalButton("OK"),
+            HTML(paste0("\n\nNo missing data to show ",bsicons::bs_icon("emoji-tear",fill = MESSAGE_COLOR,size=20)))
+          ))
+        })# end try/catch
+      } # END IF INTERSECT
+    }# end if missing data exists
+    else if (!error_displayed() & !missing_data_exists()){
+      print(error_displayed)
+      print(missing_data_exists())
+      showModal(modalDialog(
+        # Title and icon together in the same div, so we can control their position
+        div(
+          style = "position: relative;",  # Relative positioning to align the title and icon
+          # Title on the left
+          span("Info", style = "font-size: 28px;"),
+          # Icon on the top-right corner
+          span(
+            bsicons::bs_icon("exclamation-triangle", fill = MESSAGE_COLOR, size = 40), 
+            style = "position: absolute; top: 0; right: 0;"
+          )
+        ),
+        # Add a line break using <br>
+        HTML("<br>"),
+        # Add a line break using <br>
+        HTML("<br>"),
+        footer = modalButton("OK"),
+        HTML(paste0("\n\nNo missing data to show ",bsicons::bs_icon("emoji-tear",fill = MESSAGE_COLOR,size=20)))
+      ))
+    }
     # else if (current_plot() == "preview") {
     #   req(input$plot_type)  # Ensure plot type is selected
     #   req(currently_selected_columns_plot())  # Ensure columns are selected
@@ -492,13 +559,45 @@ server <- function(input, output,session) {
     req(modified_data())
     req(input$plot_missing)  # Ensure plot type is selected
     current_plot(input$plot_missing)  # Set the current plot type to 'missing'
+    missing_data_exists <- missing_data_exists()
     if (current_plot() == "pareto") {
-      new_data <- modified_data() %>% 
-        plot_na_pareto(plot = FALSE)
-      display_data(new_data)
-      plot_na_pareto_modified(modified_data())
+      tryCatch({
+        new_data <- modified_data() %>% 
+          plot_na_pareto(plot = FALSE)
+        display_data(new_data)
+        missing_data_exists <- TRUE
+        missing_data_exists(missing_data_exists)
+        error_displayed <- FALSE
+        error_displayed(error_displayed)
+      }, error = function(e) {
+        missing_data_exists <- FALSE
+        missing_data_exists(missing_data_exists)
+        error_displayed <- FALSE
+        error_displayed(error_displayed)
+      })# end try/catch
+      if (missing_data_exists()) {
+        error_displayed <- FALSE
+        error_displayed(error_displayed)
+        plot_na_pareto_modified(modified_data())
+      }
     } else if (current_plot() == "intersect") {
-      plot_na_intersect_modified(modified_data())
+      tryCatch({
+        plot_na_intersect_modified(modified_data())  # Attempt to plot
+        missing_data_exists <- TRUE
+        missing_data_exists(missing_data_exists)
+      }, error = function(e) {
+        missing_data_exists <- FALSE
+        missing_data_exists(missing_data_exists)
+        error_displayed <- TRUE
+        error_displayed(error_displayed)
+        # Handle error
+        showModal(modalDialog(
+          # Add the icon before the title
+          title = HTML(paste0(bsicons::bs_icon("exclamation", fill = MESSAGE_COLOR, size = 50), "Info")),
+          footer = modalButton("OK"),
+          HTML(paste0("No missing data to show!   ",bsicons::bs_icon("emoji-tear",fill = MESSAGE_COLOR,size=20)))
+        ))
+      })# end try/catch
     } 
   }) 
   ########################################################
@@ -568,12 +667,13 @@ server <- function(input, output,session) {
     req(normality_df())
     display_data_normality(normality_df())
   })
+  
   observeEvent(input$normality_table_rows_selected, {
     req(input$normality_table_rows_selected)
     req(display_data_normality())
     selected <- input$normality_table_rows_selected  # Get the index of selected rows
     if (length((selected))> 0) {
-      print(display_data_normality()[selected, ]) # Show the selected rowsinput$tableId_cells_selected)
+      print(display_data_normality()[selected, ]) # Show the selected rowsinput$tableId_rows_selected)
     }
   })
   # Render the interactive DataTable based on the selected columns
