@@ -42,6 +42,7 @@ sidebar_data <- layout_sidebar(
     actionButton("summarizeSelectedButton", "Summarize Selected Data"), # button to show summary stats
     actionButton("restoreOriginalButton", "Restore Original Data")  # restore button
   ), # end sidebar
+  htmlOutput("data_table_title"),  # Output placeholder for the title
   card_body(DT::dataTableOutput("data_table") ) # Output placeholder for the interactive table
 ) # end layout_sidebar
 # sidebar_plots <- layout_sidebar(
@@ -298,11 +299,13 @@ server <- function(input, output,session) {
     modified_data(data())  # set modified_data to the read CSV data
     original_data(data()) # remember original_data
     display_data(data())
-    
+    # update table title
+    output$data_table_title <- renderUI({
+      h5("Original Data")
+    })
     # Dynamically update the column selector when the data is loaded
     column_names <- colnames(data())  # Get column names from the loaded data
     updateSelectInput(session, "columns_data", choices = column_names, selected = c())  # Populate dropdown
-    # updateSelectInput(session, "columns_plot", choices = column_names, selected = c())  # Populate dropdown
   }) # end observe data
   
   # Show always current available columns from modified data
@@ -323,6 +326,9 @@ server <- function(input, output,session) {
     req(modified_data())  # Ensure data is available
     new_data <- diagnose(modified_data())  # Remove selected columns
       display_data(new_data)
+    output$data_table_title <- renderUI({
+        h5("Diagnostics")
+      })
   }) # end diagnostic
   
   # remove selected columns
@@ -337,6 +343,9 @@ server <- function(input, output,session) {
       modified_data(new_data)  # Update the reactive value
       display_data(new_data)
     }
+    output$data_table_title <- renderUI({
+      h5("Updated Data")
+    })
   }) # end remove selected columns
   
   # Show only selected columns
@@ -364,6 +373,9 @@ server <- function(input, output,session) {
       stats_preview <- describe(new_data[, ..selected_columns])
       display_data(stats_preview) # set display_data
     }
+    output$data_table_title <- renderUI({
+      h5("Selected Summary")
+    })
   }) # end summarize selected data only
   
   # Summarize all data
@@ -376,6 +388,9 @@ server <- function(input, output,session) {
   observeEvent(input$showDataButton, {
     req(modified_data())  # Ensure data is available
     display_data(modified_data())
+    output$data_table_title <- renderUI({
+      h5("Summary")
+    })
   }) # end show all current data
   
   # reset to original
@@ -390,6 +405,9 @@ server <- function(input, output,session) {
     removed_columns_data(c()) # reset previously removed columns after data is reset
     # reset the threshold slider
     updateSliderInput(session, "missing_pct", value = c(0,100))
+    output$data_table_title <- renderUI({
+      h5("Original Data")
+    })
   }) # end reset to original
   
   observeEvent(input$applyMissingThresholdButton, {
@@ -413,6 +431,9 @@ server <- function(input, output,session) {
     # update the column selector when the data is loaded
     column_names <- colnames(new_data)  # Get column names from the loaded data
     updateSelectInput(session, "columns_data", choices = column_names, selected = c())  # Populate dropdown
+    output$data_table_title <- renderUI({
+      h5("Filtered Data")
+    })
   })
   
   # Render the interactive DataTable based on the selected columns
@@ -426,32 +447,24 @@ server <- function(input, output,session) {
       options = list(
         pageLength = 100,   # Show n rows by default
         autoWidth = TRUE,  # Auto-adjust column width
-        dom = 'Bfrtip',    # Search box, pagination, etc.
-        buttons = c( 'csv', 'excel', 'pdf')  # Add export buttons
+        dom = 'frtiBp',    # Search box, pagination, etc.
+        buttons = list(
+          list(extend = 'csv', 
+               title = 'Data Export', 
+               exportOptions = list(modifier = list(page = 'all'))),  # Export all data
+          list(extend = 'excel', 
+               title = 'Data Export', 
+               exportOptions = list(modifier = list(page = 'all'))),  # Export all data
+          list(extend = 'pdf', 
+               title = 'Data Export', 
+               exportOptions = list(modifier = list(page = 'all')))  # Export all data
+        )
       ),
       extensions = 'Buttons'  # Enable export options
     )
   }) # end table
   ####################################################
   # Plot
-  # # Render the plot after the button is clicked
-  # observeEvent(input$plotMissingButton, {
-  #   req(modified_data())  # Ensure modified data is available
-  #   req(input$plot_missing)  # Ensure plot type is selected
-  #   new_data <- modified_data() %>% 
-  #     plot_na_pareto(plot = FALSE)
-  #   display_data(new_data)
-  #   current_plot(input$plot_missing)  # Set the current plot type to 'missing'
-  # })
-  # # Render the plot after the button is clicked
-  # observeEvent(input$plotPreviewButton, {
-  #   req(modified_data())  # Ensure modified data is available
-  #   req(input$columns_plot)
-  #   selected_columns <- input$columns_plot  # Get selected columns from dropdown
-  #   # Store selected columns in the reactiveVal
-  #   currently_selected_columns_plot(selected_columns)
-  #   current_plot("preview")  # Set the current plot type to 'preview'
-  # })
   # Render the plot
   output$plot_data_cleaning <- renderPlotly({
     req(modified_data())  # Ensure modified data is available
