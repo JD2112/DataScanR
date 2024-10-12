@@ -29,8 +29,8 @@ if (!dir.exists(OUTPUT_FOLDER)) {
 # READ DATA #
 #############
 # read excel file with unit information
-data_file <- "downsampled_data.csv" # 1500 samples from original non normal file
-# data_file <- "downsampled_large_data.csv" # 3000 samples from original non normal file
+# data_file <- "downsampled_data.csv" # 1500 samples from original non normal file
+data_file <- "downsampled_large_data.csv" # 3000 samples from original non normal file
 # data_file <- "downsampled_data_normal.csv" # 1500 samples from generated normal file
 # data_file <- "downsampled_data_normal_large.csv" # 3000 samples from generated normal file
 

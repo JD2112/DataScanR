@@ -135,9 +135,13 @@ cards_normality <- list(
     ),  # end inputs div
     # Output for the table below the inputs
     div(
-      card_body(DT::dataTableOutput("normality_table") ),
-      class = "table-normality"  # Add class for margin
-    )  # end plot div
+      style = "flex-grow: 1; display: flex; flex-direction: column;",  # Allow the div to grow and fill remaining space
+      card_body(
+        DT::dataTableOutput("normality_table"),
+        style = "flex-grow: 1;"  # Make the table body expand
+      ),
+      class = "table-normality"
+    )  # end table div
   ), # end card Data
   # card(
   #   full_screen = TRUE,
@@ -160,28 +164,22 @@ cards_normality <- list(
         )
       )
     ),  # end inputs div
+    # Add text between the selectInput and plot
+    div(
+      p("*In the table on the left, select the rows with the variables to show."), 
+      style = "margin-top: 0px; font-size: 12px;"  # Adjust styling as needed
+    ),
     # Output for the plot below the inputs
     div(
-      plotOutput("plot_normality"),  # Specify height for the plot
-      class = "plot-normality"  # Add class for margin
+      style = "flex-grow: 1; display: flex; flex-direction: column;",  # Allow the div to grow and fill remaining space
+      card_body(
+        plotOutput("plot_normality"),
+        style = "flex-grow: 1;"  # Make the table body expand
+      ),
+      class = "plot-normality"
     )  # end plot div
   )# end card
 ) # end cards
-#############################
-# sidebar for normality part
-sidebar_normality <- layout_sidebar(
-  title="Normality",
-  sidebar = sidebar(
-    selectInput("columns_plot_normality", "Select Columns:",  # Predefine an empty selectInput for columns
-                choices = c(),  # Empty choices initially
-                multiple = TRUE
-    ),
-    actionButton("previewNormalityButton", "Preview Normality Results for Selected Columns"),
-    actionButton("showAllNormalityButton", "Show Complete Normality Results")
-  ), # end sidebar
-  layout_columns(cards_normality[[1]],
-                 cards_normality[[2]])
-) # end layout_sidebar
 #######################################################
 # UI part
 ui <- page_navbar(
@@ -294,7 +292,9 @@ ui <- page_navbar(
             # )
   ), # end nav_panel
   nav_panel("Normality",
-            sidebar_normality
+            # sidebar_normality
+            layout_columns(cards_normality[[1]],
+                           cards_normality[[2]])
   ) # end nav_panel
 )# end page_navbar
 ###################################################################################
@@ -313,6 +313,7 @@ server <- function(input, output,session) {
   missing_data_exists <- reactiveVal(TRUE)
   error_displayed <- reactiveVal(FALSE)
   current_data_normality <- reactiveVal(NULL)
+  columns_plot_normality <- reactiveVal(c())
   
   # Reactive expression to read the uploaded file
   data <- reactive({
@@ -623,10 +624,23 @@ server <- function(input, output,session) {
         error_displayed(error_displayed)
         # Handle error
         showModal(modalDialog(
-          # Add the icon before the title
-          title = HTML(paste0(bsicons::bs_icon("exclamation", fill = MESSAGE_COLOR, size = 50), "Info")),
+          # Title and icon together in the same div, so we can control their position
+          div(
+            style = "position: relative;",  # Relative positioning to align the title and icon
+            # Title on the left
+            span("Info", style = "font-size: 28px;"),
+            # Icon on the top-right corner
+            span(
+              bsicons::bs_icon("exclamation-triangle", fill = MESSAGE_COLOR, size = 40), 
+              style = "position: absolute; top: 0; right: 0;"
+            )
+          ),
+          # Add a line break using <br>
+          HTML("<br>"),
+          # Add a line break using <br>
+          HTML("<br>"),
           footer = modalButton("OK"),
-          HTML(paste0("No missing data to show!   ",bsicons::bs_icon("emoji-tear",fill = MESSAGE_COLOR,size=20)))
+          HTML(paste0("No missing data to show!    ",bsicons::bs_icon("emoji-tear",fill = MESSAGE_COLOR,size=20)))
         ))
       })# end try/catch
     } 
@@ -649,24 +663,70 @@ server <- function(input, output,session) {
                              label = "Select Normality Method",
                              choices = c("Shapiro-Wilk","Kolmogorov-Smirnov"),
                              selected = "Shapiro-Wilk")
-          # function will perform shapiro test
-          # first element of the list is a vector with non_normal_columnnames, second with normal_columnnames
-          my_normality_results <- check_normality_shapiro(current_data)
-          my_normality_df <- get_normality_shapiro(current_data)
-          normality_results(my_normality_results)
-          normality_df(my_normality_df)
+          tryCatch({
+            # function will perform shapiro test
+            # first element of the list is a vector with non_normal_columnnames, second with normal_columnnames
+            my_normality_results <- check_normality_shapiro(current_data)
+            my_normality_df <- get_normality_shapiro(current_data)
+            normality_results(my_normality_results)
+            normality_df(my_normality_df)
+          }, error = function(e) {
+            # Handle error
+            showModal(modalDialog(
+              # Title and icon together in the same div, so we can control their position
+              div(
+                style = "position: relative;",  # Relative positioning to align the title and icon
+                # Title on the left
+                span("Info", style = "font-size: 28px;"),
+                # Icon on the top-right corner
+                span(
+                  bsicons::bs_icon("exclamation-triangle", fill = MESSAGE_COLOR, size = 40), 
+                  style = "position: absolute; top: 0; right: 0;"
+                )
+              ),
+              # Add a line break using <br>
+              HTML("<br>"),
+              # Add a line break using <br>
+              HTML("<br>"),
+              footer = modalButton("OK"),
+              HTML(paste0("Problem calculating normality!      ",bsicons::bs_icon("emoji-tear",fill = MESSAGE_COLOR,size=20)))
+            ))
+          }) # end trycatch
         } else { # for larger data sets use kolmogorov-Smirnov test to determine normality
           # Update the dropdown 
           updateSelectInput(session,"normality_type",
                             label = "Select Normality Method",
                             choices = c("Shapiro-Wilk","Kolmogorov-Smirnov"),
                             selected = "Kolmogorov-Smirnov")
-          # function will apply ks test for each numeric column and return a list
-          # first element of the list is a vector with non_normal_columnnames, second with normal_columnnames
-          my_normality_results <- check_normality_ks(current_data)
-          my_normality_df <- get_normality_ks(current_data)
-          normality_results(my_normality_results)
-          normality_df(my_normality_df)
+          tryCatch({
+            # function will apply ks test for each numeric column and return a list
+            # first element of the list is a vector with non_normal_columnnames, second with normal_columnnames
+            my_normality_results <- check_normality_ks(current_data)
+            my_normality_df <- get_normality_ks(current_data)
+            normality_results(my_normality_results)
+            normality_df(my_normality_df)
+          }, error = function(e) {
+            # Handle error
+            showModal(modalDialog(
+              # Title and icon together in the same div, so we can control their position
+              div(
+                style = "position: relative;",  # Relative positioning to align the title and icon
+                # Title on the left
+                span("Info", style = "font-size: 28px;"),
+                # Icon on the top-right corner
+                span(
+                  bsicons::bs_icon("exclamation-triangle", fill = MESSAGE_COLOR, size = 40), 
+                  style = "position: absolute; top: 0; right: 0;"
+                )
+              ),
+              # Add a line break using <br>
+              HTML("<br>"),
+              # Add a line break using <br>
+              HTML("<br>"),
+              footer = modalButton("OK"),
+              HTML(paste0("Problem calculating normality!      ",bsicons::bs_icon("emoji-tear",fill = MESSAGE_COLOR,size=20)))
+            ))
+          }) # end trycatch
         } # end kolmogorov_smirnov test
         current_data_normality(current_data)
       } # end if there was modified data in the app
@@ -689,33 +749,86 @@ server <- function(input, output,session) {
     current_data <- current_data_normality()
     if (! is.null(current_data) && nrow(current_data) > 0) {
         if (input$normality_type == "Shapiro-Wilk") {
-          # function will perform shapiro test
-          # first element of the list is a vector with non_normal_columnnames, second with normal_columnnames
-          my_normality_results <- check_normality_shapiro(current_data)
-          my_normality_df <- get_normality_shapiro(current_data)
-          normality_results(my_normality_results)
-          normality_df(my_normality_df)
+          tryCatch({
+            # function will perform shapiro test
+            # first element of the list is a vector with non_normal_columnnames, second with normal_columnnames
+            my_normality_results <- check_normality_shapiro(current_data)
+            my_normality_df <- get_normality_shapiro(current_data)
+            normality_results(my_normality_results)
+            normality_df(my_normality_df)
+          }, error = function(e) {
+            # Handle error
+            showModal(modalDialog(
+              # Title and icon together in the same div, so we can control their position
+              div(
+                style = "position: relative;",  # Relative positioning to align the title and icon
+                # Title on the left
+                span("Info", style = "font-size: 28px;"),
+                # Icon on the top-right corner
+                span(
+                  bsicons::bs_icon("exclamation-triangle", fill = MESSAGE_COLOR, size = 40), 
+                  style = "position: absolute; top: 0; right: 0;"
+                )
+              ),
+              # Add a line break using <br>
+              HTML("<br>"),
+              # Add a line break using <br>
+              HTML("<br>"),
+              footer = modalButton("OK"),
+              HTML(paste0("Problem calculating normality!      ",bsicons::bs_icon("emoji-tear",fill = MESSAGE_COLOR,size=20)))
+            ))
+          }) # end trycatch
         }
         else if (input$normality_type == "Kolmogorov-Smirnov") {
+          tryCatch({
           # function will apply ks test for each numeric column and return a list
           # first element of the list is a vector with non_normal_columnnames, second with normal_columnnames
           my_normality_results <- check_normality_ks(current_data)
           my_normality_df <- get_normality_ks(current_data)
           normality_results(my_normality_results)
           normality_df(my_normality_df)
+          }, error = function(e) {
+            # Handle error
+            showModal(modalDialog(
+              # Title and icon together in the same div, so we can control their position
+              div(
+                style = "position: relative;",  # Relative positioning to align the title and icon
+                # Title on the left
+                span("Info", style = "font-size: 28px;"),
+                # Icon on the top-right corner
+                span(
+                  bsicons::bs_icon("exclamation-triangle", fill = MESSAGE_COLOR, size = 40), 
+                  style = "position: absolute; top: 0; right: 0;"
+                )
+              ),
+              # Add a line break using <br>
+              HTML("<br>"),
+              # Add a line break using <br>
+              HTML("<br>"),
+              footer = modalButton("OK"),
+              HTML(paste0("Problem calculating normality!      ",bsicons::bs_icon("emoji-tear",fill = MESSAGE_COLOR,size=20)))
+            ))
+          }) # end trycatch
         }
       }# end if there is data
   }) # end observe data
   
   
   observeEvent(input$normality_table_rows_selected, {
-    req(input$normality_table_rows_selected)
+    # req(input$normality_table_rows_selected)
     req(display_data_normality())
     selected <- input$normality_table_rows_selected  # Get the index of selected rows
     if (length((selected))> 0) {
-      print(display_data_normality()[selected, ]) # Show the selected rowsinput$tableId_rows_selected)
+      currently_selected_vars_rows <- display_data_normality()[selected, ]
+      currently_selected_cols_normality <- display_data_normality()[selected, ]['vars'] %>% pull()
+      print(currently_selected_cols_normality) # Show the selected rowsinput$tableId_rows_selected)
+      columns_plot_normality(currently_selected_cols_normality)
     }
-  })
+    else{
+      print("nothing slected")
+      columns_plot_normality(c())
+    }
+  }, ignoreNULL = FALSE)
   # Render the interactive DataTable based on the selected columns
   output$normality_table <- DT::renderDataTable({
     req(display_data_normality())  # Ensure data is available
@@ -734,45 +847,67 @@ server <- function(input, output,session) {
       extensions = 'Buttons'  # Enable export options
     )
   }) # end table
-  observeEvent(input$previewNormalityButton, {
-    req(modified_data())  # Ensure modified data is available
-    req(normality_df())
-    req(input$columns_plot_normality)
-    # show only normality for selected
-    df <- normality_df() %>%
-      filter(vars %in% input$columns_plot_normality)
-    display_data_normality(df)
-  })
-  
-  observeEvent(input$showAllNormalityButton, {
-    req(modified_data())  # Ensure modified data is available
-    req(normality_df())
-    display_data_normality(normality_df())
-  })
   #########################################################################
   # PLOT
   # Render the plot
   output$plot_normality <- renderPlot({
     req(modified_data())  # Ensure modified data is available
-    req(input$columns_plot_normality)
+    req(columns_plot_normality())
     req(input$plot_type)  # Ensure plot type is selected
-    if (length(input$columns_plot_normality) <= MAX_FOR_PREVIEW_PLOT && input$plot_type != "normality_diagnosis") {
+    currently_selected_coluns_normality <- columns_plot_normality()
+    if (length(currently_selected_coluns_normality) <= MAX_FOR_PREVIEW_PLOT && input$plot_type != "normality_diagnosis") {
       # Call the plotting function
-      plot <- preview_basic_distribution(modified_data(), type_of_plot = input$plot_type, input$columns_plot_normality)
+      plot <- preview_basic_distribution(modified_data(), type_of_plot = input$plot_type, currently_selected_coluns_normality)
       return(plot)  # Return the plot to be rendered
-    } else if (length(input$columns_plot_normality) == 1 && input$plot_type == "normality_diagnosis") {
-      plot <- preview_basic_distribution(modified_data(), type_of_plot = input$plot_type, input$columns_plot_normality)
+    } else if (length(currently_selected_coluns_normality) == 1 && input$plot_type == "normality_diagnosis") {
+      plot <- preview_basic_distribution(modified_data(), type_of_plot = input$plot_type, currently_selected_coluns_normality)
       return(plot)  # Return the plot to be rendered
-    } else if (length(input$columns_plot_normality) > 1 && input$plot_type == "normality_diagnosis") {
-      # Create an empty plot
-      plot.new()  # Start a new plot
-      # Add text to the plot
-      text(0.5, 0.5, "For normality_diagnosis plot,\nselect only one variable at a time.", cex = 1.5, col = "red", adj = c(0.5, 0.5))
+    } else if (length(currently_selected_coluns_normality) > 1 && input$plot_type == "normality_diagnosis") {
+      # Handle error
+      showModal(modalDialog(
+        # Title and icon together in the same div, so we can control their position
+        div(
+          style = "position: relative;",  # Relative positioning to align the title and icon
+          # Title on the left
+          span("Info", style = "font-size: 28px;"),
+          # Icon on the top-right corner
+          span(
+            bsicons::bs_icon("exclamation-triangle", fill = MESSAGE_COLOR, size = 40), 
+            style = "position: absolute; top: 0; right: 0;"
+          )
+        ),
+        # Add a line break using <br>
+        HTML("<br>"),
+        # Add a line break using <br>
+        HTML("<br>"),
+        footer = modalButton("OK"),
+        HTML(paste0("For normality_diagnosis plot,<br>select only one variable at a time."))
+      ))
     } else {
-      # Create an empty plot
-      plot.new()  # Start a new plot
-      # Add text to the plot
-      text(0.5, 0.5, "Select max 6 variables at a time.", cex = 1.5, col = "red", adj = c(0.5, 0.5))
+      # Handle error
+      showModal(modalDialog(
+        # Title and icon together in the same div, so we can control their position
+        div(
+          style = "position: relative;",  # Relative positioning to align the title and icon
+          # Title on the left
+          span("Info", style = "font-size: 28px;"),
+          # Icon on the top-right corner
+          span(
+            bsicons::bs_icon("exclamation-triangle", fill = MESSAGE_COLOR, size = 40), 
+            style = "position: absolute; top: 0; right: 0;"
+          )
+        ),
+        # Add a line break using <br>
+        HTML("<br>"),
+        # Add a line break using <br>
+        HTML("<br>"),
+        footer = modalButton("OK"),
+        HTML(paste0("Select max 6 variables at a time."))
+      ))
+      # # Create an empty plot
+      # plot.new()  # Start a new plot
+      # # Add text to the plot
+      # text(0.5, 0.5, "Select max 6 variables at a time.", cex = 1.5, col = "red", adj = c(0.5, 0.5))
     }
   }) # end render plot
   
