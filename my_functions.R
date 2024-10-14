@@ -10,6 +10,7 @@ library(hrbrthemes)
 library(ggdist)
 library(GGally)
 library(corrplot)
+library(pals)
 library(dlookr)
 #library(stringr)
 
@@ -609,15 +610,13 @@ calculate_corr_matrix <- function(df, my_columnnames = c(), corr_alternative, co
   row_names <- rownames(cor_matrix)[row(cor_matrix)[lower.tri(cor_matrix)]]
   col_names <- colnames(cor_matrix)[col(cor_matrix)[lower.tri(cor_matrix)]]
   
-  # Combine row and column names into pair names (e.g., "A-B")
-  combinations <- paste(row_names, col_names, sep = "-")
-  
   # Create a data frame
-  corr_df <- data.frame(corr_coef = lower_values_corr, 
+  corr_df <- data.frame(var1 = row_names,
+                   var2 = col_names,
+                   corr_coef = lower_values_corr, 
                    p = lower_values_p, 
                    lowCI = lower_values_lowCI,
-                   uppCI = lower_values_uppCI,
-                   row.names = combinations)
+                   uppCI = lower_values_uppCI)
   # Return the correlation matrix and significance matrix
   return(list(cor_coef_matrix = cor_matrix, significance_matrix = significance_matrix,correlation_df = corr_df))
 } # end calculate_corr_matrix
@@ -670,6 +669,8 @@ corr_plot_from_result <- function(corr_matrix_result, plot_type = "upper",
            tl.col="black",
            addgrid.col="grey")
 }# end corr_plot_from_corr_matrix
+
+#############################################################################################
 # from dlookr github: https://github.com/choonghyunryu/dlookr/blob/HEAD/R/missing.R
 plot_na_pareto_modified <- function (x, only_na = FALSE, relative = FALSE, main = NULL, col = "black",
                                      grade = list(Good = 0.05, OK = 0.1, NotBad = 0.2, Bad = 0.5, Remove = 1),

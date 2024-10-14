@@ -226,32 +226,7 @@ cards_correlation <- list(
   card(
     full_screen = TRUE,
     card_header("Plot"),
-    # # Main panel only with inputs and plot
-    # # Custom CSS for smaller font sizes in different components
-    # tags$head(
-    #   tags$style(HTML("
-    #               /* Set font size for selectInput */
-    #               .selectize-input, .selectize-dropdown {
-    #                 font-size: 12px !important; /* Font size for dropdowns */
-    #               }
-    #               /* Set font size for sliderInput */
-    #               .slider {
-    #                 font-size: 12px !important; /* Font size for slider */
-    #               }
-    #               /* Set font size for actionButton */
-    #               .action-button, .btn {
-    #                 font-size: 12px !important; /* Font size for buttons */
-    #               }
-    #               /* Set font size for input fields */
-    #               input[type='text'], input[type='file'] {
-    #                 font-size: 12px !important; /* Font size for text and file inputs */
-    #               }
-    #               /* Add space between inputs and plot */
-    #               .plot-output {
-    #                 margin-top: 20px; /* Adjust the value for more/less space */
-    #               }
-    #             "))
-    # ),
+    
     # Main panel only with inputs and plot
     div(
       # Create a fluid row for inputs above the plot
@@ -270,8 +245,8 @@ cards_correlation <- list(
     
     # Output for the plot below the inputs
     div(
-      plotlyOutput("plot_data_cleaning"),  # Specify height for the plot
-      class = "plot-output"  # Add class for margin
+      plotOutput("plot_correlation"),  # Specify height for the plot
+      # class = "plot-correlation"  # Add class for margin
     )  # end plot div
   )
 ) # end cards
@@ -413,6 +388,9 @@ server <- function(input, output,session) {
   error_displayed <- reactiveVal(FALSE)
   current_data_normality <- reactiveVal(NULL)
   columns_plot_normality <- reactiveVal(c())
+  correlation_table<- reactiveVal(NULL)
+  correlation_result <- reactiveVal(NULL)
+  # currently_selected_columns_correlation <- reactiveVal(c())
   
   # Reactive expression to read the uploaded file
   data <- reactive({
@@ -947,7 +925,7 @@ server <- function(input, output,session) {
     }
   }, ignoreNULL = FALSE)
   
-  # Render the interactive DataTable based on the selected columns
+  # Render the interactive DataTable 
   output$normality_table <- DT::renderDataTable({
     req(display_data_normality())  # Ensure data is available
     table_data <- display_data_normality()
@@ -1029,6 +1007,78 @@ server <- function(input, output,session) {
       # text(0.5, 0.5, "Select max 6 variables at a time.", cex = 1.5, col = "red", adj = c(0.5, 0.5))
     }
   }) # end render plot
+  ###############################################################################################################
+  # Correlation tab
+  observeEvent(input$nav_tabs, {
+    selected_tab <- input$nav_tabs  # Access the currently selected tab
+    if (selected_tab == "Correlation") {
+      # Perform action for Normality tab
+      print("Correlation tab selected!")
+      current_data <- modified_data()
+      if (! is.null(current_data) && nrow(current_data) > 0) {
+        # Dynamically update the column selector when the data is loaded
+        column_names <- colnames(modified_data())  # Get column names from the loaded data
+        updateSelectInput(session, "columns_correlation", choices = column_names, selected = c())
+      }
+    }
+    }) # end observe tab
+
+  observeEvent(input$calculateCorButton, {
+    req(modified_data())
+    selected_cols <- input$columns_correlation
+    selected_method <- input$correlation_method
+    selected_alternative <- input$correlation_alternative
+    selected_conf_level <- input$conf_level
+    if (length(selected_cols) > 0) {
+      corr_matrix_result <- calculate_corr_matrix(modified_data(),
+                                                  my_columnnames = selected_cols,
+                                                  selected_alternative,
+                                                  selected_method,
+                                                  confidence_level = selected_conf_level)
+      corr_df <- corr_matrix_result$correlation_df
+      correlation_table(corr_df)
+      correlation_result(corr_matrix_result)
+      column_names <- colnames(modified_data())
+      updateSelectInput(session, "columns_correlation", choices = column_names, selected = selected_cols)
+    }
+  })
+  
+  # Render the DataTable 
+  output$correlation_table <- DT::renderDataTable({
+    req(correlation_table())  # Ensure data is available
+    table_data <- correlation_table()
+    
+    # Render the table using DT for interactivity
+    DT::datatable(
+      table_data,
+      options = list(
+        pageLength = 100,   # Show n rows by default
+        autoWidth = TRUE,  # Auto-adjust column width
+        dom = 'frtiBp',    # Search box, pagination, etc.
+        buttons = c( 'csv', 'excel', 'pdf')  # Add export buttons
+      ),
+      # rownames = FALSE,
+      # selection = 'multiple',
+      extensions = 'Buttons'  # Enable export options
+    )
+  }) # end table
+  ####################################################
+  # Plot
+  # Render the plot
+  output$plot_correlation <- renderPlot({
+    req(modified_data())  # Ensure modified data is available
+    req(correlation_result())
+    type_of_plot <- input$plot_type_correlation
+    cor_df <- correlation_result()$correlation_df
+    results <- correlation_result()
+    if (nrow(cor_df)>0) {
+      corr_plot_from_result(results,
+                            plot_type=type_of_plot,
+                            sig_level_crossed = 0.01)
+    }
+    
+  })
+  
   
 } # end server
 

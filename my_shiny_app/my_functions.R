@@ -8,7 +8,8 @@ library(plotly)
 library(patchwork)
 library(hrbrthemes)
 library(ggdist)
-library(GGally)
+library(corrplot)
+library(pals)
 library(dlookr)
 #library(stringr)
 
@@ -426,120 +427,232 @@ get_normality_ks <- function(df) {
   return(ks_results_df_sorted)
 } # end get_normality_ks
 
-######################################################################################
-# function to calculate correlation of up till 10 variables, group_by till 2 variables
-# arguments: df and vector with column names and normality_results
-# normality_results is a list with 2 vectors: normal_columnnames, non_normal_columnnames
-calculate_cor_short <- function(df, my_columnnames = c(), normality_results) {
-  
-  # ensure the column names exist in the data 
-  columns_to_select <- my_columnnames[my_columnnames %in% colnames(df)]
-  
-  if (length(columns_to_select) == 0)  {
-    print("No variables found in the dataset")
-    return(data.frame())
-  }
-  # make sure there are not more than 10 variables
-  if (length(columns_to_select) > MAX_FOR_CORR) {
-    print("Select less variables")
-    return(data.frame())
-  }
-  normal_distribution_colnames <- normality_results$normal_columnnames
-  non_normal_distribution_colnames <- normality_results$non_normal_columnnames
-  # support only if all columns have same type of distribution
-  all_normal <- all(columns_to_select %in% normal_distribution_colnames)
-  all_non_normal <- all(columns_to_select %in% non_normal_distribution_colnames)
-  if (all_non_normal) {
-    df %>% 
-      select(all_of(columns_to_select)) %>% # select only given column names
-      correlate(method = "spearman") -> correlation_df
-  } else if (all_normal) {
-    df %>% 
-      select(all_of(columns_to_select)) %>% # select only given column names
-      correlate(method = "pearson") -> correlation_df
-  } else {
-    correlation_df <- data.frame()
-  }
-  return(correlation_df)
-  
-} # end calculate_cor
-
-##########################################################################
+##############################################################
 # function to create a complete correlation matrix
-# if variables have normal distribution, pearson method will be used
-# otherwise spearman method will be used
-calculate_corr_matrix_mixed <- function(df, normality_results) {
-  
-  # extract column names which are which
-  normal_cols <- normality_results$normal_columnnames
-  non_normal_cols <- normality_results$non_normal_columnnames
-  
+# lets user decide which method to apply
+calculate_corr_matrix <- function(df, my_columnnames = c(), corr_alternative, corr_method, confidence_level = 0.95) {
+  # select those columns
+  test_df <- df %>% 
+    select(all_of((my_columnnames)))
+  test_df <- as.data.frame(test_df)
   # Filter the data to include only numeric columns
-  df_numeric <- df[sapply(df, is.numeric)]
+  df_numeric <- test_df[sapply(test_df, is.numeric)]
   
   # create an empty matrix to store correlations
   n <- ncol(df_numeric)
   cor_matrix <- matrix(NA, nrow = n, ncol = n, dimnames = list(names(df_numeric), names(df_numeric)))
-  
-  # Function to determine which correlation method to use
-  cor_method <- function(col1, col2) {
-    if (col1 %in% normal_cols && col2 %in% normal_cols) {
-      return("pearson")
-    } else {
-      return("spearman")
-    }
-  }
-  
   # Loop through all pairs of numeric columns
   for (i in seq_along(names(df_numeric))) {
     for (j in seq_along(names(df_numeric))) {
       if (i <= j) {  # Only compute upper triangular part
-        
-        # Determine the correlation method
-        method <- cor_method(names(df_numeric)[i], names(df_numeric)[j])
-        
-        # Subset the two columns to pass into correlate
-        sub_data <- df_numeric[, c(names(df_numeric)[i], names(df_numeric)[j])]
-        
-        # Use dlookr's correlate function for two columns
-        cor_result <- correlate(sub_data, method = method)
-        
+        cor_result <- cor.test(df_numeric[, names(df_numeric)[i]],df_numeric[, names(df_numeric)[j]],
+                               alternative = corr_alternative,
+                               method = corr_method,
+                               na.action = na.omit,
+                               exact = FALSE
+        )
         # Extract the correlation value (it will be in the second column of the result)
-        cor_value <- cor_result$coef_corr[1]
-        
+        cor_value <- cor_result$estimate[[1]]
         # Fill in the correlation matrix (symmetric)
         cor_matrix[i, j] <- cor_matrix[j, i] <- cor_value
       }
     }
-  }
-  
-  # Return the correlation matrix
-  return(cor_matrix)
-}
-
-###########################################################
-# function to plot correlations for selected column names
-# takes as argument complete correlation matrix and vector with column names
-corr_plot_from_corr_matrix <- function(corr_matrix, my_columnnames = c()) {
-  # ensure the column names exist in the data 
-  columns_to_select <- my_columnnames[my_columnnames %in% colnames(corr_matrix)]
-  
-  if (length(columns_to_select) == 0)  {
-    print("No variables found in correlation matrix")
-    return()
-  }
-  # Select only the values for the specified columns
-  selected_cor_matrix <- corr_matrix[columns_to_select, columns_to_select]
-  
-  p <- ggcorr(
-    data = NULL,
-    cor_matrix = selected_cor_matrix,
-    label = TRUE,
-    label_round = 2
+  } # end for loop
+  ################################################################
+  # get significance matrix
+  significance_matrix <- cor.mtest(as.matrix((df_numeric)),
+                                   conf.level = confidence_level,
+                                   alternative = corr_alternative,
+                                   method = corr_method,
+                                   na.action = na.omit,
+                                   exact = FALSE
   )
-  return(p)
+  # create datatable to show
+  # Get the lower triangular values
+  lower_values_corr <- cor_matrix[lower.tri(cor_matrix)]
+  # Get the lower triangular values
+  lower_values_p <- significance_matrix$p[lower.tri(significance_matrix$p)]
+  lower_values_lowCI <- significance_matrix$lowCI[lower.tri(significance_matrix$lowCI)]
+  lower_values_uppCI <- significance_matrix$uppCI[lower.tri(significance_matrix$uppCI)]
   
+  # Get the row and column indices for the lower triangular values
+  row_names <- rownames(cor_matrix)[row(cor_matrix)[lower.tri(cor_matrix)]]
+  col_names <- colnames(cor_matrix)[col(cor_matrix)[lower.tri(cor_matrix)]]
+  
+  # Create a data frame
+  corr_df <- data.frame(var1 = row_names,
+                        var2 = col_names,
+                        corr_coef = lower_values_corr, 
+                        p = lower_values_p, 
+                        lowCI = lower_values_lowCI,
+                        uppCI = lower_values_uppCI)
+  # Return the correlation matrix and significance matrix
+  return(list(cor_coef_matrix = cor_matrix, significance_matrix = significance_matrix,correlation_df = corr_df))
+} # end calculate_corr_matrix
+
+
+########################################################################################################
+# function to plot correlations 
+# takes as argument results of the function calculate_corr_matrix()
+# type= "upper, "lower, "full"
+# Ordering method of the correlation matrix.
+# 'original' for original order (default).
+#'AOE' for the angular order of the eigenvectors.
+#'FPC' for the first principal component order.
+#'hclust' for the hierarchical clustering order.
+#'alphabet' for alphabetical order.
+
+corr_plot_from_result <- function(corr_matrix_result, plot_type = "upper",
+                                  sig_level_crossed = 0.05,
+                                  my_ordering ="original") {
+  
+  cor_coef_matrix <- corr_matrix_result$cor_coef_matrix
+  significant_coef_matrix <- corr_matrix_result$significance_matrix
+  
+  ## add significant level stars
+  corrplot(cor_coef_matrix, 
+           # title = "Corr matrix",
+           p.mat = significant_coef_matrix$p, 
+           # plotCI = 'rect',
+           lowCI.mat= significant_coef_matrix$lowCI, 
+           uppCI.mat = significant_coef_matrix$uppCI,  
+           col= coolwarm(200),
+           method = 'color', 
+           diag = FALSE,
+           type = plot_type,
+           order = my_ordering,
+           number.cex = 1.2,
+           number.font = 1,
+           # sig.level = c(0.001, 0.01, 0.05), 
+           # pch.cex = 0.9, 
+           # insig = 'blank',
+           # insig = 'label_sig',
+           # insig = 'p-value',
+           # sig.level = -1, # shaw all p-values
+           sig.level = sig_level_crossed,
+           # pch.col = 'grey20',
+           addCoef.col ='black',
+           # cl.ratio = 0.2,
+           tl.srt = 0,
+           tl.offset = 0.9,
+           tl.col="black",
+           addgrid.col="grey")
 }# end corr_plot_from_corr_matrix
+
+# ######################################################################################
+# # function to calculate correlation of up till 10 variables, group_by till 2 variables
+# # arguments: df and vector with column names and normality_results
+# # normality_results is a list with 2 vectors: normal_columnnames, non_normal_columnnames
+# calculate_cor_short <- function(df, my_columnnames = c(), normality_results) {
+#   
+#   # ensure the column names exist in the data 
+#   columns_to_select <- my_columnnames[my_columnnames %in% colnames(df)]
+#   
+#   if (length(columns_to_select) == 0)  {
+#     print("No variables found in the dataset")
+#     return(data.frame())
+#   }
+#   # make sure there are not more than 10 variables
+#   if (length(columns_to_select) > MAX_FOR_CORR) {
+#     print("Select less variables")
+#     return(data.frame())
+#   }
+#   normal_distribution_colnames <- normality_results$normal_columnnames
+#   non_normal_distribution_colnames <- normality_results$non_normal_columnnames
+#   # support only if all columns have same type of distribution
+#   all_normal <- all(columns_to_select %in% normal_distribution_colnames)
+#   all_non_normal <- all(columns_to_select %in% non_normal_distribution_colnames)
+#   if (all_non_normal) {
+#     df %>% 
+#       select(all_of(columns_to_select)) %>% # select only given column names
+#       correlate(method = "spearman") -> correlation_df
+#   } else if (all_normal) {
+#     df %>% 
+#       select(all_of(columns_to_select)) %>% # select only given column names
+#       correlate(method = "pearson") -> correlation_df
+#   } else {
+#     correlation_df <- data.frame()
+#   }
+#   return(correlation_df)
+#   
+# } # end calculate_cor
+# 
+# ##########################################################################
+# # function to create a complete correlation matrix
+# # if variables have normal distribution, pearson method will be used
+# # otherwise spearman method will be used
+# calculate_corr_matrix_mixed <- function(df, normality_results) {
+#   
+#   # extract column names which are which
+#   normal_cols <- normality_results$normal_columnnames
+#   non_normal_cols <- normality_results$non_normal_columnnames
+#   
+#   # Filter the data to include only numeric columns
+#   df_numeric <- df[sapply(df, is.numeric)]
+#   
+#   # create an empty matrix to store correlations
+#   n <- ncol(df_numeric)
+#   cor_matrix <- matrix(NA, nrow = n, ncol = n, dimnames = list(names(df_numeric), names(df_numeric)))
+#   
+#   # Function to determine which correlation method to use
+#   cor_method <- function(col1, col2) {
+#     if (col1 %in% normal_cols && col2 %in% normal_cols) {
+#       return("pearson")
+#     } else {
+#       return("spearman")
+#     }
+#   }
+#   
+#   # Loop through all pairs of numeric columns
+#   for (i in seq_along(names(df_numeric))) {
+#     for (j in seq_along(names(df_numeric))) {
+#       if (i <= j) {  # Only compute upper triangular part
+#         
+#         # Determine the correlation method
+#         method <- cor_method(names(df_numeric)[i], names(df_numeric)[j])
+#         
+#         # Subset the two columns to pass into correlate
+#         sub_data <- df_numeric[, c(names(df_numeric)[i], names(df_numeric)[j])]
+#         
+#         # Use dlookr's correlate function for two columns
+#         cor_result <- correlate(sub_data, method = method)
+#         
+#         # Extract the correlation value (it will be in the second column of the result)
+#         cor_value <- cor_result$coef_corr[1]
+#         
+#         # Fill in the correlation matrix (symmetric)
+#         cor_matrix[i, j] <- cor_matrix[j, i] <- cor_value
+#       }
+#     }
+#   }
+#   
+#   # Return the correlation matrix
+#   return(cor_matrix)
+# }
+# 
+# ###########################################################
+# # function to plot correlations for selected column names
+# # takes as argument complete correlation matrix and vector with column names
+# corr_plot_from_corr_matrix <- function(corr_matrix, my_columnnames = c()) {
+#   # ensure the column names exist in the data 
+#   columns_to_select <- my_columnnames[my_columnnames %in% colnames(corr_matrix)]
+#   
+#   if (length(columns_to_select) == 0)  {
+#     print("No variables found in correlation matrix")
+#     return()
+#   }
+#   # Select only the values for the specified columns
+#   selected_cor_matrix <- corr_matrix[columns_to_select, columns_to_select]
+#   
+#   p <- ggcorr(
+#     data = NULL,
+#     cor_matrix = selected_cor_matrix,
+#     label = TRUE,
+#     label_round = 2
+#   )
+#   return(p)
+#   
+# }# end corr_plot_from_corr_matrix
 
 #########################################################################################################
 # from dlookr github: https://github.com/choonghyunryu/dlookr/blob/HEAD/R/missing.R
