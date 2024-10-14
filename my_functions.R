@@ -9,6 +9,7 @@ library(patchwork)
 library(hrbrthemes)
 library(ggdist)
 library(GGally)
+library(corrplot)
 library(dlookr)
 #library(stringr)
 
@@ -465,89 +466,210 @@ calculate_cor_short <- function(df, my_columnnames = c(), normality_results) {
 } # end calculate_cor
 
 ##########################################################################
+# # function to create a complete correlation matrix
+# # if variables have normal distribution, pearson method will be used
+# # otherwise spearman method will be used
+# calculate_corr_matrix_auto_method <- function(df, normality_results,corr_alternative,confidence_level = 0.95) {
+#   
+#   # extract column names which are which
+#   normal_cols <- normality_results$normal_columnnames
+#   non_normal_cols <- normality_results$non_normal_columnnames
+#   
+#   df <- as.data.frame(df)
+#   # Filter the data to include only numeric columns
+#   df_numeric <- df[sapply(df, is.numeric)]
+#   
+#   # create an empty matrix to store correlations
+#   n <- ncol(df_numeric)
+#   cor_matrix <- matrix(NA, nrow = n, ncol = n, dimnames = list(names(df_numeric), names(df_numeric)))
+#   
+#   # Function to determine which correlation method to use
+#   cor_method <- function(col1, col2) {
+#     if (col1 %in% normal_cols && col2 %in% normal_cols) {
+#       return("pearson")
+#     } else {
+#       return("spearman")
+#     }
+#   }
+#   
+#   # Loop through all pairs of numeric columns
+#   for (i in seq_along(names(df_numeric))) {
+#     for (j in seq_along(names(df_numeric))) {
+#       if (i <= j) {  # Only compute upper triangular part
+#         
+#         # Determine the correlation method
+#         method <- cor_method(names(df_numeric)[i], names(df_numeric)[j])
+#         
+#         ###################################################
+#         # # Subset the two columns to pass into correlate
+#         # sub_data <- df_numeric[, c(names(df_numeric)[i], names(df_numeric)[j])]
+#         # 
+#         # # Use dlookr's correlate function for two columns
+#         # cor_result <- correlate(sub_data, method = method)
+#         #######################################################
+#         cor_result <- cor.test(df_numeric[, names(df_numeric)[i]],df_numeric[, names(df_numeric)[j]],
+#                                alternative = corr_alternative,
+#                                method = method,
+#                                na.action = na.omit,
+#                                exact = FALSE
+#                                )
+#         
+#         # Extract the correlation value (it will be in the second column of the result)
+#         cor_value <- cor_result$estimate[[1]]
+#         
+#         # Fill in the correlation matrix (symmetric)
+#         cor_matrix[i, j] <- cor_matrix[j, i] <- cor_value
+#       }
+#     }
+#   } # end for loop
+#   ################################################################
+#   # # get significance matrix
+#   # significance_matrix <- cor.mtest(as.matrix((df_numeric)),
+#   #                                 conf.level = confidence_level,
+#   #                                 alternative = alternative_corr,
+#   #                                 method = method_corr,
+#   #                                 na.action = na.omit,
+#   #                                 exact = FALSE
+#   #                       )
+#   # # Return the correlation matrix and siginficance matrix
+#   # return(list(cor_coef_matrix = cor_matrix, significance_matrix = significance_matrix))
+# } # end calculate_corr_matrix_auto_method
+###########################################################
+# # function to plot correlations for selected column names
+# # takes as argument complete correlation matrix and vector with column names
+# corr_plot_from_corr_matrix <- function(corr_matrix, my_columnnames = c()) {
+#   # ensure the column names exist in the data 
+#   columns_to_select <- my_columnnames[my_columnnames %in% colnames(corr_matrix)]
+#   
+#   if (length(columns_to_select) == 0)  {
+#     print("No variables found in correlation matrix")
+#     return()
+#   }
+#   # Select only the values for the specified columns
+#   selected_cor_matrix <- corr_matrix[columns_to_select, columns_to_select]
+#   
+#   p <- ggcorr(
+#     data = NULL,
+#     cor_matrix = selected_cor_matrix,
+#     label = TRUE,
+#     label_round = 2
+#   )
+#   return(p)
+#   
+# }# end corr_plot_from_corr_matrix
+##############################################################
 # function to create a complete correlation matrix
-# if variables have normal distribution, pearson method will be used
-# otherwise spearman method will be used
-calculate_corr_matrix_mixed <- function(df, normality_results) {
-  
-  # extract column names which are which
-  normal_cols <- normality_results$normal_columnnames
-  non_normal_cols <- normality_results$non_normal_columnnames
-  
-  df <- as.data.frame(df)
+# lets user decide which method to apply
+calculate_corr_matrix <- function(df, my_columnnames = c(), corr_alternative, corr_method, confidence_level = 0.95) {
+  # select those columns
+  test_df <- df %>% 
+    select(all_of((my_columnnames)))
+  test_df <- as.data.frame(test_df)
   # Filter the data to include only numeric columns
-  df_numeric <- df[sapply(df, is.numeric)]
+  df_numeric <- test_df[sapply(test_df, is.numeric)]
   
   # create an empty matrix to store correlations
   n <- ncol(df_numeric)
   cor_matrix <- matrix(NA, nrow = n, ncol = n, dimnames = list(names(df_numeric), names(df_numeric)))
-  
-  # Function to determine which correlation method to use
-  cor_method <- function(col1, col2) {
-    if (col1 %in% normal_cols && col2 %in% normal_cols) {
-      return("pearson")
-    } else {
-      return("spearman")
-    }
-  }
-  
   # Loop through all pairs of numeric columns
   for (i in seq_along(names(df_numeric))) {
     for (j in seq_along(names(df_numeric))) {
       if (i <= j) {  # Only compute upper triangular part
-        
-        # Determine the correlation method
-        method <- cor_method(names(df_numeric)[i], names(df_numeric)[j])
-        
-        ###################################################
-        # # Subset the two columns to pass into correlate
-        # sub_data <- df_numeric[, c(names(df_numeric)[i], names(df_numeric)[j])]
-        # 
-        # # Use dlookr's correlate function for two columns
-        # cor_result <- correlate(sub_data, method = method)
-        #######################################################
         cor_result <- cor.test(df_numeric[, names(df_numeric)[i]],df_numeric[, names(df_numeric)[j]],
-                               method = method)
-        print(cor_result)
-        
+                               alternative = corr_alternative,
+                               method = corr_method,
+                               na.action = na.omit,
+                               exact = FALSE
+        )
         # Extract the correlation value (it will be in the second column of the result)
-        cor_value <- cor_result$coef_corr[1]
-        
+        cor_value <- cor_result$estimate[[1]]
         # Fill in the correlation matrix (symmetric)
         cor_matrix[i, j] <- cor_matrix[j, i] <- cor_value
       }
     }
-  }
-  
-  # Return the correlation matrix
-  return(cor_matrix)
-}
-
-###########################################################
-# function to plot correlations for selected column names
-# takes as argument complete correlation matrix and vector with column names
-corr_plot_from_corr_matrix <- function(corr_matrix, my_columnnames = c()) {
-  # ensure the column names exist in the data 
-  columns_to_select <- my_columnnames[my_columnnames %in% colnames(corr_matrix)]
-  
-  if (length(columns_to_select) == 0)  {
-    print("No variables found in correlation matrix")
-    return()
-  }
-  # Select only the values for the specified columns
-  selected_cor_matrix <- corr_matrix[columns_to_select, columns_to_select]
-  
-  p <- ggcorr(
-    data = NULL,
-    cor_matrix = selected_cor_matrix,
-    label = TRUE,
-    label_round = 2
+  } # end for loop
+  ################################################################
+  # get significance matrix
+  significance_matrix <- cor.mtest(as.matrix((df_numeric)),
+                                   conf.level = confidence_level,
+                                   alternative = corr_alternative,
+                                   method = corr_method,
+                                   na.action = na.omit,
+                                   exact = FALSE
   )
-  return(p)
+  # create datatable to show
+  # Get the lower triangular values
+  lower_values_corr <- cor_matrix[lower.tri(cor_matrix)]
+  # Get the lower triangular values
+  lower_values_p <- significance_matrix$p[lower.tri(significance_matrix$p)]
+  lower_values_lowCI <- significance_matrix$lowCI[lower.tri(significance_matrix$lowCI)]
+  lower_values_uppCI <- significance_matrix$uppCI[lower.tri(significance_matrix$uppCI)]
   
-}# end corr_plot_from_corr_matrix
+  # Get the row and column indices for the lower triangular values
+  row_names <- rownames(cor_matrix)[row(cor_matrix)[lower.tri(cor_matrix)]]
+  col_names <- colnames(cor_matrix)[col(cor_matrix)[lower.tri(cor_matrix)]]
+  
+  # Combine row and column names into pair names (e.g., "A-B")
+  combinations <- paste(row_names, col_names, sep = "-")
+  
+  # Create a data frame
+  corr_df <- data.frame(corr_coef = lower_values_corr, 
+                   p = lower_values_p, 
+                   lowCI = lower_values_lowCI,
+                   uppCI = lower_values_uppCI,
+                   row.names = combinations)
+  # Return the correlation matrix and significance matrix
+  return(list(cor_coef_matrix = cor_matrix, significance_matrix = significance_matrix,correlation_df = corr_df))
+} # end calculate_corr_matrix
 
-#########################################################################################################
+
+########################################################################################################
+# function to plot correlations 
+# takes as argument results of the function calculate_corr_matrix()
+# type= "upper, "lower, "full"
+# Ordering method of the correlation matrix.
+# 'original' for original order (default).
+#'AOE' for the angular order of the eigenvectors.
+#'FPC' for the first principal component order.
+#'hclust' for the hierarchical clustering order.
+#'alphabet' for alphabetical order.
+
+corr_plot_from_result <- function(corr_matrix_result, plot_type = "upper",
+                                  sig_level_crossed = 0.05,
+                                  my_ordering ="original") {
+  
+  cor_coef_matrix <- corr_matrix_result$cor_coef_matrix
+  significant_coef_matrix <- corr_matrix_result$significance_matrix
+  
+  ## add significant level stars
+  corrplot(cor_coef_matrix, 
+           # title = "Corr matrix",
+           p.mat = significant_coef_matrix$p, 
+           # plotCI = 'rect',
+           lowCI.mat= significant_coef_matrix$lowCI, 
+           uppCI.mat = significant_coef_matrix$uppCI,  
+           col= coolwarm(200),
+           method = 'color', 
+           diag = FALSE,
+           type = plot_type,
+           order = my_ordering,
+           number.cex = 1.2,
+           number.font = 1,
+           # sig.level = c(0.001, 0.01, 0.05), 
+           # pch.cex = 0.9, 
+           # insig = 'blank',
+           # insig = 'label_sig',
+           # insig = 'p-value',
+           # sig.level = -1, # shaw all p-values
+           sig.level = sig_level_crossed,
+           # pch.col = 'grey20',
+           addCoef.col ='black',
+           # cl.ratio = 0.2,
+           tl.srt = 0,
+           tl.offset = 0.9,
+           tl.col="black",
+           addgrid.col="grey")
+}# end corr_plot_from_corr_matrix
 # from dlookr github: https://github.com/choonghyunryu/dlookr/blob/HEAD/R/missing.R
 plot_na_pareto_modified <- function (x, only_na = FALSE, relative = FALSE, main = NULL, col = "black",
                                      grade = list(Good = 0.05, OK = 0.1, NotBad = 0.2, Bad = 0.5, Remove = 1),
@@ -731,69 +853,7 @@ plot_na_intersect_modified <- function (x, only_na = TRUE, n_intersacts = NULL,
   
   if (is.null(main)) 
     main = "Missing with intersection of variables"
-  # Create a plotly object with tiles as rectangles
-  # Create a plotly object
-  # p <- plot_ly()
-  # my_variable_names <- names(x) 
-  # # Create hover text combining value and corresponding name
-  # dframe$hover_text <- paste("Value:", dframe$value, "<br>Name:", my_variable_names[dframe$Var1])
-  # # Define an empty list to hold shape objects (tiles)
-  # shapes <- list()
-  # 
-  # # Loop over data to create individual tiles (rectangles)
-  # for (i in 1:nrow(dframe)) {
-  #   # fill_color <- ifelse(is.na(dframe$value[i]), "grey", "orange")  # NA = grey, otherwise green
-  #   
-  #   # Add each rectangle as a shape
-  #   shapes[[i]] <- list(
-  #     type = "rect",
-  #     x0 = dframe$Var1[i] - 0.5, x1 = dframe$Var1[i] + 0.5,
-  #     y0 = dframe$Var2[i] - 0.5, y1 = dframe$Var2[i] + 0.5,
-  #     line = list(width=0.5,color = "black"),  # Border color
-  #     fillcolor = "#f5b041"       # Static fill color
-  #   )
-  # }
-  # 
-  # # Add all the shapes to the plot layout
-  # p <- p %>%
-  #   layout(
-  #     title = list(
-  #       text = main,  # Set your title here
-  #       font = list(size = 16, color = "black",
-  #                   family = "Helvetica",  
-  #                   weight = "bold"),  # Customize title font size and color
-  #       x = 0.02,  # Left-align title (0 = far left, 1 = far right)
-  #       y = 1.01  # Position title slightly above the plot
-  #     ),
-  #     margin = list(t = 100,b=100),  # Add margin above the title (adjust value as needed)
-  #     xaxis = list(title = list(text="Variables",
-  #                               ont = list(
-  #                                 family = "Helvetica",   # Set font family for x-axis title
-  #                                 size = 12          # Set font size for x-axis title
-  #                                 )
-  #                               ),
-  #                               zeroline = FALSE,tickvals = NULL,ticktext = NULL),
-  #     yaxis = list(zeroline = FALSE,tickvals = NULL,ticktext = NULL),
-  #     shapes = shapes,  # Add the shapes (rectangles) to the layout
-  #     plot_bgcolor = "#e8e8e8",  # White background for cleaner look
-  #     showlegend = FALSE       # No legend needed for static color
-  #   )
-  # # Add scatter trace for hover text
-  # p <- p %>%
-  #   add_trace(
-  #     x = dframe$Var1,
-  #     y = dframe$Var2,
-  #     text = dframe$hover_text,  # Hover text from the data frame
-  #     mode = "markers",  # Invisible markers
-  #     marker = list(size = 0, opacity = 0),  # Set size to 0 for invisibility
-  #     hoverinfo = "text",  # Show only text on hover
-  #     hoverlabel = list(
-  #       bgcolor = "#e8e8e8",  # Set hover text background to gray
-  #       bordercolor = "#e8e8e8",  # Set hover text border to gray
-  #       font = list(color = "black")  # Optional: Change font color
-  #     )
-  #   )
-  ##############################################################################
+  
   # Create a plotly object
   p <- plot_ly()
   # Create hover text combining value and corresponding name
@@ -847,47 +907,8 @@ plot_na_intersect_modified <- function (x, only_na = TRUE, n_intersacts = NULL,
       plot_bgcolor = "#e8e8e8",  # White background for cleaner look
       showlegend = FALSE  # No legend needed for static color
     )
-  
   # Display the plot
   p
-  #########################################################
-  
-  # my_variable_names <- names(x) 
-  # # Create center plot
-  # body <- ggplot(dframe, aes(x = Var1, y = Var2)) + 
-  #   
-  #   geom_tile(aes(fill = value,
-  #                           text = paste0("Variable: ",my_variable_names[Var1],
-  #                                         "\nValue: ",value)),
-  #             color = "black", size = 0.5) +
-  # 
-  #   scale_fill_gradient2(low = "grey", high = "red") +
-  #   scale_x_continuous(breaks = seq(length(na_variable)),
-  #                      labels = na_variable,
-  #                      limits = c(0, length(na_variable)) + 0.5) +
-  #   scale_y_continuous(breaks = seq(nrow(marginal_obs)),
-  #                      labels = marginal_obs$Var2,
-  #                      limits = c(0, nrow(marginal_obs)) + 0.5) +
-  #   xlab("Variables")
-  # 
-  # legend_txt <- paste(c("#Missing Vars:", "#Missing Obs:", "#Complete Obs:"), 
-  #                     c(N_var_na, N_na, N_complete))
-  # legend_df <- data.frame(x = c(0.1, 0.1, 0.1), y = c(0.1, 0.3, 0.5), 
-  #                         txt = factor(legend_txt, labels = legend_txt))
-  #   
-  #   body <- body +
-  #     # theme_ipsum(base_family = "Roboto Condensed") +
-  #     theme(legend.position = "none",
-  #           axis.title.x = element_text(size = 12),
-  #           axis.title.y = element_blank(),
-  #           axis.text.y = element_blank(),
-  #           axis.text.x = element_blank(),
-  #           # axis.text.x = element_text(angle = 45, hjust = 1),
-  #           plot.margin = margin(0, 10, 30, 10))
-  #   
-  #   # ggplotly(body,tooltip = "text")
-  #   ggplotly(body)
-  #   # body
 } # end na_intercept
 
 # for replace reshape2::melt()

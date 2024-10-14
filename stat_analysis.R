@@ -5,6 +5,8 @@ library(dplyr)
 library(dlookr)
 library(tidyr)
 library(rstatix)
+library(corrplot)
+library(pals)
 # install.packages("data.table")
 library(data.table)
 
@@ -46,27 +48,23 @@ data_original <- trim_values_in_columns(data_original,custom_colnames=char_colum
 
 ######################################################
 # DATA CLEANING
-diagnostic <- diagnose(data_original)
-# get missing 
-source("my_functions.R")
-plot_na_intersect_modified(data_original)
-plot_na_intersect(data_original)
-plot_na_pareto_modified(data_original)
-plot_na_pareto(data_original)
-qc <- data_original %>% 
-  plot_na_pareto(plot = FALSE)
+# diagnostic <- diagnose(data_original)
+# # get missing 
+# source("my_functions.R")
+# plot_na_intersect_modified(data_original)
+# plot_na_intersect(data_original)
+# plot_na_pareto_modified(data_original)
+# plot_na_pareto(data_original)
+# qc <- data_original %>% 
+#   plot_na_pareto(plot = FALSE)
+# 
+# sorted_qc <- qc %>%
+#   arrange(cumulative)
+# data_original %>% 
+#   plot_na_intersect(only_na = FALSE, n_intersacts = 7)
 
-sorted_qc <- qc %>%
-  arrange(cumulative)
-data_original %>% 
-  plot_na_intersect(only_na = FALSE, n_intersacts = 7)
 
 # get a list of columns that only have one unique value and list of columns that 
-# have more than some threshold percent of missing values and filter them out
-data_filtered_by_missing_threshold <- remove_missing_data_columns_by_threshold(data_original,c(1,MISSING_DATA_PCT_THRESHOLD))
-
-diagnostic <- diagnose(data_filtered_by_missing_threshold)
-
 # data_filtered_by_missing_threshold <- data_original %>%
 #   select(-one_of( #select(-one_of(...)) removes the columns from data_original based on the extracted names
 #     diagnostic %>% # extract the column names where unique_count == 1 or missing % was above threshold
@@ -74,6 +72,9 @@ diagnostic <- diagnose(data_filtered_by_missing_threshold)
 #       pull(variables)
 #   ))
 
+# have more than some threshold percent of missing values and filter them out
+data_filtered_by_missing_threshold <- remove_missing_data_columns_by_threshold(data_original,c(1,MISSING_DATA_PCT_THRESHOLD))
+diagnostic <- diagnose(data_filtered_by_missing_threshold)
 # if one knows which columns are not important in the analysis, one can remove them here
 # by column name
 non_informative_columns <- c("sXXX","sXXX.x","X.x","Index","X.y","SampleID","Index","filter_.","AscA_ID","filter_.")
@@ -93,47 +94,45 @@ data_filtered_columns <- remove_selected_columns(data_filtered_by_missing_thresh
 # should I convert some columns to factors? by column name? by diagnostic criteria, i.e less than 6 unique values?
 columns_to_factor <- c("Scapis..ID","Gender", "smoke_yes_no","smokestatus","Case_control")
 data_filtered_columns_with_factors <- factor_columns(data_filtered_columns, columns_to_factor)
-data_filtered_columns_with_factors %>% 
-  plot_na_pareto()
 #########
 # BASIC #
 #########
 
 ######################################################
 # PLOT PREVIEW
-# select up till 6 test columns to test visualization
-# test_columns <- c("col1","col2","col3","col4", "col5") # test for normal generated file
-test_columns <- c("gluc_res","PGlucose","chol_res","tg_res" ,"ldl_res", "hdl_res")
-
-# remove duplicates first:
-columns_to_keep <- c("Scapis..ID","gluc_res","PGlucose","chol_res","tg_res" ,"ldl_res", "hdl_res")
-data_to_plot <- data_filtered_columns_with_factors %>% 
-  select(all_of(columns_to_keep)) %>% 
-  keep_first_of_duplicates(columns_to_keep) %>% 
- as.data.frame()
-# possible plots: "box","violin","histogram","box_distribution","violin_box", normality_diagnosis
-preview_basic_distribution(data_to_plot, type_of_plot = "histogram", test_columns)
-preview_basic_distribution(data_filtered_columns_with_factors, type_of_plot = "violin_box", test_columns)
-
-# compare with duplicates
-test_dlookr_normality_col <- c("ldl_res")
-preview_basic_distribution(data_filtered_columns_with_factors, type_of_plot = "normality_diagnosis", test_dlookr_normality_col)
-
-# plot selected columns using dlookr ?
-data_filtered_columns_with_factors %>% 
-  select(all_of(test_columns)) %>% 
-  plot_normality()
+# # select up till 6 test columns to test visualization
+# # test_columns <- c("col1","col2","col3","col4", "col5") # test for normal generated file
+# test_columns <- c("gluc_res","PGlucose","chol_res","tg_res" ,"ldl_res", "hdl_res")
+# 
+# # remove duplicates first:
+# columns_to_keep <- c("Scapis..ID","gluc_res","PGlucose","chol_res","tg_res" ,"ldl_res", "hdl_res")
+# data_to_plot <- data_filtered_columns_with_factors %>% 
+#   select(all_of(columns_to_keep)) %>% 
+#   keep_first_of_duplicates(columns_to_keep) %>% 
+#  as.data.frame()
+# # possible plots: "box","violin","histogram","box_distribution","violin_box", normality_diagnosis
+# preview_basic_distribution(data_to_plot, type_of_plot = "histogram", test_columns)
+# preview_basic_distribution(data_filtered_columns_with_factors, type_of_plot = "violin_box", test_columns)
+# 
+# # compare with duplicates
+# test_dlookr_normality_col <- c("ldl_res")
+# preview_basic_distribution(data_filtered_columns_with_factors, type_of_plot = "normality_diagnosis", test_dlookr_normality_col)
+# 
+# # plot selected columns using dlookr ?
+# data_filtered_columns_with_factors %>% 
+#   select(all_of(test_columns)) %>% 
+#   plot_normality()
 ################################################################
-
-# descriptive statistics help determine the distribution of numerical variables (302 numeric variables out of total 318)
-# do we want this?
-stats_preview <- describe(data_filtered_columns_with_factors) # should we group by something?
-# Maybe export to csv or somewhere...
-#write.csv(stats_preview, file.path(OUTPUT_FOLDER, "stats_table.csv"), row.names = FALSE)
-# # debug: how many numeric variables are there ?
-# data_filtered_columns_with_factors %>%
-#   select(where(is.numeric)) %>%
-#   ncol()
+# SUMMARY
+# # descriptive statistics help determine the distribution of numerical variables (302 numeric variables out of total 318)
+# # do we want this?
+# stats_preview <- describe(data_filtered_columns_with_factors) # should we group by something?
+# # Maybe export to csv or somewhere...
+# #write.csv(stats_preview, file.path(OUTPUT_FOLDER, "stats_table.csv"), row.names = FALSE)
+# # # debug: how many numeric variables are there ?
+# # data_filtered_columns_with_factors %>%
+# #   select(where(is.numeric)) %>%
+# #   ncol()
 
 #################################################################
 # TEST NORMALITY
@@ -179,25 +178,25 @@ if (nrow(data_filtered_columns_with_factors) < SHAPIRO_THRESHOLD) {
 # up till 10 column names to correlate
 # test_columns <- c("dbph2m","sbph2m","dbph6m","sbph6m","dbph5m", "sbph5m","agev1","bmi_n","hdl_res","gluc_res")
 
-# save corr_coef values?
-corr_coefs <- calculate_cor_short(data_filtered_columns_with_factors, my_columnnames=test_columns,normality_results)
-
-# plot (from dlookr github: https://github.com/choonghyunryu/dlookr/blob/master/R/correlate.R)
-p <- corr_coefs %>%   
-  ggplot(aes(var1, var2, fill = coef_corr, label = round(coef_corr, 2))) +
-  geom_tile(col = "black") + 
-  scale_fill_gradient2(low = "red", mid = "white", high = "blue", 
-                       limits = c(-1, 1)) +
-  geom_text() +
-  scale_x_discrete(expand = c(0, 0)) +
-  scale_y_discrete(expand = c(0, 0)) +
-  labs(fill = "Correlation\nCoefficient") + 
-  coord_equal() +
-  theme(axis.title.x = element_blank(),
-        axis.title.y = element_blank(),
-        axis.text.x = element_text(angle = 40, hjust = 1),
-        panel.grid.major = element_blank())
-p
+# # save corr_coef values?
+# corr_coefs <- calculate_cor_short(data_filtered_columns_with_factors, my_columnnames=test_columns,normality_results)
+# 
+# # plot (from dlookr github: https://github.com/choonghyunryu/dlookr/blob/master/R/correlate.R)
+# p <- corr_coefs %>%   
+#   ggplot(aes(var1, var2, fill = coef_corr, label = round(coef_corr, 2))) +
+#   geom_tile(col = "black") + 
+#   scale_fill_gradient2(low = "red", mid = "white", high = "blue", 
+#                        limits = c(-1, 1)) +
+#   geom_text() +
+#   scale_x_discrete(expand = c(0, 0)) +
+#   scale_y_discrete(expand = c(0, 0)) +
+#   labs(fill = "Correlation\nCoefficient") + 
+#   coord_equal() +
+#   theme(axis.title.x = element_blank(),
+#         axis.title.y = element_blank(),
+#         axis.text.x = element_text(angle = 40, hjust = 1),
+#         panel.grid.major = element_blank())
+# p
 
 
 # # !!! takes very long time but produces complete corr matrix for all numerical columns
@@ -205,19 +204,123 @@ p
 # complete_corr_matrix <- calculate_corr_matrix_mixed(data_filtered_columns_with_factors,normality_results)
 # corr_plot_from_corr_matrix(complete_corr_matrix,test_columns)
 
-# select some columns
-test_corr_df <- data_filtered_columns_with_factors %>% 
-  select(all_of((test_columns)))
-test_corr_df <- as.data.frame(test_corr_df)
-df_numeric <- test_corr_df[sapply(test_corr_df, is.numeric)]
-cor_result <- cor.test(df_numeric[, names(df_numeric)[1]],df_numeric[, names(df_numeric)[2]],
-                       method = "spearman",
-                       na.action = na.omit
-                       # exact = FALSE
-                       )
-test_corr_matrix <- calculate_corr_matrix_mixed(test_corr_df,normality_results)
-corr_plot_from_corr_matrix(test_corr_matrix,test_columns)
+test_columns <- c("gluc_res","PGlucose","chol_res","tg_res" ,"ldl_res", "hdl_res")
+# "less","greater","two.sided"
+alternative_corr <- "two.sided"
+# "pearson","kendall","spearman"
+method_corr <- "spearman"
+conf_level <- 0.9
 
+# # select some columns
+# test_corr_df <- data_filtered_columns_with_factors %>% 
+#   select(all_of((test_columns)))
+# 
+# test_corr_df <- as.data.frame(test_corr_df)
+# df_numeric <- test_corr_df[sapply(test_corr_df, is.numeric)]
+# cor_result <- cor.mtest(as.matrix((df_numeric)),
+#                        conf.level = 0.95,
+#                        alternative = alternative_corr,
+#                        method = method_corr,
+#                        na.action = na.omit,
+#                        exact = FALSE
+#                        )
+
+source("my_functions.R")
+# test_corr_matrix_auto <- calculate_corr_matrix_auto_method(test_corr_df,normality_results,alternative_corr)
+test_corr_matrix_result <- calculate_corr_matrix(data_filtered_columns_with_factors,
+                                                 my_columnnames = test_columns,
+                                                 alternative_corr,
+                                                 method_corr,
+                                                 confidence_level = conf_level)
+# type= "upper, "lower, "full"
+# sig_level_crossed= float (which values are not significant)
+corr_plot_from_result(test_corr_matrix_result,
+                      plot_type="lower",
+                      sig_level_crossed = 0.01)
+
+test_cor_coef_matrix <- test_corr_matrix_result$cor_coef_matrix
+test_significant_coef_matrix <- test_corr_matrix_result$significance_matrix
+
+# corr_plot_from_corr_matrix(test_cor_coef_matrix,test_columns)
+
+corrplot(test_corr_matrix,method = 'square',col= coolwarm(200),addCoef.col = 'black',tl.col="black")
+## specialized the insignificant value according to the significant level
+corrplot(test_cor_coef_matrix, p.mat = test_significant_coef_matrix$p, col= coolwarm(200),sig.level = 0.10, order = 'hclust', addrect = 2,tl.col="black")
+## add p-values on no significant coefficients
+corrplot(test_cor_coef_matrix, p.mat = test_significant_coef_matrix$p, col= coolwarm(200),insig = 'p-value',tl.col="black")
+## leave blank on no significant coefficient
+corrplot(test_cor_coef_matrix, p.mat = test_significant_coef_matrix$p, col= coolwarm(200),method = 'circle', type = 'lower', insig='blank',
+         addCoef.col ='black', number.cex = 0.8, order = 'AOE', diag=FALSE,tl.col="black")
+## add p-values on no significant coefficients
+corrplot(test_cor_coef_matrix, p.mat = test_significant_coef_matrix$p, col= coolwarm(200),insig = 'p-value',tl.col="black")
+## add significant level stars
+corrplot(test_cor_coef_matrix, 
+         # title = "Corr matrix",
+         p.mat = test_significant_coef_matrix$p, 
+         # plotCI = 'rect',
+         lowCI.mat= test_significant_coef_matrix$lowCI, 
+         uppCI.mat = test_significant_coef_matrix$uppCI,  
+         col= coolwarm(200),
+         method = 'color', 
+         diag = FALSE,
+         type = 'upper',
+         # sig.level = c(0.001, 0.01, 0.05), 
+         # pch.cex = 0.9, 
+         # insig = 'blank',
+         # insig = 'label_sig',
+         # insig = 'p-value',
+         # sig.level = -1, # shaw all p-values
+         sig.level = 0.5,
+         # pch.col = 'grey20',
+         addCoef.col ='black',
+         # cl.ratio = 0.2,
+         tl.srt = 0,
+         order = 'hclust',
+         addrect = 2,
+         tl.col="black")
+
+# an animation of changing confidence interval in different significance level
+## begin.animaton
+par(ask = FALSE)
+for (i in seq(0.1, 0, -0.005)) {
+  tmp <- cor.mtest(as.matrix((df_numeric)),
+            conf.level = 1 - i,
+            alternative = alternative_corr,
+            method = method_corr,
+            na.action = na.omit,
+            exact = FALSE
+  )
+  corrplot(test_cor_coef_matrix, p.mat = tmp$p, low = tmp$lowCI, upp = tmp$uppCI, order = 'hclust',
+           pch.col = 'red', sig.level = i, plotCI = 'rect', cl.pos = 'n',
+           mar = c(0, 0, 1, 0),
+           type = 'lower',
+           tl.col="black",
+           title = substitute(alpha == x,
+                              list(x = format(i, digits = 3, nsmall = 3))))
+  Sys.sleep(0.15)
+  print(1 - i)
+}
+# create datatable to show
+# Get the lower triangular values
+lower_values_corr <- test_cor_coef_matrix[lower.tri(test_cor_coef_matrix)]
+# Get the lower triangular values
+lower_values_p <- test_significant_coef_matrix$p[lower.tri(test_significant_coef_matrix$p)]
+lower_values_lowCI <- test_significant_coef_matrix$lowCI[lower.tri(test_significant_coef_matrix$lowCI)]
+lower_values_uppCI <- test_significant_coef_matrix$uppCI[lower.tri(test_significant_coef_matrix$uppCI)]
+
+# Get the row and column indices for the lower triangular values
+row_names <- rownames(test_cor_coef_matrix)[row(test_cor_coef_matrix)[lower.tri(test_cor_coef_matrix)]]
+col_names <- colnames(test_cor_coef_matrix)[col(test_cor_coef_matrix)[lower.tri(test_cor_coef_matrix)]]
+
+# Combine row and column names into pair names (e.g., "A-B")
+combinations <- paste(row_names, col_names, sep = "-")
+
+# Create a data frame
+df <- data.frame(corr_coef = lower_values_corr, 
+                 p = lower_values_p, 
+                 lowCI = lower_values_lowCI,
+                 uppCI = lower_values_uppCI,
+                 row.names = combinations)
 #########
 # TESTS #
 #########

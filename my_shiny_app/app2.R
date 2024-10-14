@@ -419,13 +419,16 @@ server <- function(input, output,session) {
     req(modified_data()) 
     stats_preview <- describe(modified_data())
     display_data(stats_preview) # set display_data
+    output$data_table_title <- renderUI({
+      h5("Summary")
+    })
   }) # end summarize all data
   # Show all current data
   observeEvent(input$showDataButton, {
     req(modified_data())  # Ensure data is available
     display_data(modified_data())
     output$data_table_title <- renderUI({
-      h5("Summary")
+      h5("Data")
     })
   }) # end show all current data
   
@@ -486,7 +489,8 @@ server <- function(input, output,session) {
         dom = 'frtiBp',    # Search box, pagination, etc.
         buttons = c( 'csv', 'excel', 'pdf')
       ),
-      extensions = 'Buttons'  # Enable export options
+      rownames = FALSE,
+      extensions = "Buttons"
     )
   }) # end table
   ####################################################
@@ -597,6 +601,9 @@ server <- function(input, output,session) {
         new_data <- modified_data() %>% 
           plot_na_pareto(plot = FALSE)
         display_data(new_data)
+        output$data_table_title <- renderUI({
+          h5("Missing Data")
+        })
         missing_data_exists <- TRUE
         missing_data_exists(missing_data_exists)
         error_displayed <- FALSE
@@ -843,6 +850,7 @@ server <- function(input, output,session) {
         dom = 'frtiBp',    # Search box, pagination, etc.
         buttons = c( 'csv', 'excel', 'pdf')  # Add export buttons
       ),
+      rownames = FALSE,
       selection = 'multiple',
       extensions = 'Buttons'  # Enable export options
     )
