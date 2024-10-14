@@ -5,6 +5,7 @@
 
 source("my_functions.R")
 library(shiny)
+library(DT)
 library(ggplot2)
 library(plotly)
 library(bslib)
@@ -19,7 +20,7 @@ SHAPIRO_THRESHOLD = 2000 # max rows to use shapiro for normality
 MAX_FOR_PREVIEW_PLOT = 6
 MESSAGE_COLOR = " #488fda"
 #############################
-# sidebars for cleaning data
+# sidebar for cleaning data
 sidebar_data <- layout_sidebar(
   sidebar = sidebar(
     # title = "Data Viewing",
@@ -130,6 +131,7 @@ cards_normality <- list(
                            choices = c("Shapiro-Wilk","Kolmogorov-Smirnov"),
                            selected = "Shapiro-Wilk",
                            multiple = FALSE), # dropdown with available plot types
+               actionButton("clear_selection_button", "Deselect All Rows")
         )
       )
     ),  # end inputs div
@@ -179,6 +181,99 @@ cards_normality <- list(
       class = "plot-normality"
     )  # end plot div
   )# end card
+) # end cards
+########################################################
+# CORRELATION TAB
+#############################
+# sidebar for cleaning data
+sidebar_correlation <- layout_sidebar(
+  sidebar = sidebar(
+    # title = "Data Viewing",
+    width = SIDEBAR_WIDTH_CLEAN_DATA,
+    selectInput("columns_correlation", "Select Columns:",  # Predefine an empty selectInput for columns
+                choices = c(),  # Empty choices initially
+                multiple = TRUE
+    ),
+    selectInput("correlation_method", "Correlation Method:",  
+                choices = c("pearson","kendall","spearman"),  
+                selected = "pearson",
+                multiple = FALSE
+    ),
+    selectInput("correlation_alternative", "Alternative Hypothesis:",  
+                choices = c("less","greater","two.sided"),  
+                selected = "two.sided",
+                multiple = FALSE
+    ),
+    sliderInput("conf_level", 
+                "Select Level Of Confidence:",
+                min = 0, 
+                max = 1,
+                value = 0.95, 
+                step = 0.005),
+    actionButton("calculateCorButton", "Calculate Correlations")
+  ), # end sidebar
+  # htmlOutput("data_table_title"),  # Output placeholder for the title
+  card_body(DT::dataTableOutput("correlation_table") ) # Output placeholder for the interactive table
+) # end layout_sidebar
+###########################
+# cards for cleaning data
+cards_correlation <- list(
+  card(
+    full_screen = TRUE,
+    card_header("Correlation Results"),
+    sidebar_correlation
+  ), # end card Data
+  card(
+    full_screen = TRUE,
+    card_header("Plot"),
+    # # Main panel only with inputs and plot
+    # # Custom CSS for smaller font sizes in different components
+    # tags$head(
+    #   tags$style(HTML("
+    #               /* Set font size for selectInput */
+    #               .selectize-input, .selectize-dropdown {
+    #                 font-size: 12px !important; /* Font size for dropdowns */
+    #               }
+    #               /* Set font size for sliderInput */
+    #               .slider {
+    #                 font-size: 12px !important; /* Font size for slider */
+    #               }
+    #               /* Set font size for actionButton */
+    #               .action-button, .btn {
+    #                 font-size: 12px !important; /* Font size for buttons */
+    #               }
+    #               /* Set font size for input fields */
+    #               input[type='text'], input[type='file'] {
+    #                 font-size: 12px !important; /* Font size for text and file inputs */
+    #               }
+    #               /* Add space between inputs and plot */
+    #               .plot-output {
+    #                 margin-top: 20px; /* Adjust the value for more/less space */
+    #               }
+    #             "))
+    # ),
+    # Main panel only with inputs and plot
+    div(
+      # Create a fluid row for inputs above the plot
+      fluidRow(
+        column(12, 
+               selectInput("plot_type_correlation",
+                           label = "Select Correlation Plot Type",
+                           choices = c("upper","lower", "full"),
+                           selected = "upper",
+                           multiple = FALSE) # dropdown with available plot types
+               # actionButton("applyMissingThresholdButton", 
+               #              "Refresh Data")  
+        )
+      )
+    ),  # end inputs div
+    
+    # Output for the plot below the inputs
+    div(
+      plotlyOutput("plot_data_cleaning"),  # Specify height for the plot
+      class = "plot-output"  # Add class for margin
+    )  # end plot div
+  )
 ) # end cards
 #######################################################
 # UI part
@@ -295,6 +390,10 @@ ui <- page_navbar(
             # sidebar_normality
             layout_columns(cards_normality[[1]],
                            cards_normality[[2]])
+  ), # end nav_panel
+  nav_panel("Correlation", 
+            layout_columns(cards_correlation[[1]],
+                           cards_correlation[[2]])
   ) # end nav_panel
 )# end page_navbar
 ###################################################################################
@@ -820,6 +919,17 @@ server <- function(input, output,session) {
       }# end if there is data
   }) # end observe data
   
+  # Table Proxy (this is needed for programmatic selection/deselection)
+  proxy <- dataTableProxy("normality_table")
+  
+  # Button or trigger to clear the selection
+  observeEvent(input$clear_selection_button, {
+    req(display_data_normality())
+    # Clear the selection by passing NULL to selectRows
+    selectRows(proxy, NULL)
+    print("nothing slected")
+    columns_plot_normality(c())
+  })
   
   observeEvent(input$normality_table_rows_selected, {
     # req(input$normality_table_rows_selected)
@@ -836,6 +946,7 @@ server <- function(input, output,session) {
       columns_plot_normality(c())
     }
   }, ignoreNULL = FALSE)
+  
   # Render the interactive DataTable based on the selected columns
   output$normality_table <- DT::renderDataTable({
     req(display_data_normality())  # Ensure data is available
