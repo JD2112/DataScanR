@@ -635,14 +635,24 @@ calculate_corr_matrix <- function(df, my_columnnames = c(), corr_alternative, co
 
 corr_plot_from_result <- function(corr_matrix_result, plot_type = "upper",
                                   sig_level_crossed = 0.05,
-                                  my_ordering ="original") {
+                                  my_ordering ="original",
+                                  my_hclust_method = "complete",
+                                  my_add_rect = 2,
+                                  my_title = "") {
   
   cor_coef_matrix <- corr_matrix_result$cor_coef_matrix
   significant_coef_matrix <- corr_matrix_result$significance_matrix
+  if (plot_type == "lower") {
+    my_pos = "ld"
+  } else if (plot_type == "upper"){
+    my_pos = "td"
+  } else {
+    my_pos = "lt"
+  }
   
   ## add significant level stars
   corrplot(cor_coef_matrix, 
-           # title = "Corr matrix",
+           title = my_title,
            p.mat = significant_coef_matrix$p, 
            # plotCI = 'rect',
            lowCI.mat= significant_coef_matrix$lowCI, 
@@ -652,22 +662,20 @@ corr_plot_from_result <- function(corr_matrix_result, plot_type = "upper",
            diag = FALSE,
            type = plot_type,
            order = my_ordering,
-           number.cex = 1.2,
-           number.font = 1,
-           # sig.level = c(0.001, 0.01, 0.05), 
-           # pch.cex = 0.9, 
-           # insig = 'blank',
-           # insig = 'label_sig',
-           # insig = 'p-value',
+           hclust.method = my_hclust_method,
+           addrect = my_add_rect,
            # sig.level = -1, # shaw all p-values
            sig.level = sig_level_crossed,
-           # pch.col = 'grey20',
+           number.cex = 1.2,
+           number.font = 1,
            addCoef.col ='black',
-           # cl.ratio = 0.2,
            tl.srt = 0,
            tl.offset = 0.9,
            tl.col="black",
-           addgrid.col="grey")
+           tl.cex = 0.9,
+           tl.pos = my_pos,
+           addgrid.col="grey",
+           mar=c(0,0,3,0))
 }# end corr_plot_from_corr_matrix
 
 #############################################################################################

@@ -41,9 +41,12 @@ sidebar_data <- layout_sidebar(
     actionButton("removeColButton", "Remove Selected Columns"),  # remove button
     actionButton("showColButton", "Show Selected Columns"),  # show selected button
     actionButton("summarizeSelectedButton", "Summarize Selected Data"), # button to show summary stats
-    actionButton("restoreOriginalButton", "Restore Original Data")  # restore button
+    actionButton("restoreOriginalButton", "*Restore Original Data")  # restore button
   ), # end sidebar
   htmlOutput("data_table_title"),  # Output placeholder for the title
+  # Download button
+  # Output to dynamically show/hide the button based on reactive data
+  uiOutput("download_button_ui"),
   card_body(DT::dataTableOutput("data_table") ) # Output placeholder for the interactive table
 ) # end layout_sidebar
 ###########################
@@ -120,7 +123,6 @@ cards_normality <- list(
   card(
     full_screen = TRUE,
     card_header("Data"),
-    # card_body(DT::dataTableOutput("normality_table") ) # Output placeholder for the interactive table
     # Main panel only with inputs and plot
     div(
       # Create a fluid row for inputs above the plot
@@ -131,7 +133,7 @@ cards_normality <- list(
                            choices = c("Shapiro-Wilk","Kolmogorov-Smirnov"),
                            selected = "Shapiro-Wilk",
                            multiple = FALSE), # dropdown with available plot types
-               actionButton("clear_selection_button", "Deselect All Rows")
+               uiOutput("deselect_button_ui") # show deselect button after the data is loaded
         )
       )
     ),  # end inputs div
@@ -209,7 +211,7 @@ sidebar_correlation <- layout_sidebar(
                 min = 0, 
                 max = 1,
                 value = 0.95, 
-                step = 0.005),
+                step = 0.05),
     actionButton("calculateCorButton", "Calculate Correlations")
   ), # end sidebar
   # htmlOutput("data_table_title"),  # Output placeholder for the title
@@ -227,26 +229,58 @@ cards_correlation <- list(
     full_screen = TRUE,
     card_header("Plot"),
     
+    tags$head(
+      tags$style(HTML("
+                  /* Add space between inputs and plot */
+                  .plot-correlation {
+                    margin-top: 0px; /* Adjust the value for more/less space */
+                  }
+                "))
+    ),
     # Main panel only with inputs and plot
     div(
       # Create a fluid row for inputs above the plot
       fluidRow(
-        column(12, 
+        column(6, 
                selectInput("plot_type_correlation",
                            label = "Select Correlation Plot Type",
                            choices = c("upper","lower", "full"),
-                           selected = "upper",
-                           multiple = FALSE) # dropdown with available plot types
-               # actionButton("applyMissingThresholdButton", 
-               #              "Refresh Data")  
-        )
-      )
+                           selected = "lower",
+                           multiple = FALSE), # dropdown with available plot types
+               textInput("cor_plot_title", "Title", value = "Correlation matrix"),
+               numericInput("sig_level", "Significance Level:", value = 1, min = 0, max = 1, step = 0.001),
+               # Add a checkbox for advanced options
+               checkboxInput("show_advanced_correlation_options", "Show Advanced Options", value = FALSE)
+        ), # end column
+        column(6, 
+               # Conditionally show UI elements based on checkbox value
+               conditionalPanel(
+                 condition = "input.show_advanced_correlation_options == true",
+                 selectInput("correlation_order", "Order Variables:",  
+                             choices = c("original","hclust","AOE","FPC","alphabet"),  
+                             selected = "original",
+                             multiple = FALSE
+                 ),
+                 selectInput("cor_hclust_method", "Agglomeration method for hclust:",  
+                             choices = c("complete","ward.D","ward.D2","single","average","mcquitty","median","centroid"),  
+                             selected = "complete",
+                             multiple = FALSE
+                 ),
+                 numericInput("cor_hclust_clusters", "No. of clusters for hclust", value = 2)
+               ) # end conditional panel 
+        ) # end column
+        
+      ) # end fluid
     ),  # end inputs div
     
     # Output for the plot below the inputs
     div(
-      plotOutput("plot_correlation"),  # Specify height for the plot
-      # class = "plot-correlation"  # Add class for margin
+      style = "flex-grow: 1; display: flex; flex-direction: column;",  # Allow the div to grow and fill remaining space
+      card_body(
+        plotOutput("plot_correlation"),
+        style = "flex-grow: 1;"  # Make the table body expand
+      ),
+      class = "plot-correlation"  # Add class for margin
     )  # end plot div
   )
 ) # end cards
@@ -325,6 +359,9 @@ ui <- page_navbar(
       .card .form-group {
         font-size: 12px !important; /* Font size for file inputs */
       }
+      input[type='number'] {
+      font-size: 12px;
+    }
     ")),
     
     # jQuery for dynamically adjusting modal and full-screen z-index
@@ -388,9 +425,8 @@ server <- function(input, output,session) {
   error_displayed <- reactiveVal(FALSE)
   current_data_normality <- reactiveVal(NULL)
   columns_plot_normality <- reactiveVal(c())
-  correlation_table<- reactiveVal(NULL)
   correlation_result <- reactiveVal(NULL)
-  # currently_selected_columns_correlation <- reactiveVal(c())
+  currently_selected_columns_corr <- reactiveVal(NULL)
   
   # Reactive expression to read the uploaded file
   data <- reactive({
@@ -433,6 +469,26 @@ server <- function(input, output,session) {
     updateSelectInput(session, "columns_data", choices = column_names, selected = current_col_selection)  # Populate dropdown
     # updateSelectInput(session, "columns_plot", choices = column_names, selected = current_col_selection)
   })
+  
+  # Dynamically show the download button only when display_data is available
+  output$download_button_ui <- renderUI({
+    if (!is.null(display_data()) && nrow(display_data()) > 0) {
+      # If data is available, show the download button
+      downloadButton("save_csv", "Download CSV")
+    }
+  })
+  
+  # Define download handler for the CSV file
+  output$save_csv <- downloadHandler(
+    filename = function() { 
+      paste("exported_data_", Sys.Date(), ".csv", sep="")
+    },
+    content = function(file) {
+      data2save <- display_data()
+      if (!is.null(data2save) && nrow(data2save)>0) {
+        write.csv(data2save, file, row.names = FALSE)
+      }
+    })
   
   # perform data diagnostics
   observeEvent(input$diagnoseButton, {
@@ -563,11 +619,11 @@ server <- function(input, output,session) {
       options = list(
         pageLength = 100,   # Show n rows by default
         autoWidth = TRUE,  # Auto-adjust column width
-        dom = 'frtiBp',    # Search box, pagination, etc.
-        buttons = c( 'csv', 'excel', 'pdf')
+        dom = 'frtip'    # Search box, pagination, etc.
+        # buttons = c( 'csv', 'excel', 'pdf')
       ),
-      rownames = FALSE,
-      extensions = "Buttons"
+      rownames = FALSE
+      # extensions = "Buttons"
     )
   }) # end table
   ####################################################
@@ -825,6 +881,14 @@ server <- function(input, output,session) {
     display_data_normality(normality_df())
   }) # end observe data
   
+  # Dynamically show the download button only when display_data is available
+  output$deselect_button_ui <- renderUI({
+    if (!is.null(normality_df()) && nrow(normality_df()) > 0) {
+      # If data is available, show the download button
+      actionButton("clear_selection_button", "Deselect All Rows")
+    }
+  })
+  
   observeEvent(input$normality_type, {
     req(current_data_normality)
     # perform normality test according to selected field
@@ -937,7 +1001,7 @@ server <- function(input, output,session) {
         pageLength = 100,   # Show n rows by default
         autoWidth = TRUE,  # Auto-adjust column width
         dom = 'frtiBp',    # Search box, pagination, etc.
-        buttons = c( 'csv', 'excel', 'pdf')  # Add export buttons
+        buttons = c( 'csv')  # Add export buttons
       ),
       rownames = FALSE,
       selection = 'multiple',
@@ -1018,7 +1082,12 @@ server <- function(input, output,session) {
       if (! is.null(current_data) && nrow(current_data) > 0) {
         # Dynamically update the column selector when the data is loaded
         column_names <- colnames(modified_data())  # Get column names from the loaded data
-        updateSelectInput(session, "columns_correlation", choices = column_names, selected = c())
+        selected_cols <- currently_selected_columns_corr()
+        if (!is.null(selected_cols) && length(selected_cols) > 0) {
+          updateSelectInput(session, "columns_correlation", choices = column_names, selected = selected_cols)
+        } else {
+          updateSelectInput(session, "columns_correlation", choices = column_names, selected = c())
+        }
       }
     }
     }) # end observe tab
@@ -1028,26 +1097,57 @@ server <- function(input, output,session) {
     selected_cols <- input$columns_correlation
     selected_method <- input$correlation_method
     selected_alternative <- input$correlation_alternative
-    selected_conf_level <- input$conf_level
+    selected_conf_level <- isolate(input$conf_level)
     if (length(selected_cols) > 0) {
-      corr_matrix_result <- calculate_corr_matrix(modified_data(),
-                                                  my_columnnames = selected_cols,
-                                                  selected_alternative,
-                                                  selected_method,
-                                                  confidence_level = selected_conf_level)
-      corr_df <- corr_matrix_result$correlation_df
-      correlation_table(corr_df)
-      correlation_result(corr_matrix_result)
-      column_names <- colnames(modified_data())
-      updateSelectInput(session, "columns_correlation", choices = column_names, selected = selected_cols)
-    }
+      tryCatch({
+        corr_matrix_result <- calculate_corr_matrix(modified_data(),
+                                                    my_columnnames = selected_cols,
+                                                    selected_alternative,
+                                                    selected_method,
+                                                    confidence_level = selected_conf_level)
+        column_names <- colnames(modified_data())
+        updateSelectInput(session, "columns_correlation", choices = column_names, selected = selected_cols)
+        currently_selected_columns_corr(selected_cols)
+        correlation_result(corr_matrix_result)
+      }, error = function(e) {
+        # Handle error
+        showModal(modalDialog(
+          # Title and icon together in the same div, so we can control their position
+          div(
+            style = "position: relative;",  # Relative positioning to align the title and icon
+            # Title on the left
+            span("Info", style = "font-size: 28px;"),
+            # Icon on the top-right corner
+            span(
+              bsicons::bs_icon("exclamation-triangle", fill = MESSAGE_COLOR, size = 40), 
+              style = "position: absolute; top: 0; right: 0;"
+            )
+          ),
+          # Add a line break using <br>
+          HTML("<br>"),
+          # Add a line break using <br>
+          HTML("<br>"),
+          footer = modalButton("OK"),
+          HTML(paste0("Problem calculating correlation!<br>Try different columns.     ",bsicons::bs_icon("emoji-tear",fill = MESSAGE_COLOR,size=20)))
+        ))
+      }) # end trycatch
+      # corr_matrix_result <- calculate_corr_matrix(modified_data(),
+      #                                             my_columnnames = selected_cols,
+      #                                             selected_alternative,
+      #                                             selected_method,
+      #                                             confidence_level = selected_conf_level)
+      # column_names <- colnames(modified_data())
+      # updateSelectInput(session, "columns_correlation", choices = column_names, selected = selected_cols)
+      # currently_selected_columns_corr(selected_cols)
+      # correlation_result(corr_matrix_result)
+    } # end if columns selected
   })
+  
   
   # Render the DataTable 
   output$correlation_table <- DT::renderDataTable({
-    req(correlation_table())  # Ensure data is available
-    table_data <- correlation_table()
-    
+    req(correlation_result())  # Ensure data is available
+    table_data <- correlation_result()$correlation_df
     # Render the table using DT for interactivity
     DT::datatable(
       table_data,
@@ -1055,7 +1155,7 @@ server <- function(input, output,session) {
         pageLength = 100,   # Show n rows by default
         autoWidth = TRUE,  # Auto-adjust column width
         dom = 'frtiBp',    # Search box, pagination, etc.
-        buttons = c( 'csv', 'excel', 'pdf')  # Add export buttons
+        buttons = c( 'csv')  # Add export buttons
       ),
       # rownames = FALSE,
       # selection = 'multiple',
@@ -1069,14 +1169,22 @@ server <- function(input, output,session) {
     req(modified_data())  # Ensure modified data is available
     req(correlation_result())
     type_of_plot <- input$plot_type_correlation
+    plot_title <- input$cor_plot_title
+    sig_level <- input$sig_level
     cor_df <- correlation_result()$correlation_df
+    cor_order <- input$correlation_order
+    cor_hclust <- input$cor_hclust_method
+    cor_no_clusters <- input$cor_hclust_clusters
     results <- correlation_result()
     if (nrow(cor_df)>0) {
       corr_plot_from_result(results,
                             plot_type=type_of_plot,
-                            sig_level_crossed = 0.01)
+                            my_ordering = cor_order,
+                            my_hclust_method = cor_hclust,
+                            my_add_rect = cor_no_clusters,
+                            sig_level_crossed = sig_level,
+                            my_title=plot_title)
     }
-    
   })
   
   

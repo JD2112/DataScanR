@@ -209,7 +209,7 @@ test_columns <- c("gluc_res","PGlucose","chol_res","tg_res" ,"ldl_res", "hdl_res
 alternative_corr <- "two.sided"
 # "pearson","kendall","spearman"
 method_corr <- "spearman"
-conf_level <- 0.9
+conf_level <- 0.95
 
 # # select some columns
 # test_corr_df <- data_filtered_columns_with_factors %>% 
@@ -225,18 +225,21 @@ conf_level <- 0.9
 #                        exact = FALSE
 #                        )
 
-source("my_functions.R")
+
 # test_corr_matrix_auto <- calculate_corr_matrix_auto_method(test_corr_df,normality_results,alternative_corr)
 test_corr_matrix_result <- calculate_corr_matrix(data_filtered_columns_with_factors,
                                                  my_columnnames = test_columns,
                                                  alternative_corr,
                                                  method_corr,
                                                  confidence_level = conf_level)
+
+source("my_functions.R")
 # type= "upper, "lower, "full"
 # sig_level_crossed= float (which values are not significant)
 corr_plot_from_result(test_corr_matrix_result,
                       plot_type="lower",
-                      sig_level_crossed = 0.01)
+                      sig_level_crossed = 1,
+                      my_title = "Title")
 
 test_cor_coef_matrix <- test_corr_matrix_result$cor_coef_matrix
 test_significant_coef_matrix <- test_corr_matrix_result$significance_matrix

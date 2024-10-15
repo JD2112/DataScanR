@@ -504,14 +504,24 @@ calculate_corr_matrix <- function(df, my_columnnames = c(), corr_alternative, co
 
 corr_plot_from_result <- function(corr_matrix_result, plot_type = "upper",
                                   sig_level_crossed = 0.05,
-                                  my_ordering ="original") {
+                                  my_ordering ="original",
+                                  my_hclust_method = "complete",
+                                  my_add_rect = 2,
+                                  my_title = "") {
   
   cor_coef_matrix <- corr_matrix_result$cor_coef_matrix
   significant_coef_matrix <- corr_matrix_result$significance_matrix
+  if (plot_type == "lower") {
+    my_pos = "ld"
+  } else if (plot_type == "upper"){
+    my_pos = "td"
+  } else {
+    my_pos = "lt"
+  }
   
   ## add significant level stars
   corrplot(cor_coef_matrix, 
-           # title = "Corr matrix",
+           title = my_title,
            p.mat = significant_coef_matrix$p, 
            # plotCI = 'rect',
            lowCI.mat= significant_coef_matrix$lowCI, 
@@ -521,22 +531,20 @@ corr_plot_from_result <- function(corr_matrix_result, plot_type = "upper",
            diag = FALSE,
            type = plot_type,
            order = my_ordering,
-           number.cex = 1.2,
-           number.font = 1,
-           # sig.level = c(0.001, 0.01, 0.05), 
-           # pch.cex = 0.9, 
-           # insig = 'blank',
-           # insig = 'label_sig',
-           # insig = 'p-value',
+           hclust.method = my_hclust_method,
+           addrect = my_add_rect,
            # sig.level = -1, # shaw all p-values
            sig.level = sig_level_crossed,
-           # pch.col = 'grey20',
+           number.cex = 1.2,
+           number.font = 1,
            addCoef.col ='black',
-           # cl.ratio = 0.2,
            tl.srt = 0,
            tl.offset = 0.9,
            tl.col="black",
-           addgrid.col="grey")
+           tl.cex = 0.8,
+           tl.pos = my_pos,
+           addgrid.col="grey",
+           mar=c(0,0,3,0))
 }# end corr_plot_from_corr_matrix
 
 # ######################################################################################
@@ -731,9 +739,9 @@ plot_na_pareto_modified <- function (x, only_na = FALSE, relative = FALSE, main 
     #               label = paste(round(ratio * 100, 1), "%")),
     #           position = position_dodge(width = 0.9), vjust = -0.25) + 
     geom_path(aes(y = cumulative / scaleRight, group = 1), 
-              colour = col, size = 0.4) +
+              colour = col, size = 0.1) +
     geom_point(aes(y = cumulative / scaleRight, group = 1), 
-               colour = col, size = 1.5) +
+               colour = col, size = 0.2) +
     scale_y_continuous(sec.axis = sec_axis(~.*scaleRight, name = "Cumulative (%)")) +
     labs(title = main, x = xlab, y = ylab) + 
     theme_grey(base_family = base_family) +    
@@ -753,7 +761,10 @@ plot_na_pareto_modified <- function (x, only_na = FALSE, relative = FALSE, main 
             axis.title.x = element_text(size = 12),
             axis.title.y = element_text(size = 12),
             axis.title.y.right = element_text(size = 12),
-            axis.text.x = element_blank()
+            axis.text.x = element_blank(),
+            axis.ticks.x = element_blank(),
+            panel.grid = element_blank(),
+            panel.background = element_rect(fill = "white")
             # axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1)
             )
   }
@@ -844,7 +855,9 @@ plot_na_intersect_modified <- function (x, only_na = TRUE, n_intersacts = NULL,
   p <- plot_ly()
   # Create hover text combining value and corresponding name
   my_variable_names <- names(x) 
-  dframe$hover_text <- paste("Value:", dframe$value, "<br>Name:", my_variable_names[dframe$Var1])
+  # dframe$hover_text <- paste("Value:", dframe$value, "<br>Name:", my_variable_names[dframe$Var1])
+  # dframe$hover_text <- paste("Name:", my_variable_names[dframe$Var1])
+  dframe$hover_text <- paste("X:", dframe$Var1, "<br>Y:", dframe$Var2,"<br>Name:", my_variable_names[dframe$Var1])
   
   # Add trace for tile representation using scatter plot
   p <- p %>%
