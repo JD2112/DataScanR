@@ -730,11 +730,16 @@ plot_na_pareto_modified <- function (x, only_na = FALSE, relative = FALSE, main 
   }  
   
   p <- ggplot(info_na, aes(x = variable)) +
+    # geom_bar(aes(y = frequencies, fill = grade,
+    #              text = paste0("Variable: ", variable, "\nGrade: ", grade,
+    #                            "\nFrequency: ", frequencies,
+    #                            "\nPercentage: ", round(ratio * 100, 1), "%")
+    #              ), color = "darkgray", stat = "identity") +
     geom_bar(aes(y = frequencies, fill = grade,
                  text = paste0("Variable: ", variable, "\nGrade: ", grade,
-                               "\nFrequency: ", frequencies,
-                               "\nPercentage: ", round(ratio * 100, 1), "%")
-                 ), color = "darkgray", stat = "identity") +
+                                                         "\nFrequency: ", frequencies,
+                                                         "\nPercentage: ", round(ratio * 100, 1), "%")
+                 ),stat = "identity") +
     # geom_text(aes(y = frequencies, 
     #               label = paste(round(ratio * 100, 1), "%")),
     #           position = position_dodge(width = 0.9), vjust = -0.25) + 
@@ -744,7 +749,7 @@ plot_na_pareto_modified <- function (x, only_na = FALSE, relative = FALSE, main 
                colour = col, size = 0.2) +
     scale_y_continuous(sec.axis = sec_axis(~.*scaleRight, name = "Cumulative (%)")) +
     labs(title = main, x = xlab, y = ylab) + 
-    theme_grey(base_family = base_family) +    
+    # theme_grey(base_family = base_family) +    
     theme(
       axis.text.x = element_blank(),
       # axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1),
@@ -769,7 +774,13 @@ plot_na_pareto_modified <- function (x, only_na = FALSE, relative = FALSE, main 
             )
   }
   
-  ggplotly(p,tooltip = "text")
+  p_plotly <- ggplotly(p,tooltip = "text")
+  # Adjust the color if necessary after conversion
+  p_plotly <- p_plotly %>% layout(
+    legend = list(title = list(text = "Missing Grade")),
+    paper_bgcolor = 'white',  # Ensure background is white
+    plot_bgcolor = 'white'     # Ensure plot area is white
+  )
 }
 
 #########################################################################################

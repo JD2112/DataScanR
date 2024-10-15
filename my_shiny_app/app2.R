@@ -95,7 +95,7 @@ cards_cleaning_data <- list(
                selectInput("plot_missing",
                            label = "Select Missing Values Plot Type",
                            choices = c("pareto", "intersect"),
-                           selected = "intersect",
+                           selected = "pareto",
                            multiple = FALSE),  # dropdown with available plot types
                sliderInput("missing_pct", 
                            "Allow Max % Of Missing Data:",
