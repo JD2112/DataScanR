@@ -244,7 +244,7 @@ cards_correlation <- list(
         column(6, 
                selectInput("plot_type_correlation",
                            label = "Select Correlation Plot Type",
-                           choices = c("upper","lower", "full"),
+                           choices = c("upper","lower", "full","confidence_interval"),
                            selected = "lower",
                            multiple = FALSE), # dropdown with available plot types
                textInput("cor_plot_title", "Title", value = "Correlation matrix"),
@@ -622,7 +622,8 @@ server <- function(input, output,session) {
         dom = 'frtip'    # Search box, pagination, etc.
         # buttons = c( 'csv', 'excel', 'pdf')
       ),
-      rownames = FALSE
+      rownames = FALSE,
+      selection = 'none'
       # extensions = "Buttons"
     )
   }) # end table
@@ -1158,7 +1159,7 @@ server <- function(input, output,session) {
         buttons = c( 'csv')  # Add export buttons
       ),
       # rownames = FALSE,
-      # selection = 'multiple',
+      selection = 'none',
       extensions = 'Buttons'  # Enable export options
     )
   }) # end table

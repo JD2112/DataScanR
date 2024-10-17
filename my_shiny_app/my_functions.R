@@ -511,34 +511,52 @@ corr_plot_from_result <- function(corr_matrix_result, plot_type = "upper",
   
   cor_coef_matrix <- corr_matrix_result$cor_coef_matrix
   significant_coef_matrix <- corr_matrix_result$significance_matrix
+  my_angle = 0
+  my_plotCI = "n"
+  my_coef_col = "black"
+  my_diag = FALSE
   if (plot_type == "lower") {
     my_pos = "ld"
+    my_angle = 0
+    my_plotCI = "n"
   } else if (plot_type == "upper"){
     my_pos = "td"
-  } else {
+    my_angle = 90
+    my_plotCI = "n"
+  } else if (plot_type == "full") {
     my_pos = "lt"
+    my_angle = 90
+    my_plotCI = "n"
+  } else if (plot_type == "confidence_interval") {
+    plot_type = "full" # always show as full
+    my_pos = "lt"
+    my_angle = 90
+    my_plotCI = "rect"
+    my_coef_col= NULL
+    my_diag = TRUE
   }
   
-  ## add significant level stars
+  ## 
   corrplot(cor_coef_matrix, 
            title = my_title,
            p.mat = significant_coef_matrix$p, 
-           # plotCI = 'rect',
+           plotCI = my_plotCI,
            lowCI.mat= significant_coef_matrix$lowCI, 
            uppCI.mat = significant_coef_matrix$uppCI,  
            col= coolwarm(200),
            method = 'color', 
-           diag = FALSE,
+           diag = my_diag,
            type = plot_type,
            order = my_ordering,
            hclust.method = my_hclust_method,
            addrect = my_add_rect,
-           # sig.level = -1, # shaw all p-values
            sig.level = sig_level_crossed,
            number.cex = 1.2,
            number.font = 1,
-           addCoef.col ='black',
-           tl.srt = 0,
+           addCoef.col =my_coef_col,
+           tl.srt = my_angle,
+           cl.ratio = 0.2,
+           cl.pos = 'n',
            tl.offset = 0.9,
            tl.col="black",
            tl.cex = 0.8,

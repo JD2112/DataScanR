@@ -208,7 +208,7 @@ test_columns <- c("gluc_res","PGlucose","chol_res","tg_res" ,"ldl_res", "hdl_res
 # "less","greater","two.sided"
 alternative_corr <- "two.sided"
 # "pearson","kendall","spearman"
-method_corr <- "spearman"
+method_corr <- "pearson"
 conf_level <- 0.95
 
 # # select some columns
@@ -237,13 +237,42 @@ source("my_functions.R")
 # type= "upper, "lower, "full"
 # sig_level_crossed= float (which values are not significant)
 corr_plot_from_result(test_corr_matrix_result,
-                      plot_type="lower",
+                      plot_type="confidence_interval",
                       sig_level_crossed = 1,
                       my_title = "Title")
-
 test_cor_coef_matrix <- test_corr_matrix_result$cor_coef_matrix
 test_significant_coef_matrix <- test_corr_matrix_result$significance_matrix
-
+corrplot(test_cor_coef_matrix, 
+         title = "my_title",
+         p.mat = test_significant_coef_matrix$p, 
+         plotCI = "rect",
+         lowCI.mat= test_significant_coef_matrix$lowCI, 
+         uppCI.mat = test_significant_coef_matrix$uppCI,  
+         col= coolwarm(200),
+         method = 'color',
+         diag = TRUE,
+         type = "full",
+         order = "original",
+         hclust.method = "complete",
+         addrect = 2,
+         sig.level = 0.05,
+         number.cex = 1.2,
+         number.font = 1,
+         # addCoef.col ='black',
+         tl.srt = 90,
+         cl.ratio = 0.2,
+         cl.pos = 'n',
+         tl.offset = 0.9,
+         tl.col="black",
+         tl.cex = 0.9,
+         tl.pos = "lt",
+         addgrid.col="grey",
+         mar=c(0,0,3,0))
+corrplot(test_cor_coef_matrix,
+         p.mat = test_significant_coef_matrix$p, 
+         lowCI = test_significant_coef_matrix$lowCI,
+         uppCI = test_significant_coef_matrix$uppCI, order = 'original',
+         tl.pos = 'lt', rect.col = 'navy', plotC = 'rect', cl.pos = 'n')
 # corr_plot_from_corr_matrix(test_cor_coef_matrix,test_columns)
 
 corrplot(test_corr_matrix,method = 'square',col= coolwarm(200),addCoef.col = 'black',tl.col="black")
