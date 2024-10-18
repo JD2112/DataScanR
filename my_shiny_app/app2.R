@@ -292,7 +292,32 @@ parametric_view <- sidebarLayout(
   # Sidebar
   sidebarPanel(
     # Add your sidebar content here, such as inputs or filters
-    selectInput("parametric_test", "Choose Test:", choices = c("t-test", "ANOVA")),
+    selectInput("parametric_test", "Comparing Means:", 
+                choices = c("One sample t-test", "Independent two-sample t-test"),
+                selected = "One sample t-test"),
+    selectInput("columns_test_param", "Select Columns:",  # Predefine an empty selectInput for columns
+                choices = c(),  # Empty choices initially
+                multiple = TRUE
+    ),
+    conditionalPanel(
+      condition = "input.parametric_test == 'Independent two-sample t-test'",
+      selectInput("group_columns_test_param", "Select Group Column:",  # Predefine an empty selectInput for columns
+                  choices = c(),  # Empty choices initially
+                  multiple = FALSE
+      )
+    ), # end conditional
+    selectInput("alternative_parametric", "Alternative Hypothesis:",  
+                choices = c("less","greater","two.sided"),  
+                selected = "two.sided",
+                multiple = FALSE
+    ),
+    numericInput("mu_parametric", "mu:", value = 0),
+    sliderInput("conf_level_parametric", 
+                "Select Level Of Confidence:",
+                min = 0, 
+                max = 1,
+                value = 0.95, 
+                step = 0.05),
     actionButton("run_parametric", "Run Test")
   ),
   
@@ -301,7 +326,18 @@ parametric_view <- sidebarLayout(
     # Add your card or content to display here
     card(
       full_screen = TRUE,
-      card_header("Test Results")
+      card_header("Test Results"),
+      # Add a tabsetPanel inside the card body
+      tabsetPanel(
+        tabPanel("Tab 1",
+                 h3("Content for Tab 1"),
+                 p("This is where you can put content for the first tab.")
+        ),
+        tabPanel("Tab 2",
+                 h3("Content for Tab 2"),
+                 p("This is where you can put content for the second tab.")
+        )
+      )  # End of tabsetPanel
     ) # end card
   ) # end mainPanel
 ) # end sidebarLayout
@@ -311,6 +347,10 @@ non_parametric_view <- sidebarLayout(
   # Sidebar
   sidebarPanel(
     # Add your sidebar content here, such as inputs or filters
+    selectInput("columns_test_non_param", "Select Columns:",  # Predefine an empty selectInput for columns
+                choices = c(),  # Empty choices initially
+                multiple = TRUE
+    ),
     selectInput("non_parametric_test", "Choose Test:", choices = c("Wilcoxon", "Kruskal-Wallis")),
     actionButton("run_non_parametric", "Run Test")
   ),

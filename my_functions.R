@@ -964,3 +964,134 @@ get_melt <- function(x) {
   
   df
 } 
+##################################################################
+# TESTS
+# my_test: "One sample t-test", Independent two-sample t-test
+# my_alternative: "two.sided", "greater", "less"
+compare_means <- function (my_data,
+                           my_data_columns = c(), 
+                           my_group = NULL,
+                           my_test = "One sample t-test",
+                           my_mu = 0,
+                           my_alternative = "two.sided",
+                           my_conf_level = 0.95,
+                           my_paired = FALSE) {
+  
+# one sample t-test 
+  if (my_test == "One sample t-test") {
+    # Initialize an empty data frame to store the results
+    test_results_df <- data.frame(
+      vars = character(),
+      null_val = numeric(),
+      estimate = numeric(),
+      alternative = character(),
+      p_value = numeric(),
+      lowCI = numeric(),
+      uppCI = numeric(),
+      conf_level = numeric(),
+      statistic = numeric(),
+      parameter = numeric(),
+      stringsAsFactors = FALSE
+    )
+    for (col in my_data_columns) {
+      # perform ttest
+      result <- t.test(my_data[[col]],
+             mu= my_mu,
+             alternative = my_alternative,
+             conf.level =  my_conf_level,
+             paired = my_paired
+             )
+      # Add the results as a new row in the data frame
+      test_results_df <- rbind(test_results_df, data.frame(
+        vars = col,
+        null_val = my_mu,
+        estimate = result$estimate,
+        alternative = my_alternative,
+        p_value = result$p.value,
+        lowCI = result$conf.int[1],
+        uppCI = result$conf.int[2],
+        conf_level = my_conf_level,
+        statistic = result$statistic,
+        parameter = result$parameter,
+        stringsAsFactors = FALSE
+      ))
+    } # end for each col
+    return(test_results_df)
+  } # end one sample ttest
+# Independent two-sample t-test
+  if (my_test == "Independent two-sample t-test") {
+    if (!is.null(my_group) && length(my_group) == 1) {
+      # the test is for 2 groups only, so check if the group column has exactly 2 unique values
+      group_col = my_group[1]
+      # print(is.numeric(my_data[[group_col]]))
+      my_data <- factor_columns(my_data,my_group)
+      # print(is.numeric(my_data[[group_col]]))
+      uniq_res <- levels(my_data[[group_col]])
+      if (length(uniq_res) == 2) {
+        # Create dynamic column names based on unique levels
+        estimate1_name <- paste0("estimate_", uniq_res[1])
+        estimate2_name <- paste0("estimate_", uniq_res[2])
+        # Initialize an empty data frame to store the results
+        test_results_df <- data.frame(
+          vars = character(),
+          null_val = numeric(),
+          estimate1 = numeric(),
+          estimate2 = numeric(),
+          alternative = character(),
+          p_value = numeric(),
+          lowCI = numeric(),
+          uppCI = numeric(),
+          conf_level = numeric(),
+          statistic = numeric(),
+          parameter = numeric(),
+          stringsAsFactors = FALSE
+        )
+        # Rename the columns dynamically
+        colnames(test_results_df)[3] <- estimate1_name
+        colnames(test_results_df)[4] <- estimate2_name
+        for (test_col in my_data_columns) {
+          # Split the 'value' column into two separate vectors based on 'group'
+          my_data[[test_col]]
+          x <- my_data[[test_col]][my_data[[group_col]] == uniq_res[1]]
+          y <- my_data[[test_col]][my_data[[group_col]] == uniq_res[2]]
+          result <- t.test(x,y,
+                 mu= my_mu,
+                 alternative = my_alternative,
+                 conf.level =  my_conf_level,
+                 paired = my_paired)
+          print(result)
+          print(result$estimate[1])
+          # Add the results as a new row in the data frame
+          new_row <- data.frame(
+            vars = test_col,
+            null_val = my_mu,
+            estimate1 = result$estimate[1],
+            estimate2 = result$estimate[2],
+            alternative = my_alternative,
+            p_value = result$p.value,
+            lowCI = result$conf.int[1],
+            uppCI = result$conf.int[2],
+            conf_level = my_conf_level,
+            statistic = result$statistic,
+            parameter = result$parameter,
+            stringsAsFactors = FALSE
+          )
+          # Make sure to use the correct column names for the new rows
+          colnames(new_row)[3] <- estimate1_name
+          colnames(new_row)[4] <- estimate2_name
+          
+          # Append new rows to the original data frame
+          test_results_df <- rbind(test_results_df, new_row)
+    
+        } # end for each column
+        return(test_results_df)
+      } else {
+        print("There are more than 2 unique values in your group")
+      }
+    } # end if there was a group
+    else {
+      print("No group column selected for two-sample t-test")
+    }
+  }
+} # end compare_means
+

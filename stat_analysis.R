@@ -226,133 +226,56 @@ conf_level <- 0.95
 #                        )
 
 
-# test_corr_matrix_auto <- calculate_corr_matrix_auto_method(test_corr_df,normality_results,alternative_corr)
-test_corr_matrix_result <- calculate_corr_matrix(data_filtered_columns_with_factors,
-                                                 my_columnnames = test_columns,
-                                                 alternative_corr,
-                                                 method_corr,
-                                                 confidence_level = conf_level)
-
-source("my_functions.R")
-# type= "upper, "lower, "full"
-# sig_level_crossed= float (which values are not significant)
-corr_plot_from_result(test_corr_matrix_result,
-                      plot_type="confidence_interval",
-                      sig_level_crossed = 1,
-                      my_title = "Title")
-test_cor_coef_matrix <- test_corr_matrix_result$cor_coef_matrix
-test_significant_coef_matrix <- test_corr_matrix_result$significance_matrix
-corrplot(test_cor_coef_matrix, 
-         title = "my_title",
-         p.mat = test_significant_coef_matrix$p, 
-         plotCI = "rect",
-         lowCI.mat= test_significant_coef_matrix$lowCI, 
-         uppCI.mat = test_significant_coef_matrix$uppCI,  
-         col= coolwarm(200),
-         method = 'color',
-         diag = TRUE,
-         type = "full",
-         order = "original",
-         hclust.method = "complete",
-         addrect = 2,
-         sig.level = 0.05,
-         number.cex = 1.2,
-         number.font = 1,
-         # addCoef.col ='black',
-         tl.srt = 90,
-         cl.ratio = 0.2,
-         cl.pos = 'n',
-         tl.offset = 0.9,
-         tl.col="black",
-         tl.cex = 0.9,
-         tl.pos = "lt",
-         addgrid.col="grey",
-         mar=c(0,0,3,0))
-corrplot(test_cor_coef_matrix,
-         p.mat = test_significant_coef_matrix$p, 
-         lowCI = test_significant_coef_matrix$lowCI,
-         uppCI = test_significant_coef_matrix$uppCI, order = 'original',
-         tl.pos = 'lt', rect.col = 'navy', plotC = 'rect', cl.pos = 'n')
+# # test_corr_matrix_auto <- calculate_corr_matrix_auto_method(test_corr_df,normality_results,alternative_corr)
+# test_corr_matrix_result <- calculate_corr_matrix(data_filtered_columns_with_factors,
+#                                                  my_columnnames = test_columns,
+#                                                  alternative_corr,
+#                                                  method_corr,
+#                                                  confidence_level = conf_level)
+# 
+# source("my_functions.R")
+# # type= "upper, "lower, "full"
+# # sig_level_crossed= float (which values are not significant)
+# corr_plot_from_result(test_corr_matrix_result,
+#                       plot_type="confidence_interval",
+#                       sig_level_crossed = 1,
+#                       my_title = "Title")
+# test_cor_coef_matrix <- test_corr_matrix_result$cor_coef_matrix
+# test_significant_coef_matrix <- test_corr_matrix_result$significance_matrix
+# corrplot(test_cor_coef_matrix, 
+#          title = "my_title",
+#          p.mat = test_significant_coef_matrix$p, 
+#          plotCI = "rect",
+#          lowCI.mat= test_significant_coef_matrix$lowCI, 
+#          uppCI.mat = test_significant_coef_matrix$uppCI,  
+#          col= coolwarm(200),
+#          method = 'color',
+#          diag = TRUE,
+#          type = "full",
+#          order = "original",
+#          hclust.method = "complete",
+#          addrect = 2,
+#          sig.level = 0.05,
+#          number.cex = 1.2,
+#          number.font = 1,
+#          # addCoef.col ='black',
+#          tl.srt = 90,
+#          cl.ratio = 0.2,
+#          cl.pos = 'n',
+#          tl.offset = 0.9,
+#          tl.col="black",
+#          tl.cex = 0.9,
+#          tl.pos = "lt",
+#          addgrid.col="grey",
+#          mar=c(0,0,3,0))
+# corrplot(test_cor_coef_matrix,
+#          p.mat = test_significant_coef_matrix$p, 
+#          lowCI = test_significant_coef_matrix$lowCI,
+#          uppCI = test_significant_coef_matrix$uppCI, order = 'original',
+#          tl.pos = 'lt', rect.col = 'navy', plotC = 'rect', cl.pos = 'n')
 # corr_plot_from_corr_matrix(test_cor_coef_matrix,test_columns)
 
-corrplot(test_corr_matrix,method = 'square',col= coolwarm(200),addCoef.col = 'black',tl.col="black")
-## specialized the insignificant value according to the significant level
-corrplot(test_cor_coef_matrix, p.mat = test_significant_coef_matrix$p, col= coolwarm(200),sig.level = 0.10, order = 'hclust', addrect = 2,tl.col="black")
-## add p-values on no significant coefficients
-corrplot(test_cor_coef_matrix, p.mat = test_significant_coef_matrix$p, col= coolwarm(200),insig = 'p-value',tl.col="black")
-## leave blank on no significant coefficient
-corrplot(test_cor_coef_matrix, p.mat = test_significant_coef_matrix$p, col= coolwarm(200),method = 'circle', type = 'lower', insig='blank',
-         addCoef.col ='black', number.cex = 0.8, order = 'AOE', diag=FALSE,tl.col="black")
-## add p-values on no significant coefficients
-corrplot(test_cor_coef_matrix, p.mat = test_significant_coef_matrix$p, col= coolwarm(200),insig = 'p-value',tl.col="black")
-## add significant level stars
-corrplot(test_cor_coef_matrix, 
-         # title = "Corr matrix",
-         p.mat = test_significant_coef_matrix$p, 
-         # plotCI = 'rect',
-         lowCI.mat= test_significant_coef_matrix$lowCI, 
-         uppCI.mat = test_significant_coef_matrix$uppCI,  
-         col= coolwarm(200),
-         method = 'color', 
-         diag = FALSE,
-         type = 'upper',
-         # sig.level = c(0.001, 0.01, 0.05), 
-         # pch.cex = 0.9, 
-         # insig = 'blank',
-         # insig = 'label_sig',
-         # insig = 'p-value',
-         # sig.level = -1, # shaw all p-values
-         sig.level = 0.5,
-         # pch.col = 'grey20',
-         addCoef.col ='black',
-         # cl.ratio = 0.2,
-         tl.srt = 0,
-         order = 'hclust',
-         addrect = 2,
-         tl.col="black")
 
-# an animation of changing confidence interval in different significance level
-## begin.animaton
-par(ask = FALSE)
-for (i in seq(0.1, 0, -0.005)) {
-  tmp <- cor.mtest(as.matrix((df_numeric)),
-            conf.level = 1 - i,
-            alternative = alternative_corr,
-            method = method_corr,
-            na.action = na.omit,
-            exact = FALSE
-  )
-  corrplot(test_cor_coef_matrix, p.mat = tmp$p, low = tmp$lowCI, upp = tmp$uppCI, order = 'hclust',
-           pch.col = 'red', sig.level = i, plotCI = 'rect', cl.pos = 'n',
-           mar = c(0, 0, 1, 0),
-           type = 'lower',
-           tl.col="black",
-           title = substitute(alpha == x,
-                              list(x = format(i, digits = 3, nsmall = 3))))
-  Sys.sleep(0.15)
-  print(1 - i)
-}
-# create datatable to show
-# Get the lower triangular values
-lower_values_corr <- test_cor_coef_matrix[lower.tri(test_cor_coef_matrix)]
-# Get the lower triangular values
-lower_values_p <- test_significant_coef_matrix$p[lower.tri(test_significant_coef_matrix$p)]
-lower_values_lowCI <- test_significant_coef_matrix$lowCI[lower.tri(test_significant_coef_matrix$lowCI)]
-lower_values_uppCI <- test_significant_coef_matrix$uppCI[lower.tri(test_significant_coef_matrix$uppCI)]
-
-# Get the row and column indices for the lower triangular values
-row_names <- rownames(test_cor_coef_matrix)[row(test_cor_coef_matrix)[lower.tri(test_cor_coef_matrix)]]
-col_names <- colnames(test_cor_coef_matrix)[col(test_cor_coef_matrix)[lower.tri(test_cor_coef_matrix)]]
-
-# Combine row and column names into pair names (e.g., "A-B")
-combinations <- paste(row_names, col_names, sep = "-")
-
-# Create a data frame
-df <- data.frame(corr_coef = lower_values_corr, 
-                 p = lower_values_p, 
-                 lowCI = lower_values_lowCI,
-                 uppCI = lower_values_uppCI,
-                 row.names = combinations)
 #########
 # TESTS #
 #########
@@ -360,6 +283,19 @@ df <- data.frame(corr_coef = lower_values_corr,
 #########################################
 # 1
 # Comparing means, medians distributions
+
+###########################################
+# Parametric (normal distribution tests) #
+test_col <- c("gluc_res","chol_res","tg_res" ,"ldl_res", "hdl_res")
+test_col <- c("gluc_res")
+source("my_functions.R")
+res <- compare_means(data_filtered_columns_with_factors,
+              test_col,
+              my_group = c("Gender"),
+              my_test = "Independent two-sample t-test",
+              my_mu = 0,
+              my_alternative = "two.sided",
+              my_conf_level = 0.95)
 
 ##################################
 # Non-normal distribution tests: #
