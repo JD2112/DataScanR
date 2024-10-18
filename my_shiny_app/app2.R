@@ -187,7 +187,7 @@ cards_normality <- list(
 ########################################################
 # CORRELATION TAB
 #############################
-# sidebar for cleaning data
+# sidebar 
 sidebar_correlation <- layout_sidebar(
   sidebar = sidebar(
     # title = "Data Viewing",
@@ -218,7 +218,7 @@ sidebar_correlation <- layout_sidebar(
   card_body(DT::dataTableOutput("correlation_table") ) # Output placeholder for the interactive table
 ) # end layout_sidebar
 ###########################
-# cards for cleaning data
+# cards 
 cards_correlation <- list(
   card(
     full_screen = TRUE,
@@ -284,6 +284,46 @@ cards_correlation <- list(
     )  # end plot div
   )
 ) # end cards
+########################################################
+# TESTS TAB
+#############################
+# sidebar parametric
+parametric_view <- sidebarLayout(
+  # Sidebar
+  sidebarPanel(
+    # Add your sidebar content here, such as inputs or filters
+    selectInput("parametric_test", "Choose Test:", choices = c("t-test", "ANOVA")),
+    actionButton("run_parametric", "Run Test")
+  ),
+  
+  # Main panel (for the card)
+  mainPanel(
+    # Add your card or content to display here
+    card(
+      full_screen = TRUE,
+      card_header("Test Results")
+    ) # end card
+  ) # end mainPanel
+) # end sidebarLayout
+############################
+# sidebar parametric
+non_parametric_view <- sidebarLayout(
+  # Sidebar
+  sidebarPanel(
+    # Add your sidebar content here, such as inputs or filters
+    selectInput("non_parametric_test", "Choose Test:", choices = c("Wilcoxon", "Kruskal-Wallis")),
+    actionButton("run_non_parametric", "Run Test")
+  ),
+  
+  # Main panel (for the card)
+  mainPanel(
+    # Add your card or content to display here
+    card(
+      full_screen = TRUE,
+      card_header("Test Results")
+    ) # end card
+  ) # end mainPanel
+) # end sidebarLayout
 #######################################################
 # UI part
 ui <- page_navbar(
@@ -361,7 +401,29 @@ ui <- page_navbar(
       }
       input[type='number'] {
       font-size: 12px;
-    }
+      }
+      /* Remove sidebar background and make it white */
+      .well {
+        background-color: white !important;
+        border: none !important;
+      }
+      
+      /* Customize the active tab */
+      .tabbable > .nav > li > a {
+        background-color: lightgrey; 
+        color: darkgrey;
+      }
+      
+      .tabbable > .nav > li.active > a {
+        background-color: white; 
+        color: black;
+      }
+      
+      /* Ensuring the data-value attribute is correctly handled */
+      .tabbable > .nav > li > a[data-value='Non-parametric'].active {
+        background-color: white; 
+        color: black; 
+      }
     ")),
     
     # jQuery for dynamically adjusting modal and full-screen z-index
@@ -406,6 +468,14 @@ ui <- page_navbar(
   nav_panel("Correlation", 
             layout_columns(cards_correlation[[1]],
                            cards_correlation[[2]])
+  ), # end nav_panel
+  nav_panel("Tests", 
+            tabsetPanel(
+              tabPanel("Parametric",
+                       parametric_view),
+              tabPanel("Non-parametric",
+                       non_parametric_view)
+            ) # end tabsetPanel
   ) # end nav_panel
 )# end page_navbar
 ###################################################################################
@@ -617,6 +687,7 @@ server <- function(input, output,session) {
     DT::datatable(
       table_data,
       options = list(
+        scrollY = "400px", # makes headers stay in place when scrolling
         pageLength = 100,   # Show n rows by default
         autoWidth = TRUE,  # Auto-adjust column width
         dom = 'frtip'    # Search box, pagination, etc.
@@ -1000,6 +1071,7 @@ server <- function(input, output,session) {
       table_data,
       options = list(
         pageLength = 100,   # Show n rows by default
+        scrollY = "400px", # makes headers stay in place when scrolling
         autoWidth = TRUE,  # Auto-adjust column width
         dom = 'frtiBp',    # Search box, pagination, etc.
         buttons = c( 'csv')  # Add export buttons
@@ -1154,6 +1226,7 @@ server <- function(input, output,session) {
       table_data,
       options = list(
         pageLength = 100,   # Show n rows by default
+        scrollY = "400px",  # makes headers stay in place when scrolling
         autoWidth = TRUE,  # Auto-adjust column width
         dom = 'frtiBp',    # Search box, pagination, etc.
         buttons = c( 'csv')  # Add export buttons
