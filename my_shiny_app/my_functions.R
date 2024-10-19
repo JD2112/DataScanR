@@ -515,18 +515,22 @@ corr_plot_from_result <- function(corr_matrix_result, plot_type = "upper",
   my_plotCI = "n"
   my_coef_col = "black"
   my_diag = FALSE
+  color_map_pos = 'r'
   if (plot_type == "lower") {
     my_pos = "ld"
     my_angle = 0
     my_plotCI = "n"
+    color_map_pos = 'b'
   } else if (plot_type == "upper"){
     my_pos = "td"
     my_angle = 90
     my_plotCI = "n"
+    color_map_pos = 'r'
   } else if (plot_type == "full") {
     my_pos = "lt"
     my_angle = 90
     my_plotCI = "n"
+    color_map_pos = 'r'
   } else if (plot_type == "confidence_interval") {
     plot_type = "full" # always show as full
     my_pos = "lt"
@@ -534,6 +538,7 @@ corr_plot_from_result <- function(corr_matrix_result, plot_type = "upper",
     my_plotCI = "rect"
     my_coef_col= NULL
     my_diag = TRUE
+    color_map_pos = 'n'
   }
   
   ## 
@@ -556,7 +561,7 @@ corr_plot_from_result <- function(corr_matrix_result, plot_type = "upper",
            addCoef.col =my_coef_col,
            tl.srt = my_angle,
            cl.ratio = 0.2,
-           cl.pos = 'n',
+           cl.pos = color_map_pos,
            tl.offset = 0.9,
            tl.col="black",
            tl.cex = 0.8,
