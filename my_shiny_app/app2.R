@@ -731,8 +731,7 @@ server <- function(input, output,session) {
     DT::datatable(
       table_data,
       options = list(
-        scrollY = "400px", # makes headers stay in place when scrolling
-        pageLength = 100,   # Show n rows by default
+        pageLength = 20,   # Show n rows by default
         autoWidth = TRUE,  # Auto-adjust column width
         dom = 'frtip'    # Search box, pagination, etc.
         # buttons = c( 'csv', 'excel', 'pdf')
@@ -1114,8 +1113,7 @@ server <- function(input, output,session) {
     DT::datatable(
       table_data,
       options = list(
-        pageLength = 100,   # Show n rows by default
-        scrollY = "400px", # makes headers stay in place when scrolling
+        pageLength = 20,   # Show n rows by default
         autoWidth = TRUE,  # Auto-adjust column width
         dom = 'frtiBp',    # Search box, pagination, etc.
         buttons = c( 'csv')  # Add export buttons
@@ -1260,8 +1258,7 @@ server <- function(input, output,session) {
     DT::datatable(
       table_data,
       options = list(
-        pageLength = 100,   # Show n rows by default
-        scrollY = "400px",  # makes headers stay in place when scrolling
+        pageLength = 20,   # Show n rows by default
         autoWidth = TRUE,  # Auto-adjust column width
         dom = 'frtiBp',    # Search box, pagination, etc.
         buttons = c( 'csv')  # Add export buttons
@@ -1366,7 +1363,17 @@ server <- function(input, output,session) {
                                my_mu = mu_val,
                                my_alternative = alternative,
                                my_conf_level = conf_level)
+          currently_selected_columns_param_tests(test_columns)
+          currently_selected_group_col_param_tests(group_col)
           display_data_parametric_tests(res)
+          output$param_test_table_title <- renderUI({
+            title_text <- paste0("<br><br>","&nbsp;&nbsp;&nbsp;&nbsp;",test)
+            if (test == "Independent two-sample t-test") {
+              title_text <- paste0("<br><br>","&nbsp;&nbsp;&nbsp;&nbsp;",test,"<br>","&nbsp;&nbsp;&nbsp;&nbsp;","Group: ",group_col[1])
+            }
+            # Render HTML with h5 and the title text
+            HTML(paste0("<h5>", title_text, "</h5>"))
+          })
         }, error = function(e) {
           # Handle error
           showModal(modalDialog(
@@ -1413,6 +1420,25 @@ server <- function(input, output,session) {
       )) # end message
         }
   }) # end run parametric means
+  
+  # Render the DataTable 
+  output$parametric_test_table <- DT::renderDataTable({
+    req(display_data_parametric_tests())  # Ensure data is available
+    table_data <- display_data_parametric_tests()
+    # Render the table using DT for interactivity
+    DT::datatable(
+      table_data,
+      options = list(
+        pageLength = 20,   # Show n rows by default
+        autoWidth = TRUE,  # Auto-adjust column width
+        dom = 'frtiBp',    # Search box, pagination, etc.
+        buttons = c( 'csv')  # Add export buttons
+      ),
+      rownames = FALSE,
+      selection = 'none',
+      extensions = 'Buttons'  # Enable export options
+    )
+  }) # end table
   
 } # end server
 
