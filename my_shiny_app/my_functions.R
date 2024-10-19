@@ -1069,8 +1069,8 @@ compare_means <- function (my_data,
                            alternative = my_alternative,
                            conf.level =  my_conf_level,
                            paired = my_paired)
-          print(result)
-          print(result$estimate[1])
+          # print(result)
+          # print(result$estimate[1])
           # Add the results as a new row in the data frame
           new_row <- data.frame(
             vars = test_col,
@@ -1097,10 +1097,12 @@ compare_means <- function (my_data,
         return(test_results_df)
       } else {
         print("There are more than 2 unique values in your group")
+        return(data.frame())
       }
     } # end if there was a group
     else {
       print("No group column selected for two-sample t-test")
+      return(data.frame())
     }
   }
 } # end compare_means
