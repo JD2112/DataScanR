@@ -291,35 +291,44 @@ cards_correlation <- list(
 parametric_view <- sidebarLayout(
   # Sidebar
   sidebarPanel(
-    # Add your sidebar content here, such as inputs or filters
-    selectInput("parametric_test", "Comparing Means:", 
-                choices = c("One sample t-test", "Independent two-sample t-test"),
-                selected = "One sample t-test"),
-    selectInput("columns_test_param", "Select Columns:",  # Predefine an empty selectInput for columns
-                choices = c(),  # Empty choices initially
-                multiple = TRUE
-    ),
-    conditionalPanel(
-      condition = "input.parametric_test == 'Independent two-sample t-test'",
-      selectInput("group_columns_test_param", "Select Group Column:",  # Predefine an empty selectInput for columns
-                  choices = c(),  # Empty choices initially
-                  multiple = FALSE
-      )
-    ), # end conditional
-    selectInput("alternative_parametric", "Alternative Hypothesis:",  
-                choices = c("less","greater","two.sided"),  
-                selected = "two.sided",
-                multiple = FALSE
-    ),
-    numericInput("mu_parametric", "mu:", value = 0),
-    sliderInput("conf_level_parametric", 
-                "Select Level Of Confidence:",
-                min = 0, 
-                max = 1,
-                value = 0.95, 
-                step = 0.05),
-    actionButton("run_parametric", "Run Test")
-  ),
+    accordion(
+      id = "accordion1", 
+      open = FALSE,
+      accordion_panel(
+        value ="Compare Means",
+        # Add your sidebar content here, such as inputs or filters
+        # Add text before the first input
+        p("Compare Means"), 
+        selectInput("parametric_test_mean", "Select Test:", 
+                    choices = c("One sample t-test", "Independent two-sample t-test"),
+                    selected = "One sample t-test"),
+        selectInput("columns_test_param", "Select Columns:",  # Predefine an empty selectInput for columns
+                    choices = c(),  # Empty choices initially
+                    multiple = TRUE
+        ),
+        conditionalPanel(
+          condition = "input.parametric_test_mean == 'Independent two-sample t-test'",
+          selectInput("group_column_test_param", "Select Group Column:",  # Predefine an empty selectInput for columns
+                      choices = c(),  # Empty choices initially
+                      multiple = FALSE
+          )
+        ), # end conditional
+        selectInput("alternative_parametric", "Alternative Hypothesis:",  
+                    choices = c("less","greater","two.sided"),  
+                    selected = "two.sided",
+                    multiple = FALSE
+        ),
+        numericInput("mu_parametric", "mu:", value = 0),
+        sliderInput("conf_level_parametric", 
+                    "Select Level Of Confidence:",
+                    min = 0, 
+                    max = 1,
+                    value = 0.95, 
+                    step = 0.05),
+        actionButton("run_parametric_means", "Run Test")
+    ) # end accordion panel
+    ) # end accordion
+  ), # end sidebar Panel
   
   # Main panel (for the card)
   mainPanel(
@@ -329,11 +338,11 @@ parametric_view <- sidebarLayout(
       card_header("Test Results"),
       # Add a tabsetPanel inside the card body
       tabsetPanel(
-        tabPanel("Tab 1",
-                 h3("Content for Tab 1"),
-                 p("This is where you can put content for the first tab.")
+        tabPanel("Results Table",
+                 htmlOutput("param_test_table_title"),  # Output placeholder for the title
+                 card_body(DT::dataTableOutput("parametric_test_table") ) # Output placeholder for the interactive table
         ),
-        tabPanel("Tab 2",
+        tabPanel("Plot",
                  h3("Content for Tab 2"),
                  p("This is where you can put content for the second tab.")
         )
@@ -445,7 +454,6 @@ ui <- page_navbar(
       /* Remove sidebar background and make it white */
       .well {
         background-color: white !important;
-        border: none !important;
       }
       
       /* Customize the active tab */
@@ -492,13 +500,6 @@ ui <- page_navbar(
   nav_panel("Data Cleaning", 
             layout_columns(cards_cleaning_data[[1]],
                            cards_cleaning_data[[2]])
-            # !!!cards_cleaning_data
-            # layout_columns(
-            #   col_widths = c(-1,10,-1,-1,10,-1),# negative numbers mean space around each card
-            #   row_heights = c(1, 1.2),
-            #   cards_cleaning_data[[1]],
-            #   cards_cleaning_data[[2]]
-            # )
   ), # end nav_panel
   nav_panel("Normality",
             # sidebar_normality
@@ -537,6 +538,9 @@ server <- function(input, output,session) {
   columns_plot_normality <- reactiveVal(c())
   correlation_result <- reactiveVal(NULL)
   currently_selected_columns_corr <- reactiveVal(NULL)
+  currently_selected_columns_param_tests <- reactiveVal(NULL)
+  currently_selected_group_col_param_tests <- reactiveVal(NULL)
+  display_data_parametric_tests <- reactiveVal((NULL))
   
   # Reactive expression to read the uploaded file
   data <- reactive({
@@ -727,8 +731,7 @@ server <- function(input, output,session) {
     DT::datatable(
       table_data,
       options = list(
-        scrollY = "400px", # makes headers stay in place when scrolling
-        pageLength = 100,   # Show n rows by default
+        pageLength = 20,   # Show n rows by default
         autoWidth = TRUE,  # Auto-adjust column width
         dom = 'frtip'    # Search box, pagination, etc.
         # buttons = c( 'csv', 'excel', 'pdf')
@@ -1110,8 +1113,7 @@ server <- function(input, output,session) {
     DT::datatable(
       table_data,
       options = list(
-        pageLength = 100,   # Show n rows by default
-        scrollY = "400px", # makes headers stay in place when scrolling
+        pageLength = 20,   # Show n rows by default
         autoWidth = TRUE,  # Auto-adjust column width
         dom = 'frtiBp',    # Search box, pagination, etc.
         buttons = c( 'csv')  # Add export buttons
@@ -1244,15 +1246,6 @@ server <- function(input, output,session) {
           HTML(paste0("Problem calculating correlation!<br>Try different columns.     ",bsicons::bs_icon("emoji-tear",fill = MESSAGE_COLOR,size=20)))
         ))
       }) # end trycatch
-      # corr_matrix_result <- calculate_corr_matrix(modified_data(),
-      #                                             my_columnnames = selected_cols,
-      #                                             selected_alternative,
-      #                                             selected_method,
-      #                                             confidence_level = selected_conf_level)
-      # column_names <- colnames(modified_data())
-      # updateSelectInput(session, "columns_correlation", choices = column_names, selected = selected_cols)
-      # currently_selected_columns_corr(selected_cols)
-      # correlation_result(corr_matrix_result)
     } # end if columns selected
   })
   
@@ -1265,8 +1258,7 @@ server <- function(input, output,session) {
     DT::datatable(
       table_data,
       options = list(
-        pageLength = 100,   # Show n rows by default
-        scrollY = "400px",  # makes headers stay in place when scrolling
+        pageLength = 20,   # Show n rows by default
         autoWidth = TRUE,  # Auto-adjust column width
         dom = 'frtiBp',    # Search box, pagination, etc.
         buttons = c( 'csv')  # Add export buttons
@@ -1300,7 +1292,153 @@ server <- function(input, output,session) {
                             my_title=plot_title)
     }
   })
+  ###############################################################################################################
+  # TESTS TAB
+  observeEvent(input$nav_tabs, {
+    selected_tab <- input$nav_tabs  # Access the currently selected tab
+    if (selected_tab == "Tests") {
+      # Perform action for Normality tab
+      print("Tests tab selected!")
+      current_data <- modified_data()
+      if (! is.null(current_data) && nrow(current_data) > 0) {
+        # Dynamically update the column selector when the data is loaded
+        column_names <- colnames(modified_data())  # Get column names from the loaded data
+        selected_cols_param_tests <- currently_selected_columns_param_tests()
+        selected_group_col_param_tests <- currently_selected_group_col_param_tests()
+        selected_cols_corr <- currently_selected_columns_corr()
+        if (!is.null(selected_cols_param_tests) && length(selected_cols_param_tests) > 0) {
+          updateSelectInput(session, "columns_test_param", choices = column_names, selected = selected_cols_param_tests)
+          if (!is.null(selected_group_col_param_tests) && length(selected_group_col_param_tests) > 0) {
+            updateSelectInput(session, "group_column_test_param", choices = column_names, selected = selected_group_col_param_tests)
+          }
+        } else if (!is.null(selected_cols_corr) && length(selected_cols_corr) > 0) {
+          updateSelectInput(session, "columns_test_param", choices = column_names, selected = selected_cols_corr)
+          updateSelectInput(session, "group_column_test_param", choices = c("",column_names), selected = "")
+        }
+        else {
+          updateSelectInput(session, "columns_test_param", choices = column_names, selected = c())
+          updateSelectInput(session, "group_column_test_param", choices = c("",column_names), selected = "")
+        }
+      }
+    }
+  }) # end observe tab
   
+  observeEvent(input$run_parametric_means, {
+    req(modified_data())
+    test_columns <- input$columns_test_param
+    group_col <- input$group_column_test_param
+    test <- input$parametric_test_mean
+    mu_val <- input$mu_parametric
+    alternative <- input$alternative_parametric
+    conf_level <-input$conf_level_parametric
+    if (length(test_columns) > 0) {
+      if (length(group_col) == 0 && test == "Independent two-sample t-test") {
+        # Handle error
+        showModal(modalDialog(
+          # Title and icon together in the same div, so we can control their position
+          div(
+            style = "position: relative;",  # Relative positioning to align the title and icon
+            # Title on the left
+            span("Info", style = "font-size: 28px;"),
+            # Icon on the top-right corner
+            span(
+              bsicons::bs_icon("exclamation-triangle", fill = MESSAGE_COLOR, size = 40), 
+              style = "position: absolute; top: 0; right: 0;"
+            )
+          ),
+          # Add a line break using <br>
+          HTML("<br>"),
+          # Add a line break using <br>
+          HTML("<br>"),
+          footer = modalButton("OK"),
+          HTML("Select one group column for the test.")
+        )) # end message
+      } else {
+        tryCatch({
+          group_col <- c(group_col)
+          res <- compare_means(modified_data(),
+                               test_columns,
+                               my_group = group_col,
+                               my_test = test,
+                               my_mu = mu_val,
+                               my_alternative = alternative,
+                               my_conf_level = conf_level)
+          currently_selected_columns_param_tests(test_columns)
+          currently_selected_group_col_param_tests(group_col)
+          display_data_parametric_tests(res)
+          output$param_test_table_title <- renderUI({
+            title_text <- paste0("<br><br>","&nbsp;&nbsp;&nbsp;&nbsp;",test)
+            if (test == "Independent two-sample t-test") {
+              title_text <- paste0("<br><br>","&nbsp;&nbsp;&nbsp;&nbsp;",test,"<br>","&nbsp;&nbsp;&nbsp;&nbsp;","Group: ",group_col[1])
+            }
+            # Render HTML with h5 and the title text
+            HTML(paste0("<h5>", title_text, "</h5>"))
+          })
+        }, error = function(e) {
+          # Handle error
+          showModal(modalDialog(
+            # Title and icon together in the same div, so we can control their position
+            div(
+              style = "position: relative;",  # Relative positioning to align the title and icon
+              # Title on the left
+              span("Info", style = "font-size: 28px;"),
+              # Icon on the top-right corner
+              span(
+                bsicons::bs_icon("exclamation-triangle", fill = MESSAGE_COLOR, size = 40), 
+                style = "position: absolute; top: 0; right: 0;"
+              )
+            ),
+            # Add a line break using <br>
+            HTML("<br>"),
+            # Add a line break using <br>
+            HTML("<br>"),
+            footer = modalButton("OK"),
+            HTML(paste0("Problem calculating test results!<br>Try different columns.     ",bsicons::bs_icon("emoji-tear",fill = MESSAGE_COLOR,size=20)))
+          ))
+        }) # end trycatch
+      } # end else
+    } else { # no column selected
+      # Handle error
+      showModal(modalDialog(
+        # Title and icon together in the same div, so we can control their position
+        div(
+          style = "position: relative;",  # Relative positioning to align the title and icon
+          # Title on the left
+          span("Info", style = "font-size: 28px;"),
+          # Icon on the top-right corner
+          span(
+            bsicons::bs_icon("exclamation-triangle", fill = MESSAGE_COLOR, size = 40), 
+            style = "position: absolute; top: 0; right: 0;"
+          )
+        ),
+        # Add a line break using <br>
+        HTML("<br>"),
+        # Add a line break using <br>
+        HTML("<br>"),
+        footer = modalButton("OK"),
+        HTML("Select at least one column for the test.")
+      )) # end message
+        }
+  }) # end run parametric means
+  
+  # Render the DataTable 
+  output$parametric_test_table <- DT::renderDataTable({
+    req(display_data_parametric_tests())  # Ensure data is available
+    table_data <- display_data_parametric_tests()
+    # Render the table using DT for interactivity
+    DT::datatable(
+      table_data,
+      options = list(
+        pageLength = 20,   # Show n rows by default
+        autoWidth = TRUE,  # Auto-adjust column width
+        dom = 'frtiBp',    # Search box, pagination, etc.
+        buttons = c( 'csv')  # Add export buttons
+      ),
+      rownames = FALSE,
+      selection = 'none',
+      extensions = 'Buttons'  # Enable export options
+    )
+  }) # end table
   
 } # end server
 

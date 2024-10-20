@@ -226,17 +226,8 @@ cards_correlation <- list(
     sidebar_correlation
   ), # end card Data
   card(
-    full_screen = TRUE,
-    card_header("Plot"),
-    
-    tags$head(
-      tags$style(HTML("
-                  /* Add space between inputs and plot */
-                  .plot-correlation {
-                    margin-top: 0px; /* Adjust the value for more/less space */
-                  }
-                "))
-    ),
+    # full_screen = TRUE,
+    card_header("Plot Settings"),
     # Main panel only with inputs and plot
     div(
       # Create a fluid row for inputs above the plot
@@ -271,17 +262,18 @@ cards_correlation <- list(
         ) # end column
         
       ) # end fluid
-    ),  # end inputs div
-    
-    # Output for the plot below the inputs
+    )  # end inputs div
+  ), # end card
+  card (
+    full_screen = TRUE,
+    # card_header("Plot"),
     div(
-      style = "flex-grow: 1; display: flex; flex-direction: column;",  # Allow the div to grow and fill remaining space
-      card_body(
-        plotOutput("plot_correlation"),
-        style = "flex-grow: 1;"  # Make the table body expand
-      ),
-      class = "plot-correlation"  # Add class for margin
-    )  # end plot div
+        style = "flex-grow: 1; display: flex; flex-direction: column;",  # Allow the div to grow and fill remaining space
+        card_body(
+          plotOutput("plot_correlation"),
+          style = "flex-grow: 1;"  # Make the table body expand
+        )
+    ) # end div
   )
 ) # end cards
 ########################################################
@@ -340,11 +332,22 @@ parametric_view <- sidebarLayout(
       tabsetPanel(
         tabPanel("Results Table",
                  htmlOutput("param_test_table_title"),  # Output placeholder for the title
-                 card_body(DT::dataTableOutput("parametric_test_table") ) # Output placeholder for the interactive table
+                 div(
+                   style = "flex-grow: 1; display: flex; flex-direction: column;",  # Allow the div to grow and fill remaining space
+                   card_body(
+                     card_body(DT::dataTableOutput("parametric_test_table") ), # Output placeholder for the interactive table
+                     style = "flex-grow: 1;"  # Make the table body expand
+                   )
+                 ) # end div
         ),
         tabPanel("Plot",
-                 h3("Content for Tab 2"),
-                 p("This is where you can put content for the second tab.")
+                 div(
+                   style = "flex-grow: 1; display: flex; flex-direction: column;",  # Allow the div to grow and fill remaining space
+                   card_body(
+                     plotOutput("plot_parametric_test"),
+                     style = "flex-grow: 1;"  # Make the table body expand
+                   )
+                 ) # end div
         )
       )  # End of tabsetPanel
     ) # end card
@@ -431,6 +434,11 @@ ui <- page_navbar(
       .sidebar .form-group {
         font-size: 12px !important; /* Font size for file inputs */
       }
+      
+      .accordion .shiny-input-container {
+        font-size: 12px !important; /* General font size for inputs in the sidebar */
+      }
+      
       /* Cards Font Sizes */
       .card .shiny-input-container {
         font-size: 12px !important; /* General font size for inputs in the sidebar */
@@ -508,7 +516,10 @@ ui <- page_navbar(
   ), # end nav_panel
   nav_panel("Correlation", 
             layout_columns(cards_correlation[[1]],
-                           cards_correlation[[2]])
+            layout_columns(cards_correlation[[2]],
+                           cards_correlation[[3]], 
+                           col_widths = c(12, 12))# end inner layout
+            )#end column_layout
   ), # end nav_panel
   nav_panel("Tests", 
             tabsetPanel(
