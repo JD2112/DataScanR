@@ -1297,4 +1297,59 @@ compare_means_parametric <- function (my_data,
     }
   } # end Paired t-test
 } # end compare_means_parametric
+######################################################################################
+# function to preview and visually inspect up till 6 variables on a single plot
+# my_test: "One sample t-test", "Independent two-sample t-test", "Paired t-test"
+# my_alternative: "two.sided", "greater", "less"
+# my_data_columns = c(), 
+# my_group = NULL,
+# my_test = "One sample t-test",
+# my_mu = 0,
+# my_alternative = "two.sided",
+# my_conf_level = 0.95) {
+plot_means_parametric <- function(df, 
+                                  test_result,
+                                  type_of_test = "One sample t-test", 
+                                  columns_to_show = c(),
+                                  my_group = NULL,
+                                  my_mu = 0,
+                                  my_alternative = "two.sided",
+                                  myy_conf_level = 0.95
+                                  ) {
+  # Extract lowCI and uppCI from test_result
+  lowCI <- test_result$lowCI
+  uppCI <- test_result$uppCI
+  
+  # Combine test_result with the variable names so we can join it later
+  test_result$Variable <- columns_to_show
+  
+  # Reshape the data from wide to long format
+  df_plot <- df %>%
+    select(all_of(columns_to_show)) %>%   # select only test columns 
+    pivot_longer(cols = everything(), names_to = "Variable", values_to = "Value")
+  
+  # Join confidence intervals with the reshaped data
+  df_plot <- df_plot %>%
+    left_join(test_result, by = "Variable")  # Match on 'Variable' column
+  
+  # Keep user-specified order for the x-axis
+  df_plot$Variable <- factor(df_plot$Variable, levels = columns_to_show)
+  
+  # Plot if it's a One-sample t-test
+  if (type_of_test == "One sample t-test") {
+    p <- ggplot(df_plot, aes(x = Variable, y = Value)) +
+      geom_boxplot() +
+      geom_errorbar(aes(ymin = lowCI, ymax = uppCI),     # CI as error bars
+                    width = 0.2, 
+                    color = "blue", 
+                    size = 1.2) +
+      theme_minimal() +
+      theme(
+        axis.title.x = element_blank(), 
+        axis.title.y = element_blank(), 
+        panel.grid = element_blank()
+      )
+    return(p)
+  }
+} # end plot_means_parametric
 

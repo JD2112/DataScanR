@@ -1349,7 +1349,7 @@ server <- function(input, output,session) {
     alternative <- input$alternative_parametric
     conf_level <-input$conf_level_parametric
     if (length(test_columns) > 0) {
-      if (length(group_col) == 0 && test == "Independent two-sample t-test") {
+      if (group_col[1]== "" && test == "Independent two-sample t-test") {
         # Handle error
         showModal(modalDialog(
           # Title and icon together in the same div, so we can control their position
@@ -1373,14 +1373,19 @@ server <- function(input, output,session) {
       } else {
         if ((test == "Paired t-test" && by_group == FALSE && length(test_columns) == 2) || 
             (test == "Paired t-test" && by_group == TRUE && length(test_columns) == 2) ||
-            (test == "Paired t-test" && by_group == TRUE && length(test_columns) == 1)
+            (test == "Paired t-test" && by_group == TRUE && length(test_columns) == 1) ||
+            test == "Independent two-sample t-test" ||
+            test == "One sample t-test" 
             ) {
           group_col <- c(group_col)
-          if (by_group == FALSE) {
+          if (test == "Paired t-test" && by_group == FALSE) {
             group_col <- c()
           }
           tryCatch({
             print(group_col)
+            if (length(group_col) == 0) {
+              group_col <- c()
+            }
             res <- compare_means_parametric(modified_data(),
                                  test_columns,
                                  my_group = group_col,

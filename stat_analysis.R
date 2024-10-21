@@ -286,19 +286,26 @@ conf_level <- 0.95
 
 ###########################################
 # Parametric (normal distribution tests) #
-# test_col <- c("gluc_res","chol_res","tg_res" ,"ldl_res", "hdl_res")
+test_col <- c("gluc_res","chol_res","tg_res" ,"ldl_res", "hdl_res")
 test_col_paired <- c("SBP_Doppler1","SBP_Doppler2")
-test_col_paired <- c("SBP_Doppler1")
+# test_col_paired <- c("SBP_Doppler1")
 source("my_functions.R")
 # my_test: "One sample t-test", "Independent two-sample t-test", "Paired t-test"
 # my_alternative: "two.sided", "greater", "less"
 res <- compare_means_parametric(data_filtered_columns_with_factors,
-                                test_col_paired,
+                                test_col,
                                 my_group = c("Gender"),
-                                my_test = "Paired t-test",
+                                my_test = "One sample t-test",
                                 my_mu = 0,
                                 my_alternative = "two.sided",
                                 my_conf_level = 0.95)
+
+test_col <- c("gluc_res","chol_res")
+source("my_functions.R")
+plot_means_parametric(data_filtered_columns_with_factors,
+                      type_of_test = "One sample t-test",
+                      columns_to_show = test_col
+                      )
 
 ##################################
 # Non-normal distribution tests: #
