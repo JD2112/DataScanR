@@ -292,14 +292,19 @@ parametric_view <- sidebarLayout(
         # Add text before the first input
         p("Compare Means"), 
         selectInput("parametric_test_mean", "Select Test:", 
-                    choices = c("One sample t-test", "Independent two-sample t-test"),
+                    choices = c("One sample t-test", "Independent two-sample t-test","Paired t-test"),
                     selected = "One sample t-test"),
         selectInput("columns_test_param", "Select Columns:",  # Predefine an empty selectInput for columns
                     choices = c(),  # Empty choices initially
                     multiple = TRUE
         ),
         conditionalPanel(
-          condition = "input.parametric_test_mean == 'Independent two-sample t-test'",
+          condition = "input.parametric_test_mean == 'Paired t-test'",
+          # Add a checkbox for group option
+          checkboxInput("group_option_parametric", "Run By Group", value = FALSE)
+        ),
+        conditionalPanel(
+          condition = "input.parametric_test_mean == 'Independent two-sample t-test' || (input.parametric_test_mean == 'Paired t-test' && input.group_option_parametric == true)",
           selectInput("group_column_test_param", "Select Group Column:",  # Predefine an empty selectInput for columns
                       choices = c(),  # Empty choices initially
                       multiple = FALSE
@@ -1318,9 +1323,9 @@ server <- function(input, output,session) {
         selected_group_col_param_tests <- currently_selected_group_col_param_tests()
         selected_cols_corr <- currently_selected_columns_corr()
         if (!is.null(selected_cols_param_tests) && length(selected_cols_param_tests) > 0) {
-          updateSelectInput(session, "columns_test_param", choices = column_names, selected = selected_cols_param_tests)
+          updateSelectInput(session, "columns_test_param", choices = c(column_names), selected = selected_cols_param_tests)
           if (!is.null(selected_group_col_param_tests) && length(selected_group_col_param_tests) > 0) {
-            updateSelectInput(session, "group_column_test_param", choices = column_names, selected = selected_group_col_param_tests)
+            updateSelectInput(session, "group_column_test_param", choices = c(column_names), selected = selected_group_col_param_tests)
           }
         } else if (!is.null(selected_cols_corr) && length(selected_cols_corr) > 0) {
           updateSelectInput(session, "columns_test_param", choices = column_names, selected = selected_cols_corr)
@@ -1337,6 +1342,7 @@ server <- function(input, output,session) {
   observeEvent(input$run_parametric_means, {
     req(modified_data())
     test_columns <- input$columns_test_param
+    by_group <- input$group_option_parametric
     group_col <- input$group_column_test_param
     test <- input$parametric_test_mean
     mu_val <- input$mu_parametric
@@ -1365,27 +1371,58 @@ server <- function(input, output,session) {
           HTML("Select one group column for the test.")
         )) # end message
       } else {
-        tryCatch({
+        if ((test == "Paired t-test" && by_group == FALSE && length(test_columns) == 2) || 
+            (test == "Paired t-test" && by_group == TRUE && length(test_columns) == 2) ||
+            (test == "Paired t-test" && by_group == TRUE && length(test_columns) == 1)
+            ) {
           group_col <- c(group_col)
-          res <- compare_means(modified_data(),
-                               test_columns,
-                               my_group = group_col,
-                               my_test = test,
-                               my_mu = mu_val,
-                               my_alternative = alternative,
-                               my_conf_level = conf_level)
-          currently_selected_columns_param_tests(test_columns)
-          currently_selected_group_col_param_tests(group_col)
-          display_data_parametric_tests(res)
-          output$param_test_table_title <- renderUI({
-            title_text <- paste0("<br><br>","&nbsp;&nbsp;&nbsp;&nbsp;",test)
-            if (test == "Independent two-sample t-test") {
-              title_text <- paste0("<br><br>","&nbsp;&nbsp;&nbsp;&nbsp;",test,"<br>","&nbsp;&nbsp;&nbsp;&nbsp;","Group: ",group_col[1])
-            }
-            # Render HTML with h5 and the title text
-            HTML(paste0("<h5>", title_text, "</h5>"))
-          })
-        }, error = function(e) {
+          if (by_group == FALSE) {
+            group_col <- c()
+          }
+          tryCatch({
+            print(group_col)
+            res <- compare_means_parametric(modified_data(),
+                                 test_columns,
+                                 my_group = group_col,
+                                 my_test = test,
+                                 my_mu = mu_val,
+                                 my_alternative = alternative,
+                                 my_conf_level = conf_level)
+            currently_selected_columns_param_tests(test_columns)
+            currently_selected_group_col_param_tests(group_col)
+            display_data_parametric_tests(res)
+            output$param_test_table_title <- renderUI({
+              title_text <- paste0("<br><br>","&nbsp;&nbsp;&nbsp;&nbsp;",test)
+              if (test == "Independent two-sample t-test") {
+                title_text <- paste0("<br><br>","&nbsp;&nbsp;&nbsp;&nbsp;",test,"<br>","&nbsp;&nbsp;&nbsp;&nbsp;","Group: ",group_col[1])
+              }
+              # Render HTML with h5 and the title text
+              HTML(paste0("<h5>", title_text, "</h5>"))
+            })
+          }, error = function(e) {
+            # Handle error
+            showModal(modalDialog(
+              # Title and icon together in the same div, so we can control their position
+              div(
+                style = "position: relative;",  # Relative positioning to align the title and icon
+                # Title on the left
+                span("Info", style = "font-size: 28px;"),
+                # Icon on the top-right corner
+                span(
+                  bsicons::bs_icon("exclamation-triangle", fill = MESSAGE_COLOR, size = 40), 
+                  style = "position: absolute; top: 0; right: 0;"
+                )
+              ),
+              # Add a line break using <br>
+              HTML("<br>"),
+              # Add a line break using <br>
+              HTML("<br>"),
+              footer = modalButton("OK"),
+              HTML(paste0("Problem calculating test results!<br>Try different columns.     ",bsicons::bs_icon("emoji-tear",fill = MESSAGE_COLOR,size=20)))
+            ))
+          }) # end trycatch
+        } # end if paired t-test conditions passed
+        else {
           # Handle error
           showModal(modalDialog(
             # Title and icon together in the same div, so we can control their position
@@ -1404,9 +1441,12 @@ server <- function(input, output,session) {
             # Add a line break using <br>
             HTML("<br>"),
             footer = modalButton("OK"),
-            HTML(paste0("Problem calculating test results!<br>Try different columns.     ",bsicons::bs_icon("emoji-tear",fill = MESSAGE_COLOR,size=20)))
-          ))
-        }) # end trycatch
+            HTML("For Paired t-test:<br><br>
+                 If one column is selected,<br>another column with group must be selected.<br>
+                 If two columns are selected,<br>the test can be run either between the selected columns,
+                 or additionally: by group.")
+          )) # end message
+          }
       } # end else
     } else { # no column selected
       # Handle error

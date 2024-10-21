@@ -31,12 +31,12 @@ if (!dir.exists(OUTPUT_FOLDER)) {
 # READ DATA #
 #############
 # read excel file with unit information
-# data_file <- "downsampled_data.csv" # 1500 samples from original non normal file
-data_file <- "downsampled_large_data.csv" # 3000 samples from original non normal file
+data_file <- "downsampled_data.csv" # 1500 samples from original non normal file
+# data_file <- "downsampled_large_data.csv" # 3000 samples from original non normal file
 # data_file <- "downsampled_data_normal.csv" # 1500 samples from generated normal file
 # data_file <- "downsampled_data_normal_large.csv" # 3000 samples from generated normal file
 
-data_original <- read_all_csv_separators(data_file)
+# data_original <- read_all_csv_separators(data_file)
 data_original <- fread(data_file) # fread reads separators automatically
 
 # clean content of text column values
@@ -73,7 +73,7 @@ data_original <- trim_values_in_columns(data_original,custom_colnames=char_colum
 #   ))
 
 # have more than some threshold percent of missing values and filter them out
-data_filtered_by_missing_threshold <- remove_missing_data_columns_by_threshold(data_original,c(1,MISSING_DATA_PCT_THRESHOLD))
+data_filtered_by_missing_threshold <- remove_missing_data_columns_by_threshold(data_original,c(0,MISSING_DATA_PCT_THRESHOLD))
 diagnostic <- diagnose(data_filtered_by_missing_threshold)
 # if one knows which columns are not important in the analysis, one can remove them here
 # by column name
@@ -92,7 +92,7 @@ data_filtered_columns <- remove_selected_columns(data_filtered_by_missing_thresh
 #     ), as.factor)) # convert selected columns to factors
 
 # should I convert some columns to factors? by column name? by diagnostic criteria, i.e less than 6 unique values?
-columns_to_factor <- c("Scapis..ID","Gender", "smoke_yes_no","smokestatus","Case_control")
+columns_to_factor <- c("Scapis..ID", "Gender","smoke_yes_no","smokestatus","Case_control")
 data_filtered_columns_with_factors <- factor_columns(data_filtered_columns, columns_to_factor)
 #########
 # BASIC #
@@ -286,16 +286,19 @@ conf_level <- 0.95
 
 ###########################################
 # Parametric (normal distribution tests) #
-test_col <- c("gluc_res","chol_res","tg_res" ,"ldl_res", "hdl_res")
-test_col <- c("gluc_res")
+# test_col <- c("gluc_res","chol_res","tg_res" ,"ldl_res", "hdl_res")
+test_col_paired <- c("SBP_Doppler1","SBP_Doppler2")
+test_col_paired <- c("SBP_Doppler1")
 source("my_functions.R")
-res <- compare_means(data_filtered_columns_with_factors,
-              test_col,
-              my_group = c("Gender"),
-              my_test = "Independent two-sample t-test",
-              my_mu = 0,
-              my_alternative = "two.sided",
-              my_conf_level = 0.95)
+# my_test: "One sample t-test", "Independent two-sample t-test", "Paired t-test"
+# my_alternative: "two.sided", "greater", "less"
+res <- compare_means_parametric(data_filtered_columns_with_factors,
+                                test_col_paired,
+                                my_group = c("Gender"),
+                                my_test = "Paired t-test",
+                                my_mu = 0,
+                                my_alternative = "two.sided",
+                                my_conf_level = 0.95)
 
 ##################################
 # Non-normal distribution tests: #

@@ -971,16 +971,15 @@ get_melt <- function(x) {
 } 
 ##################################################################
 # TESTS
-# my_test: "One sample t-test", Independent two-sample t-test
+# my_test: "One sample t-test", "Independent two-sample t-test", "Paired t-test"
 # my_alternative: "two.sided", "greater", "less"
-compare_means <- function (my_data,
+compare_means_parametric <- function (my_data,
                            my_data_columns = c(), 
                            my_group = NULL,
                            my_test = "One sample t-test",
                            my_mu = 0,
                            my_alternative = "two.sided",
-                           my_conf_level = 0.95,
-                           my_paired = FALSE) {
+                           my_conf_level = 0.95) {
   
 # one sample t-test 
   if (my_test == "One sample t-test") {
@@ -996,6 +995,7 @@ compare_means <- function (my_data,
       conf_level = numeric(),
       statistic = numeric(),
       parameter = numeric(),
+      samples = numeric(),
       stringsAsFactors = FALSE
     )
     for (col in my_data_columns) {
@@ -1004,7 +1004,7 @@ compare_means <- function (my_data,
              mu= my_mu,
              alternative = my_alternative,
              conf.level =  my_conf_level,
-             paired = my_paired
+             paired = FALSE
              )
       # Add the results as a new row in the data frame
       test_results_df <- rbind(test_results_df, data.frame(
@@ -1018,13 +1018,15 @@ compare_means <- function (my_data,
         conf_level = my_conf_level,
         statistic = result$statistic,
         parameter = result$parameter,
+        samples = length(my_data[[my_data_columns[1]]]),
         stringsAsFactors = FALSE
       ))
     } # end for each col
     return(test_results_df)
   } # end one sample ttest
+  ######################################3
 # Independent two-sample t-test
-  if (my_test == "Independent two-sample t-test") {
+  else if (my_test == "Independent two-sample t-test") {
     if (!is.null(my_group) && length(my_group) == 1) {
       # the test is for 2 groups only, so check if the group column has exactly 2 unique values
       group_col = my_group[1]
@@ -1049,6 +1051,7 @@ compare_means <- function (my_data,
           conf_level = numeric(),
           statistic = numeric(),
           parameter = numeric(),
+          samples = numeric(),
           stringsAsFactors = FALSE
         )
         # Rename the columns dynamically
@@ -1063,7 +1066,7 @@ compare_means <- function (my_data,
                  mu= my_mu,
                  alternative = my_alternative,
                  conf.level =  my_conf_level,
-                 paired = my_paired)
+                 paired = FALSE)
           # print(result)
           # print(result$estimate[1])
           # Add the results as a new row in the data frame
@@ -1079,6 +1082,7 @@ compare_means <- function (my_data,
             conf_level = my_conf_level,
             statistic = result$statistic,
             parameter = result$parameter,
+            samples = length(x),
             stringsAsFactors = FALSE
           )
           # Make sure to use the correct column names for the new rows
@@ -1099,6 +1103,198 @@ compare_means <- function (my_data,
       print("No group column selected for two-sample t-test")
       return(data.frame())
     }
-  }
-} # end compare_means
+  } # end Independent two-sample t-test
+  # Paired t-test
+  else if (my_test == "Paired t-test") {
+    if (!is.null(my_group) && length(my_group) == 1 && length(my_data_columns) == 1) { # for a single column and one group col
+      # the test is for 2 groups only, so check if the group column has exactly 2 unique values
+      group_col = my_group[1]
+      # print(is.numeric(my_data[[group_col]]))
+      my_data <- factor_columns(my_data,my_group)
+      # print(is.numeric(my_data[[group_col]]))
+      uniq_res <- levels(my_data[[group_col]])
+      # print(uniq_res)
+      if (length(uniq_res) == 2) {
+        # Initialize an empty data frame to store the results
+        test_results_df <- data.frame(
+          vars = character(),
+          null_val = numeric(),
+          mean_difference = numeric(),
+          alternative = character(),
+          p_value = numeric(),
+          lowCI = numeric(),
+          uppCI = numeric(),
+          conf_level = numeric(),
+          statistic = numeric(),
+          parameter = numeric(),
+          samples = numeric(),
+          stringsAsFactors = FALSE
+        )
+        # Split the 'value' column into two separate vectors based on 'group'
+        test_col <- my_data_columns[1]
+        x <- my_data[[test_col]][my_data[[group_col]] == uniq_res[1]]
+        y <- my_data[[test_col]][my_data[[group_col]] == uniq_res[2]]
+        # make sure they are equal lengths
+        if (length(x) < length(y)) {
+          y <- sample(y, length(x), replace = FALSE, prob = NULL)
+        } else {
+          x <- sample(x, length(y), replace = FALSE, prob = NULL)
+        }
+        # run test for the first group
+        result <- t.test(x,y,
+                         mu= my_mu,
+                         alternative = my_alternative,
+                         conf.level =  my_conf_level,
+                         paired = TRUE)
+        test_results_df <- data.frame(
+          null_val = my_mu,
+          mean_difference = result$estimate,
+          alternative = my_alternative,
+          p_value = result$p.value,
+          lowCI = result$conf.int[1],
+          uppCI = result$conf.int[2],
+          conf_level = my_conf_level,
+          statistic = result$statistic,
+          parameter = result$parameter,
+          samples = length(x),
+          stringsAsFactors = FALSE
+        )
+        return(test_results_df)
+      } else {
+        print("There are more than 2 unique values in your group")
+        return(data.frame())
+      }
+    }
+    else if (!is.null(my_group) && length(my_group) == 1 && length(my_data_columns) == 2) { # for 2 columns and one group col
+      # the test is for 2 groups only, so check if the group column has exactly 2 unique values
+      group_col = my_group[1]
+      # print(is.numeric(my_data[[group_col]]))
+      my_data <- factor_columns(my_data,my_group)
+      # print(is.numeric(my_data[[group_col]]))
+      uniq_res <- levels(my_data[[group_col]])
+      # print(uniq_res)
+      if (length(uniq_res) == 2) {
+        # Initialize an empty data frame to store the results
+        test_results_df <- data.frame(
+          vars = character(),
+          null_val = numeric(),
+          mean_difference = numeric(),
+          alternative = character(),
+          p_value = numeric(),
+          lowCI = numeric(),
+          uppCI = numeric(),
+          conf_level = numeric(),
+          statistic = numeric(),
+          parameter = numeric(),
+          samples = numeric(),
+          stringsAsFactors = FALSE
+        )
+        x1 <- c()
+        y1 <- c()
+        x2 <- c()
+        y2 <- c()
+        for (i in seq_along(my_data_columns)) { # assume 2 columns (i.e. before and after)
+          # Split the 'value' column into two separate vectors based on 'group'
+          test_col <- my_data_columns[i]
+          if (i==1) { # get x data based on groups 
+            x1 <- my_data[[test_col]][my_data[[group_col]] == uniq_res[1]]
+            x2 <- my_data[[test_col]][my_data[[group_col]] == uniq_res[2]]
+            # print(length(x1))
+            # print(length(x2))
+          } else {# get y data based on groups 
+            y1 <- my_data[[test_col]][my_data[[group_col]] == uniq_res[1]]
+            y2 <- my_data[[test_col]][my_data[[group_col]] == uniq_res[2]]
+            # print(length(y1))
+            # print(length(y2))
+          } # end creating data for tests
+        } # end for
+        # make sure they are equal lengths
+        if (length(x1) < length(y1)) {
+          y1 <- sample(y1, length(x1), replace = FALSE, prob = NULL)
+        } else if (length(x1) > length(y1)){
+          x1 <- sample(x1, length(y1), replace = FALSE, prob = NULL)
+        }
+        if (length(x2) < length(y2)) {
+          y2 <- sample(y2, length(x2), replace = FALSE, prob = NULL)
+        } else if (length(x2) > length(y2)){
+          x2 <- sample(x2, length(y2), replace = FALSE, prob = NULL)
+        }
+        # run test for the first group
+        result <- t.test(x1,y1,
+                         mu= my_mu,
+                         alternative = my_alternative,
+                         conf.level =  my_conf_level,
+                         paired = TRUE)
+        # Add the results to dataframe
+        new_row <- data.frame(
+          vars = paste0("Group_",uniq_res[1]),
+          null_val = my_mu,
+          mean_difference = result$estimate,
+          alternative = my_alternative,
+          p_value = result$p.value,
+          lowCI = result$conf.int[1],
+          uppCI = result$conf.int[2],
+          conf_level = my_conf_level,
+          statistic = result$statistic,
+          parameter = result$parameter,
+          samples = length(x1),
+          stringsAsFactors = FALSE
+        )
+        # Append new rows to the original data frame
+        test_results_df <- rbind(test_results_df, new_row)
+        # run test for the second group
+        result <- t.test(x2,y2,
+                         mu= my_mu,
+                         alternative = my_alternative,
+                         conf.level =  my_conf_level,
+                         paired = TRUE)
+        # Add the results to dataframe
+        new_row <- data.frame(
+          vars = paste0("Group_",uniq_res[2]),
+          null_val = my_mu,
+          mean_difference = result$estimate,
+          alternative = my_alternative,
+          p_value = result$p.value,
+          lowCI = result$conf.int[1],
+          uppCI = result$conf.int[2],
+          conf_level = my_conf_level,
+          statistic = result$statistic,
+          parameter = result$parameter,
+          samples = length(x2),
+          stringsAsFactors = FALSE
+        )
+        # Append new rows to the original data frame
+        test_results_df <- rbind(test_results_df, new_row)
+        return(test_results_df)
+      } else {
+        print("There are more than 2 unique values in your group")
+        return(data.frame())
+      }
+    } # end if there was a group
+    else { # runt test between 2 selected columns
+      # run test for the second group
+      result <- t.test(my_data[[my_data_columns[1]]],
+                       my_data[[my_data_columns[2]]],
+                       mu= my_mu,
+                       alternative = my_alternative,
+                       conf.level =  my_conf_level,
+                       paired = TRUE)
+      # Initialize an empty data frame to store the results
+      test_results_df <- data.frame(
+        null_val = my_mu,
+        mean_difference = result$estimate,
+        alternative = my_alternative,
+        p_value = result$p.value,
+        lowCI = result$conf.int[1],
+        uppCI = result$conf.int[2],
+        conf_level = my_conf_level,
+        statistic = result$statistic,
+        parameter = result$parameter,
+        samples = length(my_data[[my_data_columns[1]]]),
+        stringsAsFactors = FALSE
+      )
+      return(test_results_df)
+    }
+  } # end Paired t-test
+} # end compare_means_parametric
 
