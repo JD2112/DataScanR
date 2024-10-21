@@ -1010,14 +1010,14 @@ compare_means_parametric <- function (my_data,
       test_results_df <- rbind(test_results_df, data.frame(
         vars = col,
         null_val = my_mu,
-        estimate = result$estimate,
+        estimate = if(!is.null(result$estimate)) result$estimate else NA,
         alternative = my_alternative,
-        p_value = result$p.value,
-        lowCI = result$conf.int[1],
-        uppCI = result$conf.int[2],
+        p_value = if(!is.null(result$p.value)) result$p.value else NA,
+        lowCI = if(!is.null(result$conf.int)) result$conf.int[1] else NA,
+        uppCI = if(!is.null(result$conf.int)) result$conf.int[2] else NA,
         conf_level = my_conf_level,
-        statistic = result$statistic,
-        parameter = result$parameter,
+        statistic = if(!is.null(result$statistic)) result$statistic else NA,
+        parameter = if(!is.null(result$parameter)) result$parameter else NA,
         samples = length(my_data[[my_data_columns[1]]]),
         stringsAsFactors = FALSE
       ))
@@ -1059,7 +1059,6 @@ compare_means_parametric <- function (my_data,
         colnames(test_results_df)[4] <- estimate2_name
         for (test_col in my_data_columns) {
           # Split the 'value' column into two separate vectors based on 'group'
-          my_data[[test_col]]
           x <- my_data[[test_col]][my_data[[group_col]] == uniq_res[1]]
           y <- my_data[[test_col]][my_data[[group_col]] == uniq_res[2]]
           result <- t.test(x,y,
@@ -1073,15 +1072,15 @@ compare_means_parametric <- function (my_data,
           new_row <- data.frame(
             vars = test_col,
             null_val = my_mu,
-            estimate1 = result$estimate[1],
-            estimate2 = result$estimate[2],
+            estimate1 = if(!is.null(result$estimate)) result$estimate[1] else NA,
+            estimate2 = if(!is.null(result$estimate)) result$estimate[2] else NA,
             alternative = my_alternative,
-            p_value = result$p.value,
-            lowCI = result$conf.int[1],
-            uppCI = result$conf.int[2],
+            p_value = if(!is.null(result$p.value)) result$p.value else NA,
+            lowCI = if(!is.null(result$conf.int)) result$conf.int[1] else NA,
+            uppCI = if(!is.null(result$conf.int)) result$conf.int[2] else NA,
             conf_level = my_conf_level,
-            statistic = result$statistic,
-            parameter = result$parameter,
+            statistic = if(!is.null(result$statistic)) result$statistic else NA,
+            parameter = if(!is.null(result$parameter)) result$parameter else NA,
             samples = length(x),
             stringsAsFactors = FALSE
           )
@@ -1148,14 +1147,14 @@ compare_means_parametric <- function (my_data,
                          paired = TRUE)
         test_results_df <- data.frame(
           null_val = my_mu,
-          mean_difference = result$estimate,
+          mean_difference = if(!is.null(result$estimate)) result$estimate else NA,
           alternative = my_alternative,
-          p_value = result$p.value,
-          lowCI = result$conf.int[1],
-          uppCI = result$conf.int[2],
+          p_value = if(!is.null(result$p.value)) result$p.value else NA,
+          lowCI = if(!is.null(result$conf.int)) result$conf.int[1] else NA,
+          uppCI = if(!is.null(result$conf.int)) result$conf.int[2] else NA,
           conf_level = my_conf_level,
-          statistic = result$statistic,
-          parameter = result$parameter,
+          statistic = if(!is.null(result$statistic)) result$statistic else NA,
+          parameter = if(!is.null(result$parameter)) result$parameter else NA,
           samples = length(x),
           stringsAsFactors = FALSE
         )
@@ -1229,14 +1228,14 @@ compare_means_parametric <- function (my_data,
         new_row <- data.frame(
           vars = paste0("Group_",uniq_res[1]),
           null_val = my_mu,
-          mean_difference = result$estimate,
+          mean_difference = if(!is.null(result$estimate)) result$estimate else NA,
           alternative = my_alternative,
-          p_value = result$p.value,
-          lowCI = result$conf.int[1],
-          uppCI = result$conf.int[2],
+          p_value = if(!is.null(result$p.value)) result$p.value else NA,
+          lowCI = if(!is.null(result$conf.int)) result$conf.int[1] else NA,
+          uppCI = if(!is.null(result$conf.int)) result$conf.int[2] else NA,
           conf_level = my_conf_level,
-          statistic = result$statistic,
-          parameter = result$parameter,
+          statistic = if(!is.null(result$statistic)) result$statistic else NA,
+          parameter = if(!is.null(result$parameter)) result$parameter else NA,
           samples = length(x1),
           stringsAsFactors = FALSE
         )
@@ -1252,14 +1251,14 @@ compare_means_parametric <- function (my_data,
         new_row <- data.frame(
           vars = paste0("Group_",uniq_res[2]),
           null_val = my_mu,
-          mean_difference = result$estimate,
+          mean_difference = if(!is.null(result$estimate)) result$estimate else NA,
           alternative = my_alternative,
-          p_value = result$p.value,
-          lowCI = result$conf.int[1],
-          uppCI = result$conf.int[2],
+          p_value = if(!is.null(result$p.value)) result$p.value else NA,
+          lowCI = if(!is.null(result$conf.int)) result$conf.int[1] else NA,
+          uppCI = if(!is.null(result$conf.int)) result$conf.int[2] else NA,
           conf_level = my_conf_level,
-          statistic = result$statistic,
-          parameter = result$parameter,
+          statistic = if(!is.null(result$statistic)) result$statistic else NA,
+          parameter = if(!is.null(result$parameter)) result$parameter else NA,
           samples = length(x2),
           stringsAsFactors = FALSE
         )
@@ -1282,14 +1281,14 @@ compare_means_parametric <- function (my_data,
       # Initialize an empty data frame to store the results
       test_results_df <- data.frame(
         null_val = my_mu,
-        mean_difference = result$estimate,
+        mean_difference = if(!is.null(result$estimate)) result$estimate else NA,
         alternative = my_alternative,
-        p_value = result$p.value,
-        lowCI = result$conf.int[1],
-        uppCI = result$conf.int[2],
+        p_value = if(!is.null(result$p.value)) result$p.value else NA,
+        lowCI = if(!is.null(result$conf.int)) result$conf.int[1] else NA,
+        uppCI = if(!is.null(result$conf.int)) result$conf.int[2] else NA,
         conf_level = my_conf_level,
-        statistic = result$statistic,
-        parameter = result$parameter,
+        statistic = if(!is.null(result$statistic)) result$statistic else NA,
+        parameter = if(!is.null(result$parameter)) result$parameter else NA,
         samples = length(my_data[[my_data_columns[1]]]),
         stringsAsFactors = FALSE
       )
@@ -1352,4 +1351,109 @@ plot_means_parametric <- function(df,
     return(p)
   }
 } # end plot_means_parametric
+
+#########################################################################################
+# my_test: "Wilcoxon rank-sum test", "Wilcoxon signed-rank test", "Kruskal-Wallis test", "Friedman test"
+# my_alternative: "two.sided", "greater", "less"
+compare_medians_nonparametric <- function (my_data,
+                                      my_data_columns = c(), 
+                                      my_group = c(),
+                                      my_test = "Wilcoxon rank-sum test",
+                                      my_mu = 0,
+                                      my_alternative = "two.sided",
+                                      my_conf_level = 0.95) {
+  if (my_test == "Wilcoxon rank-sum test") {
+    if (!is.null(my_group) && length(my_group) == 1) {
+      if (my_group[1] == "") {
+        print("Group column is an empty string")
+        if (length(my_data_columns)==2) { # run between 2 columns
+          my_data %>% 
+            select(all_of(my_data_columns)) -> data_to_test
+          x <- data_to_test[[my_data_columns[1]]]
+          y <- data_to_test[[my_data_columns[2]]]
+          result <- wilcox.test(x,y,
+                                alternative = my_alternative, 
+                                paired = FALSE,
+                                conf.int = TRUE,
+                                correct = FALSE,
+                                conf.level = my_conf_level)
+          test_results_df <- data.frame(
+            vars = paste0(my_data_columns[1],"_vs_",my_data_columns[2]),
+            null_val = my_mu,
+            mean_difference = if(!is.null(result$estimate)) result$estimate else NA,
+            alternative = my_alternative,
+            p_value = if(!is.null(result$p.value)) result$p.value else NA,
+            lowCI = if(!is.null(result$conf.int)) result$conf.int[1] else NA,
+            uppCI = if(!is.null(result$conf.int)) result$conf.int[2] else NA,
+            conf_level = my_conf_level,
+            statistic =  if(!is.null(result$statistic)) result$statistic else NA,
+            parameter = if(!is.null(result$parameter)) result$parameter else NA,
+            samples_group1 = length(x),
+            samples_group2 = length(y),
+            stringsAsFactors = FALSE
+          )
+          return(test_results_df)
+        } else {
+          return(data.frame())
+        }
+      } else { # group col selected
+        cols_to_keep <- append(my_data_columns,my_group)
+        my_data %>% 
+          select(all_of(cols_to_keep)) -> data_to_test
+        data_to_test <- factor_columns (data_to_test, custom_colnames = my_group)
+        uniq_res <- levels(data_to_test[[my_group[1]]]) # check if there are 2 unique groups
+        if (length(uniq_res) == 2) {
+          # Initialize an empty data frame to store the results
+          test_results_df <- data.frame(
+            vars = character(),
+            null_val = numeric(),
+            median_difference = numeric(),
+            alternative = character(),
+            p_value = numeric(),
+            lowCI = numeric(),
+            uppCI = numeric(),
+            conf_level = numeric(),
+            statistic = numeric(),
+            parameter = numeric(),
+            samples_group1 = numeric(),
+            samples_group2 = numeric(),
+            stringsAsFactors = FALSE
+          )
+          for (col in my_data_columns) {
+            x <- data_to_test[[col]][data_to_test[[my_group[1]]] == uniq_res[1]]
+            y <- data_to_test[[col]][data_to_test[[my_group[1]]] == uniq_res[2]]
+            result <- wilcox.test(x,y,
+                                         alternative = my_alternative, 
+                                         paired = FALSE,
+                                         conf.int = TRUE,
+                                         correct = FALSE,
+                                         conf.level = my_conf_level)
+            # Add the results to dataframe
+            new_row <- data.frame(
+              vars = col,
+              null_val = my_mu,
+              median_difference = if(!is.null(result$estimate)) result$estimate else NA,
+              alternative = my_alternative,
+              p_value = if(!is.null(result$p.value)) result$p.value else NA,
+              lowCI = if(!is.null(result$conf.int)) result$conf.int[1] else NA,
+              uppCI = if(!is.null(result$conf.int)) result$conf.int[2] else NA,
+              conf_level = my_conf_level,
+              statistic = if(!is.null(result$statistic)) result$statistic else NA,
+              parameter = if(!is.null(result$parameter)) result$parameter else NA,
+              samples_group1 = length(x),
+              samples_group2 = length(y),
+              stringsAsFactors = FALSE
+            )
+            # Append new rows to the original data frame
+            test_results_df <- rbind(test_results_df, new_row)
+          } # end for all data columns
+          return(test_results_df)
+        } # end if there are 2 groups
+        } # end if group column name is not empty string
+    } else {
+      print("No group column")
+    }
+  } # end "Wilcoxon rank-sum test"
+  
+} # end compare_medians_nonparametric
 

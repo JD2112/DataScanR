@@ -287,6 +287,7 @@ conf_level <- 0.95
 ###########################################
 # Parametric (normal distribution tests) #
 test_col <- c("gluc_res","chol_res","tg_res" ,"ldl_res", "hdl_res")
+test_col <- c("gluc_res","chol_res")
 test_col_paired <- c("SBP_Doppler1","SBP_Doppler2")
 # test_col_paired <- c("SBP_Doppler1")
 source("my_functions.R")
@@ -299,10 +300,9 @@ res <- compare_means_parametric(data_filtered_columns_with_factors,
                                 my_mu = 0,
                                 my_alternative = "two.sided",
                                 my_conf_level = 0.95)
-
-test_col <- c("gluc_res","chol_res")
 source("my_functions.R")
 plot_means_parametric(data_filtered_columns_with_factors,
+                      res,
                       type_of_test = "One sample t-test",
                       columns_to_show = test_col
                       )
@@ -313,18 +313,35 @@ plot_means_parametric(data_filtered_columns_with_factors,
 ########
 # Wilcoxon rank-sum test: Compares the distributions of two independent groups
 # test example: bmi_n by Case_control
-data_filtered_columns_with_factors %>% 
-  select(all_of(c("bmi_n","Case_control"))) -> data_to_test
-wilcox_result <- wilcox.test(bmi_n ~ Case_control, data = data_to_test, paired = FALSE, alternative = "two.sided")
-result_p_val <- wilcox_result$p.value
+test_col <-c("bmi_n")
+group_col <- c("Case_control")
+wilcox_result <- compare_medians_nonparametric(data_filtered_columns_with_factors,
+                                               my_data_columns=test_col,
+                                               my_group=group_col,
+                                               my_test = "Wilcoxon rank-sum test"
+                                               )
+# data_filtered_columns_with_factors %>% 
+#   select(all_of(c("bmi_n","Case_control"))) -> data_to_test
+# data_to_test <- factor_columns (data_to_test, custom_colnames = c("Case_control"))
+# uniq_res <- levels(data_to_test[["Case_control"]]) # check if there are 2 unique groups
+# if (length(uniq_res) == 2) {
+#   x <- data_to_test[["bmi_n"]][data_to_test[["Case_control"]] == uniq_res[1]]
+#   y <- data_to_test[["bmi_n"]][data_to_test[["Case_control"]] == uniq_res[2]]
+# }
+# wilcox_result <- wilcox.test(x,y,
+#                              alternative = "two.sided", 
+#                              paired = FALSE,
+#                              conf.int = TRUE,
+#                              correct = FALSE,
+#                              conf.level = 0.95)
 # see the medians
 data_to_test %>%
   group_by(Case_control) %>%
   get_summary_stats(bmi_n, type = "median")
 # PLOT
-p_text <- ifelse(result_p_val < 0.001, 
+p_text <- ifelse(wilcox_result$p.value < 0.001, 
                  "p = < 0.001", 
-                 ifelse(result_p_val < 0.05, 
+                 ifelse(wilcox_result$p.value < 0.05, 
                         "p = < 0.005", 
                         paste("p =", round(result_p_val, 3))))
 data_to_test %>%
