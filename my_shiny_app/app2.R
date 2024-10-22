@@ -378,13 +378,13 @@ non_parametric_view <- sidebarLayout(
                     choices = c(),  # Empty choices initially
                     multiple = TRUE
         ),
-        conditionalPanel(
-          condition = "input.nonparametric_test_median == 'Wilcoxon rank-sum test'",
+        # conditionalPanel(
+        #   condition = "input.nonparametric_test_median == 'Wilcoxon rank-sum test'",
           # Add a checkbox for group option
-          checkboxInput("group_option_nonparametric", "Run By Group", value = FALSE)
-        ),
+        checkboxInput("group_option_nonparametric", "Run By Group", value = FALSE),
+        # ),
         conditionalPanel(
-          condition = "input.nonparametric_test_median == 'Wilcoxon rank-sum test' && input.group_option_nonparametric == true",
+          condition = "input.group_option_nonparametric == true",
           selectInput("group_column_test_nonparam", "Select Group Column:",  # Predefine an empty selectInput for columns
                       choices = c(),  # Empty choices initially
                       multiple = FALSE
@@ -1478,7 +1478,7 @@ server <- function(input, output,session) {
             output$param_test_table_title <- renderUI({
               title_text <- paste0("<br><br>","&nbsp;&nbsp;&nbsp;&nbsp;",test)
               if (test == "Independent two-sample t-test") {
-                title_text <- paste0("<br><br>","&nbsp;&nbsp;&nbsp;&nbsp;",test,"<br>","&nbsp;&nbsp;&nbsp;&nbsp;","Group: ",group_col[1])
+                title_text <- paste0("<br><br>","&nbsp;&nbsp;&nbsp;&nbsp;",test,"<br><br>","&nbsp;&nbsp;&nbsp;&nbsp;","Group: ",group_col[1])
               }
               # Render HTML with h5 and the title text
               HTML(paste0("<h5>", title_text, "</h5>"))
@@ -1585,31 +1585,7 @@ server <- function(input, output,session) {
     alternative <- input$alternative_nonparametric
     conf_level <-input$conf_level_nonparametric
     if (length(test_columns) > 0) {
-      
-      tryCatch({
-        # print(group_col)
-        if (length(group_col) == 0 || by_group == FALSE) {
-          group_col <- c()
-        }
-        res <- compare_medians_nonparametric(modified_data(),
-                                        test_columns,
-                                        my_group = group_col,
-                                        my_test = test,
-                                        my_mu = mu_val,
-                                        my_alternative = alternative,
-                                        my_conf_level = conf_level)
-        currently_selected_columns_nonparam_tests(test_columns)
-        currently_selected_group_col_nonparam_tests(group_col)
-        display_data_nonparametric_tests(res)
-        output$nonparam_test_table_title <- renderUI({
-          title_text <- paste0("<br><br>","&nbsp;&nbsp;&nbsp;&nbsp;",test)
-          if (test == "Wilcoxon rank-sum test" && by_group == TRUE) {
-            title_text <- paste0("<br><br>","&nbsp;&nbsp;&nbsp;&nbsp;",test,"<br><br>","&nbsp;&nbsp;&nbsp;&nbsp;","Group: ",group_col[1])
-          }
-          # Render HTML with h5 and the title text
-          HTML(paste0("<h5>", title_text, "</h5>"))
-        })
-      }, error = function(e) {
+      if ((length(test_columns) < 2 && by_group == FALSE) || (length(test_columns) < 2 && group_col[1] == "")) {
         # Handle error
         showModal(modalDialog(
           # Title and icon together in the same div, so we can control their position
@@ -1628,9 +1604,55 @@ server <- function(input, output,session) {
           # Add a line break using <br>
           HTML("<br>"),
           footer = modalButton("OK"),
-          HTML(paste0("Problem calculating test results!<br>Try different columns.     ",bsicons::bs_icon("emoji-tear",fill = MESSAGE_COLOR,size=20)))
+          HTML(paste0("Remember to select group column."))
         ))
-      }) # end trycatch
+      } else {
+        tryCatch({
+          # print(group_col)
+          if (length(group_col) == 0 || by_group == FALSE) {
+            group_col <- c()
+          }
+          res <- compare_medians_nonparametric(modified_data(),
+                                          test_columns,
+                                          my_group = group_col,
+                                          my_test = test,
+                                          my_mu = mu_val,
+                                          my_alternative = alternative,
+                                          my_conf_level = conf_level)
+          currently_selected_columns_nonparam_tests(test_columns)
+          currently_selected_group_col_nonparam_tests(group_col)
+          display_data_nonparametric_tests(res)
+          output$nonparam_test_table_title <- renderUI({
+            title_text <- paste0("<br><br>","&nbsp;&nbsp;&nbsp;&nbsp;",test)
+            if (by_group == TRUE) {
+              title_text <- paste0("<br><br>","&nbsp;&nbsp;&nbsp;&nbsp;",test,"<br><br>","&nbsp;&nbsp;&nbsp;&nbsp;","Group: ",group_col[1])
+            }
+            # Render HTML with h5 and the title text
+            HTML(paste0("<h5>", title_text, "</h5>"))
+          })
+        }, error = function(e) {
+          # Handle error
+          showModal(modalDialog(
+            # Title and icon together in the same div, so we can control their position
+            div(
+              style = "position: relative;",  # Relative positioning to align the title and icon
+              # Title on the left
+              span("Info", style = "font-size: 28px;"),
+              # Icon on the top-right corner
+              span(
+                bsicons::bs_icon("exclamation-triangle", fill = MESSAGE_COLOR, size = 40), 
+                style = "position: absolute; top: 0; right: 0;"
+              )
+            ),
+            # Add a line break using <br>
+            HTML("<br>"),
+            # Add a line break using <br>
+            HTML("<br>"),
+            footer = modalButton("OK"),
+            HTML(paste0("Problem calculating test results!<br>Try different columns.     ",bsicons::bs_icon("emoji-tear",fill = MESSAGE_COLOR,size=20)))
+          ))
+        }) # end trycatch
+      } # end else (if the group column was selected)
     } # end if there were test columns selected
     else { # no columns selected
       # Handle error

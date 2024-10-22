@@ -294,18 +294,29 @@ source("my_functions.R")
 # my_test: "One sample t-test", "Independent two-sample t-test", "Paired t-test"
 # my_alternative: "two.sided", "greater", "less"
 res <- compare_means_parametric(data_filtered_columns_with_factors,
-                                test_col,
-                                my_group = c("Gender"),
-                                my_test = "One sample t-test",
+                                test_col_paired,
+                                my_group = c(),
+                                my_test = "Paired t-test",
                                 my_mu = 0,
                                 my_alternative = "two.sided",
                                 my_conf_level = 0.95)
-source("my_functions.R")
-plot_means_parametric(data_filtered_columns_with_factors,
-                      res,
-                      type_of_test = "One sample t-test",
-                      columns_to_show = test_col
-                      )
+
+mean(data_filtered_columns_with_factors$SBP_Doppler1, na.rm =TRUE) 
+mean(data_filtered_columns_with_factors$SBP_Doppler2, na.rm =TRUE) - mean(data_filtered_columns_with_factors$SBP_Doppler1, na.rm =TRUE)
+summary(data_filtered_columns_with_factors$SBP_Doppler1-data_filtered_columns_with_factors$SBP_Doppler2)
+t.test(data_filtered_columns_with_factors$SBP_Doppler1,
+       data_filtered_columns_with_factors$SBP_Doppler2,
+                 mu= 0,
+                 alternative = "two.sided",
+                 conf.level =  0.95,
+                 var.equal = TRUE,
+                 paired = TRUE)
+# source("my_functions.R")
+# plot_means_parametric(data_filtered_columns_with_factors,
+#                       res,
+#                       type_of_test = "One sample t-test",
+#                       columns_to_show = test_col
+#                       )
 
 ##################################
 # Non-normal distribution tests: #
@@ -323,7 +334,7 @@ wilcox_result <- compare_medians_nonparametric(data_filtered_columns_with_factor
                                                my_group=group_col,
                                                my_test = "Wilcoxon rank-sum test"
                                                )
-# data_filtered_columns_with_factors %>% 
+# data_filtered_columns_with_factors %>%
 #   select(all_of(c("bmi_n","Case_control"))) -> data_to_test
 # data_to_test <- factor_columns (data_to_test, custom_colnames = c("Case_control"))
 # uniq_res <- levels(data_to_test[["Case_control"]]) # check if there are 2 unique groups
@@ -337,10 +348,10 @@ wilcox_result <- compare_medians_nonparametric(data_filtered_columns_with_factor
 #                              conf.int = TRUE,
 #                              correct = FALSE,
 #                              conf.level = 0.95)
-# see the medians
-data_to_test %>%
-  group_by(Case_control) %>%
-  get_summary_stats(bmi_n, type = "median")
+# # see the medians
+# data_to_test %>%
+#   group_by(Case_control) %>%
+#   get_summary_stats(bmi_n, type = "median")
 # PLOT
 p_text <- ifelse(wilcox_result$p.value < 0.001, 
                  "p = < 0.001", 
@@ -361,41 +372,58 @@ data_to_test %>%
 ########
 # Wilcoxon signed-rank test: Compares paired data (two related samples or repeated measures on a single sample)
 # test example: Mean_syst_morning and Mean_syst_evening
+source("my_functions.R")
+test_col <- c("Mean_syst_morning","Mean_syst_evening")
+group_col <- c()
+group_col <- c("Case_control")
+wilcox_result <- compare_medians_nonparametric(data_filtered_columns_with_factors,
+                                               my_data_columns=test_col,
+                                               my_group=group_col,
+                                               my_test = "Wilcoxon signed-rank test"
+                                                )
+
+
 data_filtered_columns_with_factors %>% 
   select(all_of(c("Mean_syst_morning","Mean_syst_evening"))) -> data_to_test
-wilcox_result <- wilcox.test(data_filtered_columns_with_factors$Mean_syst_morning, data_filtered_columns_with_factors$Mean_syst_evening, paired = TRUE, alternative = "two.sided")
-result_p_val <- wilcox_result$p.value
-# see the medians
-data_to_test %>%
-  summarize(
-    Median_Mean_syst_morning = median(Mean_syst_morning, na.rm = TRUE),
-    Median_Mean_syst_evening = median(Mean_syst_evening, na.rm = TRUE),
-    Count_Mean_syst_morning = sum(!is.na(Mean_syst_morning)),  # Count of non-NA
-    Count_Mean_syst_evening = sum(!is.na(Mean_syst_evening))
-  )
-# PLOT
-p_text <- ifelse(result_p_val < 0.001, 
-                 "p = < 0.001", 
-                 ifelse(result_p_val < 0.05, 
-                        "p = < 0.005", 
-                        paste("p =", round(result_p_val, 3))))
-# Reshape the data from wide to long format
-data_long <- data_to_test %>%
-  pivot_longer(cols = c(Mean_syst_morning, Mean_syst_evening), 
-               names_to = "variable", 
-               values_to = "value")
-data_long %>%
-  ggplot(aes(x = variable, y = value)) +
-  geom_boxplot() +
-  theme_minimal() +
-  theme(panel.grid = element_blank()) +
-  theme(
-    axis.title.x = element_blank(), 
-    axis.title.y = element_blank()  
-  ) +
-  labs(
-    subtitle = paste("Wilcoxon signed-rank test, ", p_text)
-  )
+test_wilcox_result <- wilcox.test(data_filtered_columns_with_factors$Mean_syst_morning, 
+                             data_filtered_columns_with_factors$Mean_syst_evening, 
+                             paired = TRUE, 
+                             alternative = "two.sided",
+                             conf.int = TRUE,
+                             correct = FALSE,
+                             conf.level = 0.95)
+# result_p_val <- wilcox_result$p.value
+# # see the medians
+# data_to_test %>%
+#   summarize(
+#     Median_Mean_syst_morning = median(Mean_syst_morning, na.rm = TRUE),
+#     Median_Mean_syst_evening = median(Mean_syst_evening, na.rm = TRUE),
+#     Count_Mean_syst_morning = sum(!is.na(Mean_syst_morning)),  # Count of non-NA
+#     Count_Mean_syst_evening = sum(!is.na(Mean_syst_evening))
+#   )
+# # PLOT
+# p_text <- ifelse(result_p_val < 0.001, 
+#                  "p = < 0.001", 
+#                  ifelse(result_p_val < 0.05, 
+#                         "p = < 0.005", 
+#                         paste("p =", round(result_p_val, 3))))
+# # Reshape the data from wide to long format
+# data_long <- data_to_test %>%
+#   pivot_longer(cols = c(Mean_syst_morning, Mean_syst_evening), 
+#                names_to = "variable", 
+#                values_to = "value")
+# data_long %>%
+#   ggplot(aes(x = variable, y = value)) +
+#   geom_boxplot() +
+#   theme_minimal() +
+#   theme(panel.grid = element_blank()) +
+#   theme(
+#     axis.title.x = element_blank(), 
+#     axis.title.y = element_blank()  
+#   ) +
+#   labs(
+#     subtitle = paste("Wilcoxon signed-rank test, ", p_text)
+#   )
 ########
 
 ########
