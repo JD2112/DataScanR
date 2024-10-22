@@ -429,6 +429,20 @@ test_wilcox_result <- wilcox.test(data_filtered_columns_with_factors$Mean_syst_m
 ########
 # Kruskal-Wallis test: Non-parametric alternative to one-way ANOVA, compares more than two independent groups
 # test example: bmi_n by smokestatus
+source("my_functions.R")
+test_col <- c("tg_res","ldl_res","hdl_res")
+group_col <- c("")
+group_col <- c()
+test_col <- c("tg_res")
+group_col <- c("smokestatus")
+res <- compare_medians_nonparametric(data_filtered_columns_with_factors,
+                              my_data_columns=test_col,
+                              my_group=group_col,
+                              my_test = "Kruskal-Wallis test"
+)
+
+
+kruskal.test(Ozone ~ Month, data = data_filtered_columns_with_factors)
 data_filtered_columns_with_factors %>% 
   select(all_of(c("bmi_n","smokestatus"))) -> data_to_test
 kruskal_result <- kruskal_test(data_to_test, bmi_n ~ smokestatus)

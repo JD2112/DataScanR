@@ -378,11 +378,8 @@ non_parametric_view <- sidebarLayout(
                     choices = c(),  # Empty choices initially
                     multiple = TRUE
         ),
-        # conditionalPanel(
-        #   condition = "input.nonparametric_test_median == 'Wilcoxon rank-sum test'",
-          # Add a checkbox for group option
+        # Add a checkbox for group option
         checkboxInput("group_option_nonparametric", "Run By Group", value = FALSE),
-        # ),
         conditionalPanel(
           condition = "input.group_option_nonparametric == true",
           selectInput("group_column_test_nonparam", "Select Group Column:",  # Predefine an empty selectInput for columns
@@ -390,18 +387,21 @@ non_parametric_view <- sidebarLayout(
                       multiple = FALSE
           )
         ), # end conditional
-        selectInput("alternative_nonparametric", "Alternative Hypothesis:",  
-                    choices = c("less","greater","two.sided"),  
-                    selected = "two.sided",
-                    multiple = FALSE
-        ),
-        numericInput("mu_nonparametric", "mu:", value = 0),
-        sliderInput("conf_level_nonparametric", 
-                    "Select Level Of Confidence:",
-                    min = 0, 
-                    max = 1,
-                    value = 0.95, 
-                    step = 0.05),
+        conditionalPanel(
+          condition = "input.nonparametric_test_median == 'Wilcoxon rank-sum test' || input.nonparametric_test_median == 'Wilcoxon signed-rank test'",
+          selectInput("alternative_nonparametric", "Alternative Hypothesis:",  
+                      choices = c("less","greater","two.sided"),  
+                      selected = "two.sided",
+                      multiple = FALSE
+          ),
+          numericInput("mu_nonparametric", "mu:", value = 0),
+          sliderInput("conf_level_nonparametric", 
+                      "Select Level Of Confidence:",
+                      min = 0, 
+                      max = 1,
+                      value = 0.95, 
+                      step = 0.05)
+        ), # end conditional
         actionButton("run_nonparametric_medians", "Run Test")
       ) # end accordion panel
     ) # end accordion

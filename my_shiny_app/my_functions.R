@@ -1713,6 +1713,120 @@ compare_medians_nonparametric <- function (my_data,
       }
     } # end no group column
   } #end "Wilcoxon signed-rank test"
+  ####################################################
+  if (my_test == "Kruskal-Wallis test") {
+    if (length(my_data_columns) > 2) {
+      if (!is.null(my_group) && length(my_group) == 1) {
+        if (my_group[1] == "") {
+          print("Run between data columns")
+          data_list <- lapply(my_data_columns, function(my_data_columns) my_data[[my_data_columns]])
+          result <- kruskal.test(data_list)
+          test_results_df <- data.frame(
+            p_value = if(!is.null(result$p.value)) result$p.value else NA,
+            Kruskal_Wallis_chi_squared =  if(!is.null(result$statistic)) result$statistic else NA,
+            df = if(!is.null(result$parameter)) result$parameter else NA,
+            stringsAsFactors = FALSE
+          )
+          return(test_results_df)
+        } # end if group column was empty string
+        else { # if group column name was provided
+          print("run multiple data columns for each group")
+          my_group_col <- my_group[1]
+          # print(is.numeric(my_data[[group_col]]))
+          my_data <- factor_columns(my_data,my_group)
+          # print(is.numeric(my_data[[group_col]]))
+          uniq_res <- levels(my_data[[my_group_col]])
+          # print(uniq_res)
+          if (length(uniq_res) > 2) {
+            test_results_df <- data.frame(
+              vars = character(),
+              p_value = numeric(),
+              Kruskal_Wallis_chi_squared =  numeric(),
+              df = numeric(),
+              stringsAsFactors = FALSE
+            )
+            for (col in my_data_columns) {
+              result <- kruskal.test(my_data[[col]] ~ my_data[[my_group_col]])
+              new_row <- data.frame(
+                vars = col,
+                p_value = if(!is.null(result$p.value)) result$p.value else NA,
+                Kruskal_Wallis_chi_squared =  if(!is.null(result$statistic)) result$statistic else NA,
+                parameter = if(!is.null(result$parameter)) result$parameter else NA,
+                stringsAsFactors = FALSE
+              )
+              # Append new rows to the original data frame
+              test_results_df <- rbind(test_results_df, new_row)
+            } # end for loop
+            return(test_results_df)
+          } else {
+            print(my_group_col)
+            print("Less than 3 groups. Use a different test")
+            return(data.frame())
+          } # end if there were less than 3 groups in group column
+        } # if group column name was provided
+      } # end if there was a group column
+      else { # no group but more than 2 data columns
+        print("Run between data columns")
+        data_list <- lapply(my_data_columns, function(my_data_columns) my_data[[my_data_columns]])
+        result <- kruskal.test(data_list)
+        test_results_df <- data.frame(
+          p_value = if(!is.null(result$p.value)) result$p.value else NA,
+          Kruskal_Wallis_chi_squared =  if(!is.null(result$statistic)) result$statistic else NA,
+          df = if(!is.null(result$parameter)) result$parameter else NA,
+          stringsAsFactors = FALSE
+        )
+        return(test_results_df)
+      } # end no group
+    } # end if there are more than 2 data columns
+    else { # less than 3 data columns
+      print("Check group column")
+      if (!is.null(my_group) && length(my_group) == 1) {
+        if (my_group[1] != "") {
+          my_group_col <- my_group[1]
+          # print(is.numeric(my_data[[group_col]]))
+          my_data <- factor_columns(my_data,my_group)
+          # print(is.numeric(my_data[[group_col]]))
+          uniq_res <- levels(my_data[[my_group_col]])
+          # print(uniq_res)
+          if (length(uniq_res) > 2) {
+            test_results_df <- data.frame(
+              vars = character(),
+              p_value = numeric(),
+              Kruskal_Wallis_chi_squared =  numeric(),
+              df = numeric(),
+              stringsAsFactors = FALSE
+            )
+            for (col in my_data_columns) {
+              result <- kruskal.test(my_data[[col]] ~ my_data[[my_group_col]])
+              new_row <- data.frame(
+                vars = col,
+                p_value = if(!is.null(result$p.value)) result$p.value else NA,
+                Kruskal_Wallis_chi_squared =  if(!is.null(result$statistic)) result$statistic else NA,
+                parameter = if(!is.null(result$parameter)) result$parameter else NA,
+                stringsAsFactors = FALSE
+              )
+              # Append new rows to the original data frame
+              test_results_df <- rbind(test_results_df, new_row)
+            } # end for loop
+            return(test_results_df)
+          } else {
+            print(my_group_col)
+            print("Less than 3 groups. Use a different test")
+            return(data.frame())
+          } # end if there were less than 3 groups in group column
+        }# if group column was not empty string
+        else {
+          print("too few data columns, no group")
+          return(data.frame())
+        }
+      } # if there was a group column
+      else {
+        print("too few data columns, no group")
+        return(data.frame())
+      }
+      
+    } # less than 3 data columns
+  } # end "Kruskal-Wallis test"
   
 } # end compare_medians_nonparametric
 
