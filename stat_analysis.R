@@ -314,7 +314,10 @@ plot_means_parametric(data_filtered_columns_with_factors,
 # Wilcoxon rank-sum test: Compares the distributions of two independent groups
 # test example: bmi_n by Case_control
 test_col <-c("bmi_n")
+test_col <- c("gluc_res","chol_res")
+group_col <- c()
 group_col <- c("Case_control")
+source("my_functions.R")
 wilcox_result <- compare_medians_nonparametric(data_filtered_columns_with_factors,
                                                my_data_columns=test_col,
                                                my_group=group_col,

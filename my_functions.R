@@ -1452,6 +1452,36 @@ compare_medians_nonparametric <- function (my_data,
         } # end if group column name is not empty string
     } else {
       print("No group column")
+      if (length(my_data_columns)==2) { # run between 2 columns
+        my_data %>% 
+          select(all_of(my_data_columns)) -> data_to_test
+        x <- data_to_test[[my_data_columns[1]]]
+        y <- data_to_test[[my_data_columns[2]]]
+        result <- wilcox.test(x,y,
+                              alternative = my_alternative, 
+                              paired = FALSE,
+                              conf.int = TRUE,
+                              correct = FALSE,
+                              conf.level = my_conf_level)
+        test_results_df <- data.frame(
+          vars = paste0(my_data_columns[1],"_vs_",my_data_columns[2]),
+          null_val = my_mu,
+          mean_difference = if(!is.null(result$estimate)) result$estimate else NA,
+          alternative = my_alternative,
+          p_value = if(!is.null(result$p.value)) result$p.value else NA,
+          lowCI = if(!is.null(result$conf.int)) result$conf.int[1] else NA,
+          uppCI = if(!is.null(result$conf.int)) result$conf.int[2] else NA,
+          conf_level = my_conf_level,
+          statistic =  if(!is.null(result$statistic)) result$statistic else NA,
+          parameter = if(!is.null(result$parameter)) result$parameter else NA,
+          samples_group1 = length(x),
+          samples_group2 = length(y),
+          stringsAsFactors = FALSE
+        )
+        return(test_results_df)
+      } else {
+        return(data.frame())
+      }
     }
   } # end "Wilcoxon rank-sum test"
   
