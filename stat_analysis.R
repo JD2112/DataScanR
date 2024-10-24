@@ -469,21 +469,21 @@ data_to_test %>%
 ########
 
 ########
-# # Friedman test: Non-parametric alternative to repeated measures ANOVA, compares more than two related groups
-# # test example: Day1VisitD, Day2VisitD, CtVisitD
-# data_filtered_columns_with_factors %>% 
-#   select(all_of(c("dbph3m","dbph4m","dbph5m","Scapis..ID"))) -> data_to_test
-# res_counts <- data_to_test %>%
-#   group_by(Scapis..ID) %>%
-#   summarize(count = n()) %>%
-#   filter(count == 6)  # Select those with a count of 6
-# # single glucose
-# individual_data <- data_to_test %>%
-#   filter(Scapis..ID == "4-1333")
-# # Reshape the data from wide to long format
-# data_long <- data_to_test %>%
-#   pivot_longer(cols = c(Mean_syst_morning, Mean_syst_evening), 
-#                names_to = "variable", 
-#                values_to = "value")
-# friedman.test(y=data_to_test$score, groups=data_to_test$drug, blocks=data_to_test$Scapis..ID)
+# Friedman test: Non-parametric alternative to repeated measures ANOVA, compares more than two related groups
+source("my_functions.R")
+test_col <- c("tg_res","ldl_res","hdl_res")
+group_col <- c("")
+group_col <- c()
+test_col <- c("tg_res")
+group_col <- c("smokestatus")
+res <- compare_medians_nonparametric(data_filtered_columns_with_factors,
+                                     my_data_columns=test_col,
+                                     my_group=group_col,
+                                     my_test = "Friedman test"
+)
+
+
+
+my_matrix <- as.matrix(data_filtered_columns_with_factors[, ..test_col])
+res <- friedman.test(my_matrix)
 

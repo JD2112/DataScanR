@@ -1528,7 +1528,7 @@ compare_medians_nonparametric <- function (my_data,
                                 alternative = my_alternative, 
                                 paired = TRUE,
                                 conf.int = TRUE,
-                                correct = FALSE,
+                                correct = TRUE,
                                 conf.level = my_conf_level)
           test_results_df <- data.frame(
             vars = paste0(my_data_columns[1],"_vs_",my_data_columns[2]),
@@ -1616,7 +1616,7 @@ compare_medians_nonparametric <- function (my_data,
                                   alternative = my_alternative, 
                                   paired = TRUE,
                                   conf.int = TRUE,
-                                  correct = FALSE,
+                                  correct = TRUE,
                                   conf.level = my_conf_level)
             # Add the results to dataframe
             new_row <- data.frame(
@@ -1643,7 +1643,7 @@ compare_medians_nonparametric <- function (my_data,
                                   alternative = my_alternative, 
                                   paired = TRUE,
                                   conf.int = TRUE,
-                                  correct = FALSE,
+                                  correct = TRUE,
                                   conf.level = my_conf_level)
             # Add the results to dataframe
             new_row <- data.frame(
@@ -1688,7 +1688,7 @@ compare_medians_nonparametric <- function (my_data,
                               alternative = my_alternative, 
                               paired = TRUE,
                               conf.int = TRUE,
-                              correct = FALSE,
+                              correct = TRUE,
                               conf.level = my_conf_level)
         test_results_df <- data.frame(
           vars = paste0(my_data_columns[1],"_vs_",my_data_columns[2]),

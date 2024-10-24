@@ -315,7 +315,10 @@ parametric_view <- sidebarLayout(
                     selected = "two.sided",
                     multiple = FALSE
         ),
-        numericInput("mu_parametric", "mu:", value = 0),
+        conditionalPanel(
+          condition = "input.parametric_test_mean != 'Paired t-test'",
+          numericInput("mu_parametric", "mu:", value = 0)
+        ),# end conditional
         sliderInput("conf_level_parametric", 
                     "Select Level Of Confidence:",
                     min = 0, 

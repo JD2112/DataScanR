@@ -1718,12 +1718,12 @@ compare_medians_nonparametric <- function (my_data,
             stringsAsFactors = FALSE
           )
           return(test_results_df)
-          } # end if group column was empty string
+        } # end if group column was empty string
         else { # if group column name was provided
           print("run multiple data columns for each group")
           my_group_col <- my_group[1]
           # print(is.numeric(my_data[[group_col]]))
-          my_data <- factor_columns(my_data,my_group_col)
+          my_data <- factor_columns(my_data,my_group)
           # print(is.numeric(my_data[[group_col]]))
           uniq_res <- levels(my_data[[my_group_col]])
           # print(uniq_res)
@@ -1749,11 +1749,12 @@ compare_medians_nonparametric <- function (my_data,
             } # end for loop
             return(test_results_df)
           } else {
+            print(my_group_col)
             print("Less than 3 groups. Use a different test")
             return(data.frame())
           } # end if there were less than 3 groups in group column
-          } # if group column name was provided
-        } # end if there was a group column
+        } # if group column name was provided
+      } # end if there was a group column
       else { # no group but more than 2 data columns
         print("Run between data columns")
         data_list <- lapply(my_data_columns, function(my_data_columns) my_data[[my_data_columns]])
@@ -1773,7 +1774,7 @@ compare_medians_nonparametric <- function (my_data,
         if (my_group[1] != "") {
           my_group_col <- my_group[1]
           # print(is.numeric(my_data[[group_col]]))
-          my_data <- factor_columns(my_data,my_group_col)
+          my_data <- factor_columns(my_data,my_group)
           # print(is.numeric(my_data[[group_col]]))
           uniq_res <- levels(my_data[[my_group_col]])
           # print(uniq_res)
@@ -1799,7 +1800,7 @@ compare_medians_nonparametric <- function (my_data,
             } # end for loop
             return(test_results_df)
           } else {
-            print("Less than 3 groups. Use a different test")
+            print("You need more than 2 groups for Kruskal-Wallis test.")
             return(data.frame())
           } # end if there were less than 3 groups in group column
         }# if group column was not empty string
@@ -1807,7 +1808,7 @@ compare_medians_nonparametric <- function (my_data,
           print("too few data columns, no group")
           return(data.frame())
         }
-        } # if there was a group column
+      } # if there was a group column
       else {
         print("too few data columns, no group")
         return(data.frame())
@@ -1815,6 +1816,59 @@ compare_medians_nonparametric <- function (my_data,
       
     } # less than 3 data columns
   } # end "Kruskal-Wallis test"
+  ##############################################
+  if (my_test == "Friedman test") {
+    if (length(my_data_columns) > 2) { # if there were more than 2 variables
+      if (!is.null(my_group) && length(my_group) == 1) {
+        if (my_group[1] == "") { # if there was no group (group = empty string)
+          # run between columns
+          # make a matrix
+          my_matrix <- as.matrix(my_data[, ..my_data_columns])
+          result <- friedman.test(my_matrix)
+          test_results_df <- data.frame(
+            p_value = if(!is.null(result$p.value)) result$p.value else NA,
+            Friedman_chi_squared =  if(!is.null(result$statistic)) result$statistic else NA,
+            df = if(!is.null(result$parameter)) result$parameter else NA,
+            stringsAsFactors = FALSE
+          )
+          return(test_results_df)
+        } # end if group was empty string
+        else { # there was a group column
+          my_group_col <- my_group[1]
+          # print(is.numeric(my_data[[group_col]]))
+          my_data <- factor_columns(my_data,my_group)
+          # print(is.numeric(my_data[[group_col]]))
+          uniq_res <- levels(my_data[[my_group_col]])
+          print(uniq_res)
+          if (length(uniq_res) > 2) { # if there were at least 3 groups
+            # change to long format
+            my_req_columns <- append(my_group,my_data_columns)
+            my_new_data <- my_data %>%
+              select(all_of(my_req_columns))
+            my_new_data <- my_new_data %>%
+              pivot_longer(cols = my_data_columns, 
+                           names_to = "vars", 
+                           values_to = "values")
+            # Ensure no missing data and that each group has all values for each "vars"
+            my_new_data <- my_new_data %>%
+              drop_na() %>%  # Remove any rows with missing values
+              group_by(!!sym(my_group_col), vars) %>%
+              filter(n() == length(my_data_columns))  # Keep only complete blocks
+            
+            # Now, use as.formula() to construct the correct formula for friedman.test
+            result <- friedman.test(as.formula(paste("values ~ vars |", my_group_col)), data = my_new_data)
+          
+            print(result)
+          } # end if there were at least 3 groups
+          else {
+            print("You need more than 2 groups for Friedman test.")
+            return(data.frame())
+          }
+        } # end if there was a group column name
+      }
+    } # end if there were more than 2 variables
+    
+  } # end Friedman test
   
 } # end compare_medians_nonparametric
 
