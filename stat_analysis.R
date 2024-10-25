@@ -90,10 +90,10 @@ data_filtered_columns <- remove_selected_columns(data_filtered_by_missing_thresh
 #         filter(unique_count < UNIQUE_NO_TO_FACTOR) %>%
 #         pull(variables)
 #     ), as.factor)) # convert selected columns to factors
-
-# should I convert some columns to factors? by column name? by diagnostic criteria, i.e less than 6 unique values?
-columns_to_factor <- c("Scapis..ID", "Gender","smoke_yes_no","smokestatus","Case_control")
-data_filtered_columns_with_factors <- factor_columns(data_filtered_columns, columns_to_factor)
+data_filtered_columns_with_factors <- data_filtered_columns
+# # should I convert some columns to factors? by column name? by diagnostic criteria, i.e less than 6 unique values?
+# columns_to_factor <- c("Scapis..ID", "Gender","smoke_yes_no","smokestatus","Case_control")
+# data_filtered_columns_with_factors <- factor_columns(data_filtered_columns, columns_to_factor)
 #########
 # BASIC #
 #########
@@ -288,35 +288,40 @@ conf_level <- 0.95
 # Parametric (normal distribution tests) #
 test_col <- c("gluc_res","chol_res","tg_res" ,"ldl_res", "hdl_res")
 test_col <- c("gluc_res","chol_res")
-test_col_paired <- c("SBP_Doppler1","SBP_Doppler2")
+group_col <- c("Gender")
+group_col <- c()
+# test_col_paired <- c("SBP_Doppler1","SBP_Doppler2")
 # test_col_paired <- c("SBP_Doppler1")
 source("my_functions.R")
 # my_test: "One sample t-test", "Independent two-sample t-test", "Paired t-test"
 # my_alternative: "two.sided", "greater", "less"
 res <- compare_means_parametric(data_filtered_columns_with_factors,
-                                test_col_paired,
-                                my_group = c(),
-                                my_test = "Paired t-test",
+                                test_col,
+                                my_group = group_col,
+                                my_test = "Independent two-sample t-test",
                                 my_mu = 0,
                                 my_alternative = "two.sided",
                                 my_conf_level = 0.95)
 
-mean(data_filtered_columns_with_factors$SBP_Doppler1, na.rm =TRUE) 
-mean(data_filtered_columns_with_factors$SBP_Doppler2, na.rm =TRUE) - mean(data_filtered_columns_with_factors$SBP_Doppler1, na.rm =TRUE)
-summary(data_filtered_columns_with_factors$SBP_Doppler1-data_filtered_columns_with_factors$SBP_Doppler2)
-t.test(data_filtered_columns_with_factors$SBP_Doppler1,
-       data_filtered_columns_with_factors$SBP_Doppler2,
-                 mu= 0,
-                 alternative = "two.sided",
-                 conf.level =  0.95,
-                 var.equal = TRUE,
-                 paired = TRUE)
-# source("my_functions.R")
-# plot_means_parametric(data_filtered_columns_with_factors,
-#                       res,
-#                       type_of_test = "One sample t-test",
-#                       columns_to_show = test_col
-#                       )
+# mean(data_filtered_columns_with_factors$SBP_Doppler1, na.rm =TRUE) 
+# mean(data_filtered_columns_with_factors$SBP_Doppler2, na.rm =TRUE) - mean(data_filtered_columns_with_factors$SBP_Doppler1, na.rm =TRUE)
+# summary(data_filtered_columns_with_factors$SBP_Doppler1-data_filtered_columns_with_factors$SBP_Doppler2)
+# t.test(data_filtered_columns_with_factors$SBP_Doppler1,
+#        data_filtered_columns_with_factors$SBP_Doppler2,
+#                  mu= 0,
+#                  alternative = "two.sided",
+#                  conf.level =  0.95,
+#                  var.equal = TRUE,
+#                  paired = TRUE)
+
+source("my_functions.R")
+plot_means_parametric(data_filtered_columns_with_factors,
+                      res,
+                      type_of_test = "Independent two-sample t-test",
+                      columns_to_show = test_col,
+                      my_group = group_col,
+                      plot_title = "Independent two-sample t-test"
+                      )
 
 ##################################
 # Non-normal distribution tests: #

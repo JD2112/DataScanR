@@ -6,6 +6,7 @@ library(dplyr)
 library(ggplot2)
 library(plotly)
 library(patchwork)
+library(ggpubr)
 library(hrbrthemes)
 library(ggdist)
 library(GGally)
@@ -1322,46 +1323,184 @@ plot_means_parametric <- function(df,
                                   test_result,
                                   type_of_test = "One sample t-test", 
                                   columns_to_show = c(),
-                                  my_group = NULL,
+                                  my_group = c(),
                                   my_mu = 0,
                                   my_alternative = "two.sided",
-                                  myy_conf_level = 0.95
+                                  myy_conf_level = 0.95,
+                                  plot_title = ""
                                   ) {
-  # Extract lowCI and uppCI from test_result
-  lowCI <- test_result$lowCI
-  uppCI <- test_result$uppCI
-  
-  # Combine test_result with the variable names so we can join it later
-  test_result$Variable <- columns_to_show
-  
-  # Reshape the data from wide to long format
-  df_plot <- df %>%
-    select(all_of(columns_to_show)) %>%   # select only test columns 
-    pivot_longer(cols = everything(), names_to = "Variable", values_to = "Value")
-  
-  # Join confidence intervals with the reshaped data
-  df_plot <- df_plot %>%
-    left_join(test_result, by = "Variable")  # Match on 'Variable' column
-  
-  # Keep user-specified order for the x-axis
-  df_plot$Variable <- factor(df_plot$Variable, levels = columns_to_show)
-  
+
   # Plot if it's a One-sample t-test
   if (type_of_test == "One sample t-test") {
-    p <- ggplot(df_plot, aes(x = Variable, y = Value)) +
-      geom_boxplot() +
-      geom_errorbar(aes(ymin = lowCI, ymax = uppCI),     # CI as error bars
-                    width = 0.2, 
-                    color = "blue", 
-                    size = 1.2) +
+    # Get columns
+    test_result$Variable <- columns_to_show
+    
+    # Reshape the data from wide to long format
+    df_plot <- df %>%
+      select(all_of(columns_to_show)) %>%   # select only test columns 
+      pivot_longer(cols = everything(), names_to = "Variable", values_to = "Value")
+    
+    # Keep user-specified order for the x-axis
+    df_plot$Variable <- factor(df_plot$Variable, levels = columns_to_show)
+    
+    # Filter out rows with NA or Inf values in lowCI or uppCI
+    test_result_filtered <- test_result %>%
+      filter(!is.na(lowCI), !is.na(uppCI), !is.na(p_value))
+    
+    # Plot with error bars and p-values
+    p <- ggplot(test_result, aes(x = vars, y = estimate)) +
+      geom_point() +
+      geom_errorbar(data = test_result_filtered, aes(
+        ymin = ifelse(is.infinite(lowCI), estimate - 0.5, lowCI),  # Set a placeholder position for lowCI Inf
+        ymax = ifelse(is.infinite(uppCI), estimate + 0.5, uppCI)   # Set a placeholder position for uppCI Inf
+      ), 
+      width = 0.1
+      ) +
+      labs(
+        title = plot_title,
+        x = "", 
+        y = "Mean and Conf Interval"
+      ) +
       theme_minimal() +
       theme(
-        axis.title.x = element_blank(), 
-        axis.title.y = element_blank(), 
+        axis.title.x = element_blank(),
+        # axis.title.y = element_blank(),
         panel.grid = element_blank()
+      ) +
+      # Add p-values with conditional text for Inf values
+      geom_text(
+        data = test_result_filtered, 
+        aes(
+          y = ifelse(is.infinite(uppCI), estimate + 0.5, 
+                     ifelse(is.infinite(lowCI), estimate - 0.5, uppCI + 0.1)),
+          label = ifelse(is.infinite(uppCI), "Inf", 
+                         ifelse(is.infinite(lowCI), "Inf", paste("p =", round(p_value, 3))))
+        ),
+        vjust = -0.5,
+        color = "black"
       )
     return(p)
-  }
+  } # end one-sample ttest
+  ###########################################################
+  if (type_of_test == "Independent two-sample t-test") {
+    # Get columns
+    columns_to_test <- test_result$vars 
+    if (!is.null(my_group) && length(my_group) == 1) {
+      if (my_group[1] != "") {
+        # Filter out rows where the grouping variable is NA
+        # Assuming my_group is a character vector with the name of the grouping variable
+        my_group_col <- my_group[1]
+          
+        # Convert the grouping column to a factor
+        df[[my_group_col]] <- as.factor(df[[my_group_col]])
+          
+        # Reshape the data from wide to long format
+        df_long <- df %>%
+          select(all_of(c(my_group_col, columns_to_test))) %>%  # Select relevant columns
+          pivot_longer(cols = all_of(columns_to_test), 
+                         names_to = "Variable", 
+                         values_to = "Value")
+          
+        # Filter out rows where the grouping variable is NA
+        filtered_df <- df_long %>% filter(!is.na(!!sym(my_group_col)))
+          
+        # Check the levels of the factor
+        print(levels(filtered_df[[my_group_col]]))  # This should not include "NA"
+        # Create the boxplot, faceting by Variable and grouping by my_group_col
+        p <- ggboxplot(
+            filtered_df,
+            x = my_group_col,  # Grouping variable (e.g., Gender)
+            y = "Value" ,     # Response variable
+            outlier.size = 0.2,   # Set the size of outliers
+            size = 0.2
+            # color = my_group_col,
+            # palette = "jco"
+          ) +
+            facet_wrap(~ Variable) +  # Facet by Variable (e.g., gluc, chol)
+            labs(title = plot_title,
+                 x = my_group_col,
+                 ) +
+            theme_minimal() +
+            theme(
+              axis.title.y = element_blank(),
+              panel.grid = element_blank(),
+              strip.text = element_text(size = 14) 
+            ) +
+          # Add frames around each facet
+            geom_rect(
+              aes(xmin = -Inf, xmax = Inf, ymin = -Inf, ymax = Inf),
+              fill = NA,           # No fill
+              color = "grey",     # Frame color
+              size = 0.5          # Frame line size
+            )
+        # check the y position of p_value
+        label_y_pos <- max(filtered_df$Value, na.rm = TRUE) - 0.5
+        p <- p + stat_compare_means(method = "t.test", label = "p.format",label.x = 1.4,label.y = label_y_pos)
+        return(p)
+      } # end if group was not empty string
+    } # end if there was a group
+  } # end Independent two-sample t-test
+  ###########################################################
+  if (type_of_test == "Paired t-test") {
+    # Get columns
+    columns_to_test <- columns_to_show
+    if (!is.null(my_group) && length(my_group) == 1) {
+      if (my_group[1] != "") {
+        # Filter out rows where the grouping variable is NA
+        # Assuming my_group is a character vector with the name of the grouping variable
+        my_group_col <- my_group[1]
+        
+        # Convert the grouping column to a factor
+        df[[my_group_col]] <- as.factor(df[[my_group_col]])
+        
+        # Reshape the data from wide to long format
+        df_long <- df %>%
+          select(all_of(c(my_group_col, columns_to_test))) %>%  # Select relevant columns
+          pivot_longer(cols = all_of(columns_to_test), 
+                       names_to = "Variable", 
+                       values_to = "Value")
+        
+        # Filter out rows where the grouping variable is NA
+        filtered_df <- df_long %>% filter(!is.na(!!sym(my_group_col)))
+        
+        # Check the levels of the factor
+        print(levels(filtered_df[[my_group_col]]))  # This should not include "NA"
+        
+        # Create the boxplot, faceting by my_group_col and grouping by Variable
+        p <- ggboxplot(
+          filtered_df,
+          x = "Variable",  # Grouping variable (e.g., dop1, dop2)
+          y = "Value" ,     # Response variable
+          outlier.size = 0.2,   # Set the size of outliers
+          size = 0.2,
+          line.color = "grey",
+          line.size = 0.2
+        ) +
+          facet_wrap(as.formula(paste("~", my_group_col))) +  # Facet by Gender
+          labs(title = plot_title) +
+          theme_minimal() +
+          theme(
+            axis.title.y = element_blank(),
+            axis.title.x = element_blank(),
+            panel.grid = element_blank(),
+            strip.text = element_text(size = 14) 
+          ) +
+          # Add frames around each facet
+          geom_rect(
+            aes(xmin = -Inf, xmax = Inf, ymin = -Inf, ymax = Inf),
+            fill = NA,           # No fill
+            color = "grey",     # Frame color
+            size = 0.5          # Frame line size
+          )
+        
+        # Position for p-values
+        label_y_pos <- max(filtered_df$Value, na.rm = TRUE) - 0.5
+        my_comparisons <- list( columns_to_test, columns_to_test)
+        p<- p + stat_compare_means(comparisons = my_comparisons, label.y = label_y_pos)
+        return(p)
+      } # end if group was not empty string
+    } # end if there was a group
+  } # end Paired t-test
 } # end plot_means_parametric
 
 #########################################################################################
