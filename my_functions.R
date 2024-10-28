@@ -1446,7 +1446,6 @@ plot_means_parametric <- function(df,
     columns_to_test <- columns_to_show
     if (!is.null(my_group) && length(my_group) == 1) {
       if (my_group[1] != "") {
-        # Filter out rows where the grouping variable is NA
         # Assuming my_group is a character vector with the name of the grouping variable
         my_group_col <- my_group[1]
         
@@ -1459,18 +1458,23 @@ plot_means_parametric <- function(df,
           pivot_longer(cols = all_of(columns_to_test), 
                        names_to = "Variable", 
                        values_to = "Value")
-        
+        # print(df_long)
         # Filter out rows where the grouping variable is NA
         filtered_df <- df_long %>% filter(!is.na(!!sym(my_group_col)))
         
-        # Check the levels of the factor
-        print(levels(filtered_df[[my_group_col]]))  # This should not include "NA"
+        # Create an 'id' column for paired observations
+        filtered_df <- filtered_df %>%
+          group_by(!!sym(my_group_col)) %>%                             # Group by the grouping variable (e.g., Gender)
+          mutate(id = as.integer((row_number() + 1) %/% 2)) %>%  # Assign the same ID to every two rows within each group
+          ungroup()
+        # print(filtered_df)
         
         # Create the boxplot, faceting by my_group_col and grouping by Variable
-        p <- ggboxplot(
+        p <- ggpaired(
           filtered_df,
           x = "Variable",  # Grouping variable (e.g., dop1, dop2)
           y = "Value" ,     # Response variable
+          id = "id",
           outlier.size = 0.2,   # Set the size of outliers
           size = 0.2,
           line.color = "grey",
@@ -1483,8 +1487,8 @@ plot_means_parametric <- function(df,
             axis.title.y = element_blank(),
             axis.title.x = element_blank(),
             panel.grid = element_blank(),
-            strip.text = element_text(size = 14) 
-          ) +
+            strip.text = element_text(size = 14)
+          ) 
           # Add frames around each facet
           geom_rect(
             aes(xmin = -Inf, xmax = Inf, ymin = -Inf, ymax = Inf),
@@ -1495,11 +1499,96 @@ plot_means_parametric <- function(df,
         
         # Position for p-values
         label_y_pos <- max(filtered_df$Value, na.rm = TRUE) - 0.5
-        my_comparisons <- list( columns_to_test, columns_to_test)
-        p<- p + stat_compare_means(comparisons = my_comparisons, label.y = label_y_pos)
+       
+        p <- p + stat_compare_means(method = "t.test", paired = TRUE, label = "p.format", label.x = 1.4, label.y = label_y_pos)
         return(p)
       } # end if group was not empty string
+      else if (length(columns_to_test) == 2) { # run between columns
+        # Reshape the data from wide to long format
+        df_long <- df %>%
+          select(all_of(columns_to_test)) %>%  # Select relevant columns
+          pivot_longer(cols = all_of(columns_to_test), 
+                       names_to = "Variable", 
+                       values_to = "Value")
+        # print(df_long)
+        # Create an 'id' column for paired observations
+        filtered_df <- df_long %>%
+          mutate(id = as.integer((row_number() + 1) %/% 2)) %>%  # Assign the same ID to every two rows within each group
+          ungroup()
+        # print(filtered_df)
+        p <- ggpaired(
+          filtered_df,
+          x = "Variable",  # Grouping variable (e.g., dop1, dop2)
+          y = "Value" ,     # Response variable
+          id = "id",
+          outlier.size = 0.2,   # Set the size of outliers
+          size = 0.2,
+          line.color = "grey",
+          line.size = 0.2
+        ) +
+          labs(title = plot_title) +
+          theme_minimal() +
+          theme(
+            axis.title.y = element_blank(),
+            axis.title.x = element_blank(),
+            panel.grid = element_blank(),
+            strip.text = element_text(size = 14)
+          ) 
+        
+        # Position for p-values
+        label_y_pos <- max(filtered_df$Value, na.rm = TRUE) - 0.5
+        
+        p <- p + stat_compare_means(method = "t.test", paired = TRUE, label = "p.format", label.x = 1.4, label.y = label_y_pos)
+        return(p)
+      } # end if there was no group, but exactly 2 variables to test
+      else {
+        print("Could not calculate paired ttest. Needs exactly 2 variables if no group provided")
+      }
     } # end if there was a group
+    else { # if no group
+      if (length(columns_to_test) == 2) { # run between columns
+        # Reshape the data from wide to long format
+        df_long <- df %>%
+          select(all_of(columns_to_test)) %>%  # Select relevant columns
+          pivot_longer(cols = all_of(columns_to_test), 
+                       names_to = "Variable", 
+                       values_to = "Value")
+        # print(df_long)
+        # Create an 'id' column for paired observations
+        filtered_df <- df_long %>%
+          mutate(id = as.integer((row_number() + 1) %/% 2)) %>%  # Assign the same ID to every two rows within each group
+          ungroup()
+        # print(filtered_df)
+        p <- ggpaired(
+          filtered_df,
+          x = "Variable",  # Grouping variable (e.g., dop1, dop2)
+          y = "Value" ,     # Response variable
+          id = "id",
+          outlier.size = 0.2,   # Set the size of outliers
+          size = 0.2,
+          line.color = "grey",
+          line.size = 0.2
+        ) +
+          labs(title = plot_title) +
+          theme_minimal() +
+          theme(
+            axis.title.y = element_blank(),
+            axis.title.x = element_blank(),
+            panel.grid = element_blank(),
+            strip.text = element_text(size = 14)
+          ) 
+        
+        # Position for p-values
+        label_y_pos <- max(filtered_df$Value, na.rm = TRUE) - 0.5
+        
+        p <- p + stat_compare_means(method = "t.test", paired = TRUE, label = "p.format", label.x = 1.4, label.y = label_y_pos)
+        return(p)
+        
+      } # end if exactly 2 columns
+      else {
+        print("Could not calculate paired ttest. Needs exactly 2 variables if no group provided")
+      }
+    } # end if no group
   } # end Paired t-test
 } # end plot_means_parametric
 
