@@ -379,7 +379,7 @@ non_parametric_view <- sidebarLayout(
         # Add text before the first input
         p("Compare Medians"), 
         selectInput("nonparametric_test_median", "Select Test:", 
-                    choices = c("Wilcoxon rank-sum test", "Wilcoxon signed-rank test","Kruskal-Wallis test", "Friedman test"),
+                    choices = c("Wilcoxon rank-sum test", "Wilcoxon signed-rank test","Kruskal-Wallis test"),
                     selected = "Wilcoxon rank-sum test"),
         selectInput("columns_test_nonparam", "Select Columns:",  # Predefine an empty selectInput for columns
                     choices = c(),  # Empty choices initially
@@ -1439,86 +1439,8 @@ server <- function(input, output,session) {
     alternative <- input$alternative_parametric
     conf_level <-input$conf_level_parametric
     if (length(test_columns) > 0) {
-      if (group_col[1]== "" && test == "Independent two-sample t-test") {
-        # Handle error
-        showModal(modalDialog(
-          # Title and icon together in the same div, so we can control their position
-          div(
-            style = "position: relative;",  # Relative positioning to align the title and icon
-            # Title on the left
-            span("Info", style = "font-size: 28px;"),
-            # Icon on the top-right corner
-            span(
-              bsicons::bs_icon("exclamation-triangle", fill = MESSAGE_COLOR, size = 40), 
-              style = "position: absolute; top: 0; right: 0;"
-            )
-          ),
-          # Add a line break using <br>
-          HTML("<br>"),
-          # Add a line break using <br>
-          HTML("<br>"),
-          footer = modalButton("OK"),
-          HTML("Select one group column for the test.")
-        )) # end message
-      } else {
-        if ((test == "Paired t-test" && by_group == FALSE && length(test_columns) == 2) || 
-            (test == "Paired t-test" && by_group == TRUE && length(test_columns) == 2) ||
-            (test == "Paired t-test" && by_group == TRUE && length(test_columns) == 1) ||
-            test == "Independent two-sample t-test" ||
-            test == "One sample t-test" 
-            ) {
-          group_col <- c(group_col)
-          if (test == "Paired t-test" && by_group == FALSE) {
-            group_col <- c()
-          }
-          tryCatch({
-            # print(group_col)
-            if (length(group_col) == 0) {
-              group_col <- c()
-            }
-            res <- compare_means_parametric(modified_data(),
-                                 test_columns,
-                                 my_group = group_col,
-                                 my_test = test,
-                                 my_mu = mu_val,
-                                 my_alternative = alternative,
-                                 my_conf_level = conf_level)
-            currently_selected_columns_param_tests(test_columns)
-            currently_selected_group_col_param_tests(group_col)
-            display_data_parametric_tests(res)
-            output$param_test_table_title <- renderUI({
-              title_text <- paste0("<br><br>","&nbsp;&nbsp;&nbsp;&nbsp;",test)
-              if (test == "Independent two-sample t-test") {
-                title_text <- paste0("<br><br>","&nbsp;&nbsp;&nbsp;&nbsp;",test,"<br><br>","&nbsp;&nbsp;&nbsp;&nbsp;","Group: ",group_col[1])
-              }
-              # Render HTML with h5 and the title text
-              HTML(paste0("<h5>", title_text, "</h5>"))
-            })
-            # create plot
-          }, error = function(e) {
-            # Handle error
-            showModal(modalDialog(
-              # Title and icon together in the same div, so we can control their position
-              div(
-                style = "position: relative;",  # Relative positioning to align the title and icon
-                # Title on the left
-                span("Info", style = "font-size: 28px;"),
-                # Icon on the top-right corner
-                span(
-                  bsicons::bs_icon("exclamation-triangle", fill = MESSAGE_COLOR, size = 40), 
-                  style = "position: absolute; top: 0; right: 0;"
-                )
-              ),
-              # Add a line break using <br>
-              HTML("<br>"),
-              # Add a line break using <br>
-              HTML("<br>"),
-              footer = modalButton("OK"),
-              HTML(paste0("Problem calculating test results!<br>Try different columns.     ",bsicons::bs_icon("emoji-tear",fill = MESSAGE_COLOR,size=20)))
-            ))
-          }) # end trycatch
-        } # end if paired t-test conditions passed
-        else {
+      if (length(test_columns) <= MAX_FOR_PREVIEW_PLOT) {
+        if (group_col[1]== "" && test == "Independent two-sample t-test") {
           # Handle error
           showModal(modalDialog(
             # Title and icon together in the same div, so we can control their position
@@ -1537,13 +1459,115 @@ server <- function(input, output,session) {
             # Add a line break using <br>
             HTML("<br>"),
             footer = modalButton("OK"),
-            HTML("For Paired t-test:<br><br>
-                 If one column is selected,<br>another column with group must be selected.<br>
-                 If two columns are selected,<br>the test can be run either between the selected columns,
-                 or additionally: by group.")
+            HTML("Select one group column for the test.")
           )) # end message
-          }
-      } # end else
+        } else {
+          if ((test == "Paired t-test" && by_group == FALSE && length(test_columns) == 2) || 
+              (test == "Paired t-test" && by_group == TRUE && length(test_columns) == 2) ||
+              (test == "Paired t-test" && by_group == TRUE && length(test_columns) == 1) ||
+              test == "Independent two-sample t-test" ||
+              test == "One sample t-test" 
+              ) {
+            group_col <- c(group_col)
+            if (test == "Paired t-test" && by_group == FALSE) {
+              group_col <- c()
+            }
+            tryCatch({
+              # print(group_col)
+              if (length(group_col) == 0) {
+                group_col <- c()
+              }
+              res <- compare_means_parametric(modified_data(),
+                                   test_columns,
+                                   my_group = group_col,
+                                   my_test = test,
+                                   my_mu = mu_val,
+                                   my_alternative = alternative,
+                                   my_conf_level = conf_level)
+              currently_selected_columns_param_tests(test_columns)
+              currently_selected_group_col_param_tests(group_col)
+              display_data_parametric_tests(res)
+              output$param_test_table_title <- renderUI({
+                title_text <- paste0("<br><br>","&nbsp;&nbsp;&nbsp;&nbsp;",test)
+                if (test == "Independent two-sample t-test") {
+                  title_text <- paste0("<br><br>","&nbsp;&nbsp;&nbsp;&nbsp;",test,"<br><br>","&nbsp;&nbsp;&nbsp;&nbsp;","Group: ",group_col[1])
+                }
+                # Render HTML with h5 and the title text
+                HTML(paste0("<h5>", title_text, "</h5>"))
+              })
+              # create plot
+            }, error = function(e) {
+              # Handle error
+              showModal(modalDialog(
+                # Title and icon together in the same div, so we can control their position
+                div(
+                  style = "position: relative;",  # Relative positioning to align the title and icon
+                  # Title on the left
+                  span("Info", style = "font-size: 28px;"),
+                  # Icon on the top-right corner
+                  span(
+                    bsicons::bs_icon("exclamation-triangle", fill = MESSAGE_COLOR, size = 40), 
+                    style = "position: absolute; top: 0; right: 0;"
+                  )
+                ),
+                # Add a line break using <br>
+                HTML("<br>"),
+                # Add a line break using <br>
+                HTML("<br>"),
+                footer = modalButton("OK"),
+                HTML(paste0("Problem calculating test results!<br>Try different variables.     ",bsicons::bs_icon("emoji-tear",fill = MESSAGE_COLOR,size=20)))
+              ))
+            }) # end trycatch
+          } # end if paired t-test conditions passed
+          else {
+            # Handle error
+            showModal(modalDialog(
+              # Title and icon together in the same div, so we can control their position
+              div(
+                style = "position: relative;",  # Relative positioning to align the title and icon
+                # Title on the left
+                span("Info", style = "font-size: 28px;"),
+                # Icon on the top-right corner
+                span(
+                  bsicons::bs_icon("exclamation-triangle", fill = MESSAGE_COLOR, size = 40), 
+                  style = "position: absolute; top: 0; right: 0;"
+                )
+              ),
+              # Add a line break using <br>
+              HTML("<br>"),
+              # Add a line break using <br>
+              HTML("<br>"),
+              footer = modalButton("OK"),
+              HTML("For Paired t-test:<br><br>
+                   If one variable is selected,<br>another variable with group must be selected.<br>
+                   If two variables are selected,<br>the test can be run either between the selected variables,
+                   or additionally: by group.")
+            )) # end message
+            }
+        } # end else
+    } # end if max for plot satisfied
+    else {
+      # show error that too many columns
+      showModal(modalDialog(
+        # Title and icon together in the same div, so we can control their position
+        div(
+          style = "position: relative;",  # Relative positioning to align the title and icon
+          # Title on the left
+          span("Info", style = "font-size: 28px;"),
+          # Icon on the top-right corner
+          span(
+            bsicons::bs_icon("exclamation-triangle", fill = MESSAGE_COLOR, size = 40), 
+            style = "position: absolute; top: 0; right: 0;"
+          )
+        ),
+        # Add a line break using <br>
+        HTML("<br>"),
+        # Add a line break using <br>
+        HTML("<br>"),
+        footer = modalButton("OK"),
+        HTML(paste0("Max 6 variables at a time allowed.     ",bsicons::bs_icon("emoji-tear",fill = MESSAGE_COLOR,size=20)))
+      ))
+    }
     } else { # no column selected
       # Handle error
       showModal(modalDialog(
@@ -1563,7 +1587,7 @@ server <- function(input, output,session) {
         # Add a line break using <br>
         HTML("<br>"),
         footer = modalButton("OK"),
-        HTML("Select at least one column for the test.")
+        HTML("Select at least one variable for the test.")
       )) # end message
         }
   }) # end run parametric means
@@ -1597,7 +1621,6 @@ server <- function(input, output,session) {
     test_result <- display_data_parametric_tests()
     test_columns <- input$columns_test_param
     by_group <- input$group_option_parametric
-    by_group <- input$group_option_parametric
     group_col <- input$group_column_test_param 
     test <- input$parametric_test_mean
     if (!by_group && test == "Paired t-test") {
@@ -1625,7 +1648,11 @@ server <- function(input, output,session) {
   # Render the plot using the eventReactive output
   output$plot_parametric_test <- renderPlot({
     req(plot_parametric_data())  # Only generate plot if plot_data has been triggered
-    plot_parametric_data()
+    if (nrow(display_data_parametric_tests())>0) {
+      plot_parametric_data()
+    } else {
+      print("Test failed")
+    }
   })
   
 ###########################################################################################
@@ -1639,52 +1666,8 @@ server <- function(input, output,session) {
     alternative <- input$alternative_nonparametric
     conf_level <-input$conf_level_nonparametric
     if (length(test_columns) > 0) {
-      if ((length(test_columns) < 2 && by_group == FALSE) || (length(test_columns) < 2 && group_col[1] == "")) {
-        # Handle error
-        showModal(modalDialog(
-          # Title and icon together in the same div, so we can control their position
-          div(
-            style = "position: relative;",  # Relative positioning to align the title and icon
-            # Title on the left
-            span("Info", style = "font-size: 28px;"),
-            # Icon on the top-right corner
-            span(
-              bsicons::bs_icon("exclamation-triangle", fill = MESSAGE_COLOR, size = 40), 
-              style = "position: absolute; top: 0; right: 0;"
-            )
-          ),
-          # Add a line break using <br>
-          HTML("<br>"),
-          # Add a line break using <br>
-          HTML("<br>"),
-          footer = modalButton("OK"),
-          HTML(paste0("Remember to select group column."))
-        ))
-      } else {
-        tryCatch({
-          # print(group_col)
-          if (length(group_col) == 0 || by_group == FALSE) {
-            group_col <- c()
-          }
-          res <- compare_medians_nonparametric(modified_data(),
-                                          test_columns,
-                                          my_group = group_col,
-                                          my_test = test,
-                                          my_mu = mu_val,
-                                          my_alternative = alternative,
-                                          my_conf_level = conf_level)
-          currently_selected_columns_nonparam_tests(test_columns)
-          currently_selected_group_col_nonparam_tests(group_col)
-          display_data_nonparametric_tests(res)
-          output$nonparam_test_table_title <- renderUI({
-            title_text <- paste0("<br><br>","&nbsp;&nbsp;&nbsp;&nbsp;",test)
-            if (by_group == TRUE) {
-              title_text <- paste0("<br><br>","&nbsp;&nbsp;&nbsp;&nbsp;",test,"<br><br>","&nbsp;&nbsp;&nbsp;&nbsp;","Group: ",group_col[1])
-            }
-            # Render HTML with h5 and the title text
-            HTML(paste0("<h5>", title_text, "</h5>"))
-          })
-        }, error = function(e) {
+      if (length(test_columns) <= MAX_FOR_PREVIEW_PLOT) {
+        if ((length(test_columns) < 2 && by_group == FALSE) || (length(test_columns) < 2 && group_col[1] == "")) {
           # Handle error
           showModal(modalDialog(
             # Title and icon together in the same div, so we can control their position
@@ -1703,10 +1686,78 @@ server <- function(input, output,session) {
             # Add a line break using <br>
             HTML("<br>"),
             footer = modalButton("OK"),
-            HTML(paste0("Problem calculating test results!<br>Try different columns.     ",bsicons::bs_icon("emoji-tear",fill = MESSAGE_COLOR,size=20)))
+            HTML(paste0("Remember to select group column."))
           ))
-        }) # end trycatch
-      } # end else (if the group column was selected)
+        } else {
+          tryCatch({
+            # print(group_col)
+            if (length(group_col) == 0 || by_group == FALSE) {
+              group_col <- c()
+            }
+            res <- compare_medians_nonparametric(modified_data(),
+                                            test_columns,
+                                            my_group = group_col,
+                                            my_test = test,
+                                            my_mu = mu_val,
+                                            my_alternative = alternative,
+                                            my_conf_level = conf_level)
+            currently_selected_columns_nonparam_tests(test_columns)
+            currently_selected_group_col_nonparam_tests(group_col)
+            display_data_nonparametric_tests(res)
+            output$nonparam_test_table_title <- renderUI({
+              title_text <- paste0("<br><br>","&nbsp;&nbsp;&nbsp;&nbsp;",test)
+              if (by_group == TRUE) {
+                title_text <- paste0("<br><br>","&nbsp;&nbsp;&nbsp;&nbsp;",test,"<br><br>","&nbsp;&nbsp;&nbsp;&nbsp;","Group: ",group_col[1])
+              }
+              # Render HTML with h5 and the title text
+              HTML(paste0("<h5>", title_text, "</h5>"))
+            })
+          }, error = function(e) {
+            # Handle error
+            showModal(modalDialog(
+              # Title and icon together in the same div, so we can control their position
+              div(
+                style = "position: relative;",  # Relative positioning to align the title and icon
+                # Title on the left
+                span("Info", style = "font-size: 28px;"),
+                # Icon on the top-right corner
+                span(
+                  bsicons::bs_icon("exclamation-triangle", fill = MESSAGE_COLOR, size = 40), 
+                  style = "position: absolute; top: 0; right: 0;"
+                )
+              ),
+              # Add a line break using <br>
+              HTML("<br>"),
+              # Add a line break using <br>
+              HTML("<br>"),
+              footer = modalButton("OK"),
+              HTML(paste0("Problem calculating test results!<br>Try different variables.     ",bsicons::bs_icon("emoji-tear",fill = MESSAGE_COLOR,size=20)))
+            ))
+          }) # end trycatch
+        } # end else (if the group column was selected)
+    } # end if max number od selected columns satisfied
+    else {
+      # show message
+      showModal(modalDialog(
+        # Title and icon together in the same div, so we can control their position
+        div(
+          style = "position: relative;",  # Relative positioning to align the title and icon
+          # Title on the left
+          span("Info", style = "font-size: 28px;"),
+          # Icon on the top-right corner
+          span(
+            bsicons::bs_icon("exclamation-triangle", fill = MESSAGE_COLOR, size = 40), 
+            style = "position: absolute; top: 0; right: 0;"
+          )
+        ),
+        # Add a line break using <br>
+        HTML("<br>"),
+        # Add a line break using <br>
+        HTML("<br>"),
+        footer = modalButton("OK"),
+        HTML(paste0("Max 6 variables at a time allowed.     ",bsicons::bs_icon("emoji-tear",fill = MESSAGE_COLOR,size=20)))
+      ))
+    }
     } # end if there were test columns selected
     else { # no columns selected
       # Handle error
@@ -1727,7 +1778,7 @@ server <- function(input, output,session) {
         # Add a line break using <br>
         HTML("<br>"),
         footer = modalButton("OK"),
-        HTML("Select at least one column for the test.")
+        HTML("Select at least one variable for the test.")
       )) # end message
     }
   }) # end observe nonparametric
@@ -1761,12 +1812,11 @@ server <- function(input, output,session) {
     test_result <- display_data_nonparametric_tests()
     test_columns <- input$columns_test_nonparam
     by_group <- input$group_option_nonparametric
-    by_group <- input$group_option_nonparametric
     group_col <- input$group_column_test_nonparam 
     test <- input$nonparametric_test_median
-    # if (!by_group && test == "Paired t-test") {
-    #   group_col <- c()
-    # }
+    if (!by_group ) {
+      group_col <- c()
+    }
     mu_val <- input$mu_nonparametric
     alternative <- input$alternative_nonparametric
     conf_level <- input$conf_level_nonparametric
@@ -1788,7 +1838,12 @@ server <- function(input, output,session) {
   # Render the plot using the eventReactive output
   output$plot_nonparametric_test <- renderPlot({
     req(plot_nonparametric_data())  # Only generate plot if plot_data has been triggered
-    plot_nonparametric_data()
+    if (nrow(display_data_nonparametric_tests())>0) {
+      plot_nonparametric_data()
+    } else {
+      print("Test failed")
+    }
+    # plot_nonparametric_data()
   })
   
 } # end server
