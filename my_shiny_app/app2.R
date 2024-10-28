@@ -290,11 +290,38 @@ parametric_view <- sidebarLayout(
         value ="Compare Means",
         # Add your sidebar content here, such as inputs or filters
         # Add text before the first input
-        p("Compare Means"), 
-        selectInput("parametric_test_mean", "Select Test:", 
+        p("Compare Means"),
+        # # Wrapping text and icon in tagList to align them
+        # tagList(
+        #   p("Compare Means", style = "display: inline;"),  # Text in the same line as the icon
+        #   tags$i(
+        #     class = "bi bi-info-circle",  # Bootstrap info-circle icon
+        #     style = "cursor: pointer; padding-left: 5px;",
+        #     `data-bs-toggle` = "tooltip",  # Bootstrap tooltip attribute
+        #     `data-bs-placement` = "right",
+        #     title = "Choose a test to compare means of your data."
+        #   )
+        # ), # end tagList
+        tagList(
+          # Add the selectInput with label and info button
+          tags$label(
+            "Select Test:", 
+            class = "custom-label",  # Assign the custom class here
+            style = "display: inline;",
+            tags$i(
+              class = "bi bi-info-circle",  # Bootstrap info-circle icon
+              style = "cursor: pointer; padding-left: 5px;",
+              `data-bs-toggle` = "tooltip",  # Tooltip attribute
+              `data-bs-placement` = "right",
+              title = PARAMETRIC_TEST_MEAN_INFO,
+              `data-bs-html` = "true"  # Enable HTML content in tooltip
+            )  # End of tags$i (info icon for Select Test)
+          ),  # End of tags$label
+        selectInput("parametric_test_mean", NULL, 
                     choices = c("One sample t-test", "Independent two-sample t-test","Paired t-test"),
-                    selected = "One sample t-test"),
-        selectInput("columns_test_param", "Select Columns:",  # Predefine an empty selectInput for columns
+                    selected = "One sample t-test")
+        ), # end tagList
+        selectInput("columns_test_param", "Select Variables:",  # Predefine an empty selectInput for columns
                     choices = c(),  # Empty choices initially
                     multiple = TRUE
         ),
@@ -453,8 +480,11 @@ non_parametric_view <- sidebarLayout(
 ui <- page_navbar(
   title = "Exploratory Data Analysis",
   id = "nav_tabs",  # Set an ID to observe selected panel
+  theme = bs_theme(version = 5),  # Use Bootstrap 5 for compatibility with tooltips
   # Add custom CSS for ensuring modal is always in front
   # Custom CSS to lower the full-screen card z-index
+  # Load Bootstrap Icons
+  tags$link(rel = "stylesheet", href = "https://cdnjs.cloudflare.com/ajax/libs/bootstrap-icons/1.5.0/font/bootstrap-icons.min.css"),
   tags$head(
     # CSS to force modal z-index higher
     tags$style(HTML("
@@ -552,6 +582,30 @@ ui <- page_navbar(
         background-color: white; 
         color: black; 
       }
+      
+      .tooltip-inner {
+        color: black !important;          /* Black text color */
+        background-color: white !important; /* White background color */
+        border: 1px solid #ccc;            /* Optional: Add a light border */
+      }
+      .tooltip.bs-tooltip-end .tooltip-arrow::before,
+      .tooltip.bs-tooltip-right .tooltip-arrow::before {
+        border-right-color: white !important; /* White arrow for right-aligned tooltips */
+      }
+      .tooltip.bs-tooltip-start .tooltip-arrow::before,
+      .tooltip.bs-tooltip-left .tooltip-arrow::before {
+        border-left-color: white !important; /* White arrow for left-aligned tooltips */
+      }
+      .tooltip.bs-tooltip-top .tooltip-arrow::before {
+        border-top-color: white !important;  /* White arrow for top-aligned tooltips */
+      }
+      .tooltip.bs-tooltip-bottom .tooltip-arrow::before {
+        border-bottom-color: white !important; /* White arrow for bottom-aligned tooltips */
+      }
+      
+      .custom-label {
+      font-size: 12px;  /* Adjust font size here */
+    }
     ")),
     
     # jQuery for dynamically adjusting modal and full-screen z-index
@@ -574,6 +628,15 @@ ui <- page_navbar(
           $('.modal-backdrop').css('z-index', 1099);  /* Keep backdrop right below */
         }
       }, 500);  /* Check every 500ms */
+    ")),
+    # Custom JavaScript to initialize tooltips
+    tags$script(HTML("
+      $(document).on('shiny:connected', function() {
+        var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle=\"tooltip\"]'))
+        var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+          return new bootstrap.Tooltip(tooltipTriggerEl)
+        })
+      });
     "))
   ),
   

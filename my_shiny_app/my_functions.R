@@ -18,6 +18,10 @@ MAX_FOR_PREVIEW_PLOT = 6
 UNIQUE_FOR_VARIATION = 3
 MISSING_DATA_PCT_THRESHOLD = 40
 MAX_FOR_CORR = 10
+PARAMETRIC_TEST_MEAN_INFO = "One-sample t-test:<br>Compares the sample mean to a known or hypothesized population mean.
+<br><br>Independent two-sample t-test:<br>Compares the means of two independent groups.
+<br><br>Paired t-test:<br>Compares means from the same group at two different times or under two different conditions.
+<br>Can be performed either between two selected variables or on multiple variables by group variable that has two unique groups."
 ###########################################################################################
 # a function to read a csv file with all known csv separators, or return empty data frame
 # if there are comas in the column, it will try to convert that column to numerical
