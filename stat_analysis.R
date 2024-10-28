@@ -332,14 +332,25 @@ plot_means_parametric(data_filtered_columns_with_factors,
 # test example: bmi_n by Case_control
 test_col <-c("bmi_n")
 test_col <- c("gluc_res","chol_res")
-group_col <- c()
+group_col <- c("")
 group_col <- c("Case_control")
+group_col <- c("Gender")
 source("my_functions.R")
 wilcox_result <- compare_medians_nonparametric(data_filtered_columns_with_factors,
                                                my_data_columns=test_col,
                                                my_group=group_col,
                                                my_test = "Wilcoxon rank-sum test"
                                                )
+source("my_functions.R")
+plot_medians_nonparametric(data_filtered_columns_with_factors, 
+                           type_of_test = "Wilcoxon rank-sum test", 
+                           columns_to_show = test_col,
+                           my_group = group_col,
+                           my_mu = 0,
+                           my_alternative = "two.sided",
+                           my_conf_level = 0.95,
+                           plot_title = "Wilcoxon rank-sum test") 
+  
 # data_filtered_columns_with_factors %>%
 #   select(all_of(c("bmi_n","Case_control"))) -> data_to_test
 # data_to_test <- factor_columns (data_to_test, custom_colnames = c("Case_control"))
@@ -358,21 +369,6 @@ wilcox_result <- compare_medians_nonparametric(data_filtered_columns_with_factor
 # data_to_test %>%
 #   group_by(Case_control) %>%
 #   get_summary_stats(bmi_n, type = "median")
-# PLOT
-p_text <- ifelse(wilcox_result$p.value < 0.001, 
-                 "p = < 0.001", 
-                 ifelse(wilcox_result$p.value < 0.05, 
-                        "p = < 0.005", 
-                        paste("p =", round(result_p_val, 3))))
-data_to_test %>%
-  filter(!is.na(Case_control)) %>%    # Filter out rows with NA values 
-  ggplot(aes(x = Case_control, y = bmi_n)) +
-  geom_boxplot() +
-  theme_minimal() +
-  theme(panel.grid = element_blank()) +
-  labs(
-    subtitle = paste("Wilcoxon rank-sum test, ", p_text)
-  )
 ########
 
 ########
@@ -380,13 +376,24 @@ data_to_test %>%
 # test example: Mean_syst_morning and Mean_syst_evening
 source("my_functions.R")
 test_col <- c("Mean_syst_morning","Mean_syst_evening")
-group_col <- c()
+group_col <- c("")
 group_col <- c("Case_control")
 wilcox_result <- compare_medians_nonparametric(data_filtered_columns_with_factors,
                                                my_data_columns=test_col,
                                                my_group=group_col,
                                                my_test = "Wilcoxon signed-rank test"
                                                 )
+
+source("my_functions.R")
+plot_medians_nonparametric(data_filtered_columns_with_factors, 
+                           type_of_test = "Wilcoxon signed-rank test", 
+                           columns_to_show = test_col,
+                           my_group = group_col,
+                           my_mu = 0,
+                           my_alternative = "two.sided",
+                           my_conf_level = 0.95,
+                           plot_title = "Wilcoxon signed-rank test") 
+
 
 
 data_filtered_columns_with_factors %>% 
@@ -398,6 +405,8 @@ test_wilcox_result <- wilcox.test(data_filtered_columns_with_factors$Mean_syst_m
                              conf.int = TRUE,
                              correct = FALSE,
                              conf.level = 0.95)
+
+
 # result_p_val <- wilcox_result$p.value
 # # see the medians
 # data_to_test %>%
@@ -446,6 +455,16 @@ res <- compare_medians_nonparametric(data_filtered_columns_with_factors,
                               my_group=group_col,
                               my_test = "Kruskal-Wallis test"
 )
+
+source("my_functions.R")
+plot_medians_nonparametric(data_filtered_columns_with_factors, 
+                           type_of_test = "Kruskal-Wallis test", 
+                           columns_to_show = test_col,
+                           my_group = group_col,
+                           my_mu = 0,
+                           my_alternative = "two.sided",
+                           my_conf_level = 0.95,
+                           plot_title = "Kruskal-Wallis test") 
 
 
 kruskal.test(Ozone ~ Month, data = data_filtered_columns_with_factors)

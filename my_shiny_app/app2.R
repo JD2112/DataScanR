@@ -434,6 +434,9 @@ non_parametric_view <- sidebarLayout(
         ),
         tabPanel("Plot",
                  div(
+                   textInput("nonparam_test_plot_title", "Title", value = "")
+                 ),  # end inputs div
+                 div(
                    style = "flex-grow: 1; display: flex; flex-direction: column;",  # Allow the div to grow and fill remaining space
                    card_body(
                      plotOutput("plot_nonparametric_test"),
@@ -599,6 +602,7 @@ ui <- page_navbar(
             ) # end tabsetPanel
   ) # end nav_panel
 )# end page_navbar
+
 ###################################################################################
 # SERVER
 server <- function(input, output,session) {
@@ -1746,6 +1750,46 @@ server <- function(input, output,session) {
       extensions = 'Buttons'  # Enable export options
     )
   }) # end  parametric table
+  
+  # Define an plotting event that triggers on button click or title change
+  plot_nonparametric_data <- eventReactive({
+    input$run_nonparametric_medians   # Trigger on button click
+    input$nonparam_test_plot_title  # Trigger on title text change
+  }, {
+    req(modified_data())
+    req(display_data_nonparametric_tests())  # Ensure data is available
+    test_result <- display_data_nonparametric_tests()
+    test_columns <- input$columns_test_nonparam
+    by_group <- input$group_option_nonparametric
+    by_group <- input$group_option_nonparametric
+    group_col <- input$group_column_test_nonparam 
+    test <- input$nonparametric_test_median
+    # if (!by_group && test == "Paired t-test") {
+    #   group_col <- c()
+    # }
+    mu_val <- input$mu_nonparametric
+    alternative <- input$alternative_nonparametric
+    conf_level <- input$conf_level_nonparametric
+    my_title <- input$nonparam_test_plot_title
+    
+    # Call the plotting function with the specified parameters
+    plot_medians_nonparametric(
+      modified_data(),
+      type_of_test = test,
+      columns_to_show = test_columns,
+      my_group = group_col,
+      my_mu = mu_val,
+      my_alternative = alternative,
+      my_conf_level = conf_level,
+      plot_title = my_title
+    )
+  })
+  
+  # Render the plot using the eventReactive output
+  output$plot_nonparametric_test <- renderPlot({
+    req(plot_nonparametric_data())  # Only generate plot if plot_data has been triggered
+    plot_nonparametric_data()
+  })
   
 } # end server
 

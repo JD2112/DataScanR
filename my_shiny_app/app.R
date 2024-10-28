@@ -226,17 +226,8 @@ cards_correlation <- list(
     sidebar_correlation
   ), # end card Data
   card(
-    full_screen = TRUE,
-    card_header("Plot"),
-    
-    tags$head(
-      tags$style(HTML("
-                  /* Add space between inputs and plot */
-                  .plot-correlation {
-                    margin-top: 0px; /* Adjust the value for more/less space */
-                  }
-                "))
-    ),
+    # full_screen = TRUE,
+    card_header("Plot Settings"),
     # Main panel only with inputs and plot
     div(
       # Create a fluid row for inputs above the plot
@@ -271,17 +262,18 @@ cards_correlation <- list(
         ) # end column
         
       ) # end fluid
-    ),  # end inputs div
-    
-    # Output for the plot below the inputs
+    )  # end inputs div
+  ), # end card
+  card (
+    full_screen = TRUE,
+    # card_header("Plot"),
     div(
-      style = "flex-grow: 1; display: flex; flex-direction: column;",  # Allow the div to grow and fill remaining space
-      card_body(
-        plotOutput("plot_correlation"),
-        style = "flex-grow: 1;"  # Make the table body expand
-      ),
-      class = "plot-correlation"  # Add class for margin
-    )  # end plot div
+        style = "flex-grow: 1; display: flex; flex-direction: column;",  # Allow the div to grow and fill remaining space
+        card_body(
+          plotOutput("plot_correlation"),
+          style = "flex-grow: 1;"  # Make the table body expand
+        )
+    ) # end div
   )
 ) # end cards
 ########################################################
@@ -293,21 +285,26 @@ parametric_view <- sidebarLayout(
   sidebarPanel(
     accordion(
       id = "accordion1", 
-      open = FALSE,
+      open = TRUE,
       accordion_panel(
         value ="Compare Means",
         # Add your sidebar content here, such as inputs or filters
         # Add text before the first input
         p("Compare Means"), 
         selectInput("parametric_test_mean", "Select Test:", 
-                    choices = c("One sample t-test", "Independent two-sample t-test"),
+                    choices = c("One sample t-test", "Independent two-sample t-test","Paired t-test"),
                     selected = "One sample t-test"),
         selectInput("columns_test_param", "Select Columns:",  # Predefine an empty selectInput for columns
                     choices = c(),  # Empty choices initially
                     multiple = TRUE
         ),
         conditionalPanel(
-          condition = "input.parametric_test_mean == 'Independent two-sample t-test'",
+          condition = "input.parametric_test_mean == 'Paired t-test'",
+          # Add a checkbox for group option
+          checkboxInput("group_option_parametric", "Run By Group", value = FALSE)
+        ),
+        conditionalPanel(
+          condition = "input.parametric_test_mean == 'Independent two-sample t-test' || (input.parametric_test_mean == 'Paired t-test' && input.group_option_parametric == true)",
           selectInput("group_column_test_param", "Select Group Column:",  # Predefine an empty selectInput for columns
                       choices = c(),  # Empty choices initially
                       multiple = FALSE
@@ -318,7 +315,10 @@ parametric_view <- sidebarLayout(
                     selected = "two.sided",
                     multiple = FALSE
         ),
-        numericInput("mu_parametric", "mu:", value = 0),
+        conditionalPanel(
+          condition = "input.parametric_test_mean != 'Paired t-test'",
+          numericInput("mu_parametric", "mu:", value = 0)
+        ),# end conditional
         sliderInput("conf_level_parametric", 
                     "Select Level Of Confidence:",
                     min = 0, 
@@ -340,11 +340,26 @@ parametric_view <- sidebarLayout(
       tabsetPanel(
         tabPanel("Results Table",
                  htmlOutput("param_test_table_title"),  # Output placeholder for the title
-                 card_body(DT::dataTableOutput("parametric_test_table") ) # Output placeholder for the interactive table
+                 div(
+                   style = "flex-grow: 1; display: flex; flex-direction: column;",  # Allow the div to grow and fill remaining space
+                   card_body(
+                     card_body(DT::dataTableOutput("parametric_test_table") ), # Output placeholder for the interactive table
+                     style = "flex-grow: 1;"  # Make the table body expand
+                   )
+                 ) # end div
         ),
         tabPanel("Plot",
-                 h3("Content for Tab 2"),
-                 p("This is where you can put content for the second tab.")
+                 # Main panel only with inputs and plot
+                 div(
+                   textInput("param_test_plot_title", "Title", value = "")
+                 ),  # end inputs div
+                 div(
+                   style = "flex-grow: 1; display: flex; flex-direction: column;",  # Allow the div to grow and fill remaining space
+                   card_body(
+                     plotOutput("plot_parametric_test"),
+                     style = "flex-grow: 1;"  # Make the table body expand
+                   )
+                 ) # end div
         )
       )  # End of tabsetPanel
     ) # end card
@@ -355,21 +370,78 @@ parametric_view <- sidebarLayout(
 non_parametric_view <- sidebarLayout(
   # Sidebar
   sidebarPanel(
-    # Add your sidebar content here, such as inputs or filters
-    selectInput("columns_test_non_param", "Select Columns:",  # Predefine an empty selectInput for columns
-                choices = c(),  # Empty choices initially
-                multiple = TRUE
-    ),
-    selectInput("non_parametric_test", "Choose Test:", choices = c("Wilcoxon", "Kruskal-Wallis")),
-    actionButton("run_non_parametric", "Run Test")
-  ),
+    accordion(
+      id = "accordion2", 
+      open = TRUE,
+      accordion_panel(
+        value ="Compare Medians",
+        # Add your sidebar content here, such as inputs or filters
+        # Add text before the first input
+        p("Compare Medians"), 
+        selectInput("nonparametric_test_median", "Select Test:", 
+                    choices = c("Wilcoxon rank-sum test", "Wilcoxon signed-rank test","Kruskal-Wallis test", "Friedman test"),
+                    selected = "Wilcoxon rank-sum test"),
+        selectInput("columns_test_nonparam", "Select Columns:",  # Predefine an empty selectInput for columns
+                    choices = c(),  # Empty choices initially
+                    multiple = TRUE
+        ),
+        # Add a checkbox for group option
+        checkboxInput("group_option_nonparametric", "Run By Group", value = FALSE),
+        conditionalPanel(
+          condition = "input.group_option_nonparametric == true",
+          selectInput("group_column_test_nonparam", "Select Group Column:",  # Predefine an empty selectInput for columns
+                      choices = c(),  # Empty choices initially
+                      multiple = FALSE
+          )
+        ), # end conditional
+        conditionalPanel(
+          condition = "input.nonparametric_test_median == 'Wilcoxon rank-sum test' || input.nonparametric_test_median == 'Wilcoxon signed-rank test'",
+          selectInput("alternative_nonparametric", "Alternative Hypothesis:",  
+                      choices = c("less","greater","two.sided"),  
+                      selected = "two.sided",
+                      multiple = FALSE
+          ),
+          numericInput("mu_nonparametric", "mu:", value = 0),
+          sliderInput("conf_level_nonparametric", 
+                      "Select Level Of Confidence:",
+                      min = 0, 
+                      max = 1,
+                      value = 0.95, 
+                      step = 0.05)
+        ), # end conditional
+        actionButton("run_nonparametric_medians", "Run Test")
+      ) # end accordion panel
+    ) # end accordion
+  ), # end sidebar Panel
   
   # Main panel (for the card)
   mainPanel(
     # Add your card or content to display here
     card(
       full_screen = TRUE,
-      card_header("Test Results")
+      card_header("Test Results"),
+      # Add a tabsetPanel inside the card body
+      tabsetPanel(
+        tabPanel("Results Table",
+                 htmlOutput("nonparam_test_table_title"),  # Output placeholder for the title
+                 div(
+                   style = "flex-grow: 1; display: flex; flex-direction: column;",  # Allow the div to grow and fill remaining space
+                   card_body(
+                     card_body(DT::dataTableOutput("nonparametric_test_table") ), # Output placeholder for the interactive table
+                     style = "flex-grow: 1;"  # Make the table body expand
+                   )
+                 ) # end div
+        ),
+        tabPanel("Plot",
+                 div(
+                   style = "flex-grow: 1; display: flex; flex-direction: column;",  # Allow the div to grow and fill remaining space
+                   card_body(
+                     plotOutput("plot_nonparametric_test"),
+                     style = "flex-grow: 1;"  # Make the table body expand
+                   )
+                 ) # end div
+        )
+      )  # End of tabsetPanel
     ) # end card
   ) # end mainPanel
 ) # end sidebarLayout
@@ -431,6 +503,11 @@ ui <- page_navbar(
       .sidebar .form-group {
         font-size: 12px !important; /* Font size for file inputs */
       }
+      
+      .accordion .shiny-input-container {
+        font-size: 12px !important; /* General font size for inputs in the sidebar */
+      }
+      
       /* Cards Font Sizes */
       .card .shiny-input-container {
         font-size: 12px !important; /* General font size for inputs in the sidebar */
@@ -508,7 +585,10 @@ ui <- page_navbar(
   ), # end nav_panel
   nav_panel("Correlation", 
             layout_columns(cards_correlation[[1]],
-                           cards_correlation[[2]])
+            layout_columns(cards_correlation[[2]],
+                           cards_correlation[[3]], 
+                           col_widths = c(12, 12))# end inner layout
+            )#end column_layout
   ), # end nav_panel
   nav_panel("Tests", 
             tabsetPanel(
@@ -519,6 +599,7 @@ ui <- page_navbar(
             ) # end tabsetPanel
   ) # end nav_panel
 )# end page_navbar
+
 ###################################################################################
 # SERVER
 server <- function(input, output,session) {
@@ -541,6 +622,9 @@ server <- function(input, output,session) {
   currently_selected_columns_param_tests <- reactiveVal(NULL)
   currently_selected_group_col_param_tests <- reactiveVal(NULL)
   display_data_parametric_tests <- reactiveVal((NULL))
+  currently_selected_columns_nonparam_tests <- reactiveVal(NULL)
+  currently_selected_group_col_nonparam_tests <- reactiveVal(NULL)
+  display_data_nonparametric_tests <- reactiveVal((NULL))
   
   # Reactive expression to read the uploaded file
   data <- reactive({
@@ -1304,12 +1388,17 @@ server <- function(input, output,session) {
         # Dynamically update the column selector when the data is loaded
         column_names <- colnames(modified_data())  # Get column names from the loaded data
         selected_cols_param_tests <- currently_selected_columns_param_tests()
+        selected_cols_nonparam_tests <- currently_selected_columns_nonparam_tests()
+        
         selected_group_col_param_tests <- currently_selected_group_col_param_tests()
+        selected_group_col_nonparam_tests <- currently_selected_group_col_nonparam_tests()
+        
         selected_cols_corr <- currently_selected_columns_corr()
+        # fill out parametric test sidebar
         if (!is.null(selected_cols_param_tests) && length(selected_cols_param_tests) > 0) {
-          updateSelectInput(session, "columns_test_param", choices = column_names, selected = selected_cols_param_tests)
+          updateSelectInput(session, "columns_test_param", choices = c(column_names), selected = selected_cols_param_tests)
           if (!is.null(selected_group_col_param_tests) && length(selected_group_col_param_tests) > 0) {
-            updateSelectInput(session, "group_column_test_param", choices = column_names, selected = selected_group_col_param_tests)
+            updateSelectInput(session, "group_column_test_param", choices = c(column_names), selected = selected_group_col_param_tests)
           }
         } else if (!is.null(selected_cols_corr) && length(selected_cols_corr) > 0) {
           updateSelectInput(session, "columns_test_param", choices = column_names, selected = selected_cols_corr)
@@ -1319,20 +1408,35 @@ server <- function(input, output,session) {
           updateSelectInput(session, "columns_test_param", choices = column_names, selected = c())
           updateSelectInput(session, "group_column_test_param", choices = c("",column_names), selected = "")
         }
-      }
-    }
+        # fill out nonparametric test sidebar
+        if (!is.null(selected_cols_nonparam_tests) && length(selected_cols_nonparam_tests) > 0) {
+          updateSelectInput(session, "columns_test_nonparam", choices = c(column_names), selected = selected_cols_nonparam_tests)
+          if (!is.null(selected_group_col_nonparam_tests) && length(selected_group_col_nonparam_tests) > 0) {
+            updateSelectInput(session, "group_column_test_nonparam", choices = c(column_names), selected = selected_group_col_nonparam_tests)
+          }
+        } else if (!is.null(selected_cols_corr) && length(selected_cols_corr) > 0) {
+          updateSelectInput(session, "columns_test_nonparam", choices = column_names, selected = selected_cols_corr)
+          updateSelectInput(session, "group_column_test_nonparam", choices = c("",column_names), selected = "")
+        }
+        else {
+          updateSelectInput(session, "columns_test_nonparam", choices = column_names, selected = c())
+          updateSelectInput(session, "group_column_test_nonparam", choices = c("",column_names), selected = "")
+        }
+      } # end if modified data loaded
+    } # end selected tab
   }) # end observe tab
   
   observeEvent(input$run_parametric_means, {
     req(modified_data())
     test_columns <- input$columns_test_param
+    by_group <- input$group_option_parametric
     group_col <- input$group_column_test_param
     test <- input$parametric_test_mean
     mu_val <- input$mu_parametric
     alternative <- input$alternative_parametric
     conf_level <-input$conf_level_parametric
     if (length(test_columns) > 0) {
-      if (length(group_col) == 0 && test == "Independent two-sample t-test") {
+      if (group_col[1]== "" && test == "Independent two-sample t-test") {
         # Handle error
         showModal(modalDialog(
           # Title and icon together in the same div, so we can control their position
@@ -1354,27 +1458,64 @@ server <- function(input, output,session) {
           HTML("Select one group column for the test.")
         )) # end message
       } else {
-        tryCatch({
+        if ((test == "Paired t-test" && by_group == FALSE && length(test_columns) == 2) || 
+            (test == "Paired t-test" && by_group == TRUE && length(test_columns) == 2) ||
+            (test == "Paired t-test" && by_group == TRUE && length(test_columns) == 1) ||
+            test == "Independent two-sample t-test" ||
+            test == "One sample t-test" 
+            ) {
           group_col <- c(group_col)
-          res <- compare_means(modified_data(),
-                               test_columns,
-                               my_group = group_col,
-                               my_test = test,
-                               my_mu = mu_val,
-                               my_alternative = alternative,
-                               my_conf_level = conf_level)
-          currently_selected_columns_param_tests(test_columns)
-          currently_selected_group_col_param_tests(group_col)
-          display_data_parametric_tests(res)
-          output$param_test_table_title <- renderUI({
-            title_text <- paste0("<br><br>","&nbsp;&nbsp;&nbsp;&nbsp;",test)
-            if (test == "Independent two-sample t-test") {
-              title_text <- paste0("<br><br>","&nbsp;&nbsp;&nbsp;&nbsp;",test,"<br>","&nbsp;&nbsp;&nbsp;&nbsp;","Group: ",group_col[1])
+          if (test == "Paired t-test" && by_group == FALSE) {
+            group_col <- c()
+          }
+          tryCatch({
+            # print(group_col)
+            if (length(group_col) == 0) {
+              group_col <- c()
             }
-            # Render HTML with h5 and the title text
-            HTML(paste0("<h5>", title_text, "</h5>"))
-          })
-        }, error = function(e) {
+            res <- compare_means_parametric(modified_data(),
+                                 test_columns,
+                                 my_group = group_col,
+                                 my_test = test,
+                                 my_mu = mu_val,
+                                 my_alternative = alternative,
+                                 my_conf_level = conf_level)
+            currently_selected_columns_param_tests(test_columns)
+            currently_selected_group_col_param_tests(group_col)
+            display_data_parametric_tests(res)
+            output$param_test_table_title <- renderUI({
+              title_text <- paste0("<br><br>","&nbsp;&nbsp;&nbsp;&nbsp;",test)
+              if (test == "Independent two-sample t-test") {
+                title_text <- paste0("<br><br>","&nbsp;&nbsp;&nbsp;&nbsp;",test,"<br><br>","&nbsp;&nbsp;&nbsp;&nbsp;","Group: ",group_col[1])
+              }
+              # Render HTML with h5 and the title text
+              HTML(paste0("<h5>", title_text, "</h5>"))
+            })
+            # create plot
+          }, error = function(e) {
+            # Handle error
+            showModal(modalDialog(
+              # Title and icon together in the same div, so we can control their position
+              div(
+                style = "position: relative;",  # Relative positioning to align the title and icon
+                # Title on the left
+                span("Info", style = "font-size: 28px;"),
+                # Icon on the top-right corner
+                span(
+                  bsicons::bs_icon("exclamation-triangle", fill = MESSAGE_COLOR, size = 40), 
+                  style = "position: absolute; top: 0; right: 0;"
+                )
+              ),
+              # Add a line break using <br>
+              HTML("<br>"),
+              # Add a line break using <br>
+              HTML("<br>"),
+              footer = modalButton("OK"),
+              HTML(paste0("Problem calculating test results!<br>Try different columns.     ",bsicons::bs_icon("emoji-tear",fill = MESSAGE_COLOR,size=20)))
+            ))
+          }) # end trycatch
+        } # end if paired t-test conditions passed
+        else {
           # Handle error
           showModal(modalDialog(
             # Title and icon together in the same div, so we can control their position
@@ -1393,9 +1534,12 @@ server <- function(input, output,session) {
             # Add a line break using <br>
             HTML("<br>"),
             footer = modalButton("OK"),
-            HTML(paste0("Problem calculating test results!<br>Try different columns.     ",bsicons::bs_icon("emoji-tear",fill = MESSAGE_COLOR,size=20)))
-          ))
-        }) # end trycatch
+            HTML("For Paired t-test:<br><br>
+                 If one column is selected,<br>another column with group must be selected.<br>
+                 If two columns are selected,<br>the test can be run either between the selected columns,
+                 or additionally: by group.")
+          )) # end message
+          }
       } # end else
     } else { # no column selected
       # Handle error
@@ -1438,7 +1582,171 @@ server <- function(input, output,session) {
       selection = 'none',
       extensions = 'Buttons'  # Enable export options
     )
-  }) # end table
+  }) # end  parametric table
+  
+  # Define an plotting event that triggers on button click or title change
+  plot_parametric_data <- eventReactive({
+    input$run_parametric_means   # Trigger on button click
+    input$param_test_plot_title  # Trigger on title text change
+  }, {
+    req(modified_data())
+    req(display_data_parametric_tests())  # Ensure data is available
+    test_result <- display_data_parametric_tests()
+    test_columns <- input$columns_test_param
+    by_group <- input$group_option_parametric
+    by_group <- input$group_option_parametric
+    group_col <- input$group_column_test_param 
+    test <- input$parametric_test_mean
+    if (!by_group && test == "Paired t-test") {
+      group_col <- c()
+    }
+    mu_val <- input$mu_parametric
+    alternative <- input$alternative_parametric
+    conf_level <- input$conf_level_parametric
+    my_title <- input$param_test_plot_title
+
+    # Call the plotting function with the specified parameters
+    plot_means_parametric(
+      modified_data(),
+      test_result,
+      type_of_test = test,
+      columns_to_show = test_columns,
+      my_group = group_col,
+      my_mu = mu_val,
+      my_alternative = alternative,
+      my_conf_level = conf_level,
+      plot_title = my_title
+    )
+  })
+
+  # Render the plot using the eventReactive output
+  output$plot_parametric_test <- renderPlot({
+    req(plot_parametric_data())  # Only generate plot if plot_data has been triggered
+    plot_parametric_data()
+  })
+  
+###########################################################################################
+  observeEvent(input$run_nonparametric_medians, {
+    req(modified_data())
+    test_columns <- input$columns_test_nonparam
+    by_group <- input$group_option_nonparametric
+    group_col <- input$group_column_test_nonparam
+    test <- input$nonparametric_test_median
+    mu_val <- input$mu_nonparametric
+    alternative <- input$alternative_nonparametric
+    conf_level <-input$conf_level_nonparametric
+    if (length(test_columns) > 0) {
+      if ((length(test_columns) < 2 && by_group == FALSE) || (length(test_columns) < 2 && group_col[1] == "")) {
+        # Handle error
+        showModal(modalDialog(
+          # Title and icon together in the same div, so we can control their position
+          div(
+            style = "position: relative;",  # Relative positioning to align the title and icon
+            # Title on the left
+            span("Info", style = "font-size: 28px;"),
+            # Icon on the top-right corner
+            span(
+              bsicons::bs_icon("exclamation-triangle", fill = MESSAGE_COLOR, size = 40), 
+              style = "position: absolute; top: 0; right: 0;"
+            )
+          ),
+          # Add a line break using <br>
+          HTML("<br>"),
+          # Add a line break using <br>
+          HTML("<br>"),
+          footer = modalButton("OK"),
+          HTML(paste0("Remember to select group column."))
+        ))
+      } else {
+        tryCatch({
+          # print(group_col)
+          if (length(group_col) == 0 || by_group == FALSE) {
+            group_col <- c()
+          }
+          res <- compare_medians_nonparametric(modified_data(),
+                                          test_columns,
+                                          my_group = group_col,
+                                          my_test = test,
+                                          my_mu = mu_val,
+                                          my_alternative = alternative,
+                                          my_conf_level = conf_level)
+          currently_selected_columns_nonparam_tests(test_columns)
+          currently_selected_group_col_nonparam_tests(group_col)
+          display_data_nonparametric_tests(res)
+          output$nonparam_test_table_title <- renderUI({
+            title_text <- paste0("<br><br>","&nbsp;&nbsp;&nbsp;&nbsp;",test)
+            if (by_group == TRUE) {
+              title_text <- paste0("<br><br>","&nbsp;&nbsp;&nbsp;&nbsp;",test,"<br><br>","&nbsp;&nbsp;&nbsp;&nbsp;","Group: ",group_col[1])
+            }
+            # Render HTML with h5 and the title text
+            HTML(paste0("<h5>", title_text, "</h5>"))
+          })
+        }, error = function(e) {
+          # Handle error
+          showModal(modalDialog(
+            # Title and icon together in the same div, so we can control their position
+            div(
+              style = "position: relative;",  # Relative positioning to align the title and icon
+              # Title on the left
+              span("Info", style = "font-size: 28px;"),
+              # Icon on the top-right corner
+              span(
+                bsicons::bs_icon("exclamation-triangle", fill = MESSAGE_COLOR, size = 40), 
+                style = "position: absolute; top: 0; right: 0;"
+              )
+            ),
+            # Add a line break using <br>
+            HTML("<br>"),
+            # Add a line break using <br>
+            HTML("<br>"),
+            footer = modalButton("OK"),
+            HTML(paste0("Problem calculating test results!<br>Try different columns.     ",bsicons::bs_icon("emoji-tear",fill = MESSAGE_COLOR,size=20)))
+          ))
+        }) # end trycatch
+      } # end else (if the group column was selected)
+    } # end if there were test columns selected
+    else { # no columns selected
+      # Handle error
+      showModal(modalDialog(
+        # Title and icon together in the same div, so we can control their position
+        div(
+          style = "position: relative;",  # Relative positioning to align the title and icon
+          # Title on the left
+          span("Info", style = "font-size: 28px;"),
+          # Icon on the top-right corner
+          span(
+            bsicons::bs_icon("exclamation-triangle", fill = MESSAGE_COLOR, size = 40), 
+            style = "position: absolute; top: 0; right: 0;"
+          )
+        ),
+        # Add a line break using <br>
+        HTML("<br>"),
+        # Add a line break using <br>
+        HTML("<br>"),
+        footer = modalButton("OK"),
+        HTML("Select at least one column for the test.")
+      )) # end message
+    }
+  }) # end observe nonparametric
+  
+  # Render the DataTable 
+  output$nonparametric_test_table <- DT::renderDataTable({
+    req(display_data_nonparametric_tests())  # Ensure data is available
+    table_data <- display_data_nonparametric_tests()
+    # Render the table using DT for interactivity
+    DT::datatable(
+      table_data,
+      options = list(
+        pageLength = 20,   # Show n rows by default
+        autoWidth = TRUE,  # Auto-adjust column width
+        dom = 'frtiBp',    # Search box, pagination, etc.
+        buttons = c( 'csv')  # Add export buttons
+      ),
+      rownames = FALSE,
+      selection = 'none',
+      extensions = 'Buttons'  # Enable export options
+    )
+  }) # end  parametric table
   
 } # end server
 

@@ -1413,44 +1413,48 @@ plot_means_parametric <- function(df,
         
         # Filter out rows where the grouping variable is NA
         filtered_df <- df_long %>% filter(!is.na(!!sym(my_group_col)))
-        
-        # Check the levels of the factor
-        # print(levels(filtered_df[[my_group_col]]))  # This should not include "NA"
-        # Create the boxplot, faceting by Variable and grouping by my_group_col
-        p <- ggboxplot(
-          filtered_df,
-          x = my_group_col,  # Grouping variable (e.g., Gender)
-          y = "Value" ,     # Response variable
-          outlier.size = 0.2,   # Set the size of outliers
-          size = 0.2
-          # color = my_group_col,
-          # palette = "jco"
-        ) +
-          facet_wrap(~ Variable) +  # Facet by Variable (e.g., gluc, chol)
-          labs(title = plot_title,
-               x = my_group_col,
+        if (length(levels(filtered_df[[my_group_col]])) == 2) { # if there are 2 unique groups
+          # Check the levels of the factor
+          # print(levels(filtered_df[[my_group_col]]))  # This should not include "NA"
+          # Create the boxplot, faceting by Variable and grouping by my_group_col
+          p <- ggboxplot(
+            filtered_df,
+            x = my_group_col,  # Grouping variable (e.g., Gender)
+            y = "Value" ,     # Response variable
+            outlier.size = 0.2,   # Set the size of outliers
+            size = 0.2
+            # color = my_group_col,
+            # palette = "jco"
           ) +
-          theme_minimal() +
-          theme(
-            axis.title.y = element_blank(),
-            panel.grid = element_blank(),
-            strip.text = element_text(size = 14) 
-          ) +
-          # Add frames around each facet
-          geom_rect(
-            aes(xmin = -Inf, xmax = Inf, ymin = -Inf, ymax = Inf),
-            fill = NA,           # No fill
-            color = "grey",     # Frame color
-            size = 0.5          # Frame line size
-          )
-        # check the y position of p_value
-        label_y_pos <- max(filtered_df$Value, na.rm = TRUE) - 0.5
-        p <- p + stat_compare_means(method = "t.test", 
-                                    method.args = list(mu=my_mu, alternative = my_alternative, conf.level = my_conf_level), 
-                                    label = "p.format",
-                                    label.x = 1.4,
-                                    label.y = label_y_pos)
-        return(p)
+            facet_wrap(~ Variable) +  # Facet by Variable (e.g., gluc, chol)
+            labs(title = plot_title,
+                 x = my_group_col,
+            ) +
+            theme_minimal() +
+            theme(
+              axis.title.y = element_blank(),
+              panel.grid = element_blank(),
+              strip.text = element_text(size = 14) 
+            ) +
+            # Add frames around each facet
+            geom_rect(
+              aes(xmin = -Inf, xmax = Inf, ymin = -Inf, ymax = Inf),
+              fill = NA,           # No fill
+              color = "grey",     # Frame color
+              size = 0.5          # Frame line size
+            )
+          # check the y position of p_value
+          label_y_pos <- max(filtered_df$Value, na.rm = TRUE) - 0.5
+          p <- p + stat_compare_means(method = "t.test", 
+                                      method.args = list(mu=my_mu, alternative = my_alternative, conf.level = my_conf_level), 
+                                      label = "p.format",
+                                      label.x = 1.4,
+                                      label.y = label_y_pos)
+          return(p)
+        } # end if 2 unique groups
+        else {
+          print("More than 2 unique groups")
+        }
       } # end if group was not empty string
     } # end if there was a group
   } # end Independent two-sample t-test
@@ -1476,47 +1480,53 @@ plot_means_parametric <- function(df,
         # print(df_long)
         # Filter out rows where the grouping variable is NA
         filtered_df <- df_long %>% filter(!is.na(!!sym(my_group_col)))
-        
-        # Create an 'id' column for paired observations
-        filtered_df <- filtered_df %>%
-          group_by(!!sym(my_group_col)) %>%                             # Group by the grouping variable (e.g., Gender)
-          mutate(id = as.integer((row_number() + 1) %/% 2)) %>%  # Assign the same ID to every two rows within each group
-          ungroup()
-        # print(filtered_df)
-        
-        # Create the boxplot, faceting by my_group_col and grouping by Variable
-        p <- ggpaired(
-          filtered_df,
-          x = "Variable",  # Grouping variable (e.g., dop1, dop2)
-          y = "Value" ,     # Response variable
-          id = "id",
-          outlier.size = 0.2,   # Set the size of outliers
-          size = 0.2,
-          line.color = "grey",
-          line.size = 0.2
-        ) +
-          facet_wrap(as.formula(paste("~", my_group_col))) +  # Facet by Gender
-          labs(title = plot_title) +
-          theme_minimal() +
-          theme(
-            axis.title.y = element_blank(),
-            axis.title.x = element_blank(),
-            panel.grid = element_blank(),
-            strip.text = element_text(size = 14)
+        if (length(levels(filtered_df[[my_group_col]])) == 2) { # if there are 2 unique groups
+          # Create an 'id' column for paired observations
+          filtered_df <- filtered_df %>%
+            group_by(!!sym(my_group_col)) %>%                             # Group by the grouping variable (e.g., Gender)
+            mutate(id = as.integer((row_number() + 1) %/% 2)) %>%  # Assign the same ID to every two rows within each group
+            ungroup()
+          # print(filtered_df)
+          
+          # Create the boxplot, faceting by my_group_col and grouping by Variable
+          p <- ggpaired(
+            filtered_df,
+            x = "Variable",  # Grouping variable (e.g., dop1, dop2)
+            y = "Value" ,     # Response variable
+            id = "id",
+            outlier.size = 0.2,   # Set the size of outliers
+            size = 0.2,
+            line.color = "grey",
+            line.size = 0.2
           ) +
-        # Add frames around each facet
-        geom_rect(
-          aes(xmin = -Inf, xmax = Inf, ymin = -Inf, ymax = Inf),
-          fill = NA,           # No fill
-          color = "grey",     # Frame color
-          size = 0.5          # Frame line size
-        )
-        
-        # Position for p-values
-        label_y_pos <- max(filtered_df$Value, na.rm = TRUE) - 0.5
-        
-        p <- p + stat_compare_means(method = "t.test", paired = TRUE, label = "p.format", label.x = 1.4, label.y = label_y_pos)
-        return(p)
+            facet_wrap(as.formula(paste("~", my_group_col))) +  # Facet by Gender
+            labs(title = plot_title) +
+            theme_minimal() +
+            theme(
+              axis.title.y = element_blank(),
+              axis.title.x = element_blank(),
+              panel.grid = element_blank(),
+              strip.text = element_text(size = 14)
+            ) +
+            # Add frames around each facet
+            geom_rect(
+              aes(xmin = -Inf, xmax = Inf, ymin = -Inf, ymax = Inf),
+              fill = NA,           # No fill
+              color = "grey",     # Frame color
+              size = 0.5          # Frame line size
+            )
+          
+          # Position for p-values
+          label_y_pos <- max(filtered_df$Value, na.rm = TRUE) - 0.5
+          
+          p <- p + stat_compare_means(method = "t.test", 
+                                      method.args = list(mu=my_mu, alternative = my_alternative, conf.level = my_conf_level), 
+                                      paired = TRUE, label = "p.format", label.x = 1.4, label.y = label_y_pos)
+          return(p)
+        } # end if exactly 2 groups
+        else {
+          print("More than 2 unique groups")
+        }
       } # end if group was not empty string
       else if (length(columns_to_test) == 2) { # run between columns
         # Reshape the data from wide to long format
@@ -1618,7 +1628,6 @@ plot_means_parametric <- function(df,
     } # end if no group
   } # end Paired t-test
 } # end plot_means_parametric
-
 
 #########################################################################################
 # my_test: "Wilcoxon rank-sum test", "Wilcoxon signed-rank test", "Kruskal-Wallis test", "Friedman test"
@@ -1774,7 +1783,7 @@ compare_medians_nonparametric <- function (my_data,
                                 alternative = my_alternative, 
                                 paired = TRUE,
                                 conf.int = TRUE,
-                                correct = TRUE,
+                                correct = FALSE,
                                 conf.level = my_conf_level)
           test_results_df <- data.frame(
             vars = paste0(my_data_columns[1],"_vs_",my_data_columns[2]),
@@ -1862,7 +1871,7 @@ compare_medians_nonparametric <- function (my_data,
                                   alternative = my_alternative, 
                                   paired = TRUE,
                                   conf.int = TRUE,
-                                  correct = TRUE,
+                                  correct = FALSE,
                                   conf.level = my_conf_level)
             # Add the results to dataframe
             new_row <- data.frame(
@@ -1889,7 +1898,7 @@ compare_medians_nonparametric <- function (my_data,
                                   alternative = my_alternative, 
                                   paired = TRUE,
                                   conf.int = TRUE,
-                                  correct = TRUE,
+                                  correct = FALSE,
                                   conf.level = my_conf_level)
             # Add the results to dataframe
             new_row <- data.frame(
@@ -1934,7 +1943,7 @@ compare_medians_nonparametric <- function (my_data,
                               alternative = my_alternative, 
                               paired = TRUE,
                               conf.int = TRUE,
-                              correct = TRUE,
+                              correct = FALSE,
                               conf.level = my_conf_level)
         test_results_df <- data.frame(
           vars = paste0(my_data_columns[1],"_vs_",my_data_columns[2]),
@@ -2056,8 +2065,7 @@ compare_medians_nonparametric <- function (my_data,
             } # end for loop
             return(test_results_df)
           } else {
-            print(my_group_col)
-            print("Less than 3 groups. Use a different test")
+            print("You need more than 2 groups for Kruskal-Wallis test.")
             return(data.frame())
           } # end if there were less than 3 groups in group column
         }# if group column was not empty string
@@ -2073,6 +2081,574 @@ compare_medians_nonparametric <- function (my_data,
       
     } # less than 3 data columns
   } # end "Kruskal-Wallis test"
+  ##############################################
+  if (my_test == "Friedman test") {
+    if (length(my_data_columns) > 2) { # if there were more than 2 variables
+      if (!is.null(my_group) && length(my_group) == 1) {
+        if (my_group[1] == "") { # if there was no group (group = empty string)
+          # run between columns
+          # make a matrix
+          my_matrix <- as.matrix(my_data[, ..my_data_columns])
+          result <- friedman.test(my_matrix)
+          test_results_df <- data.frame(
+            p_value = if(!is.null(result$p.value)) result$p.value else NA,
+            Friedman_chi_squared =  if(!is.null(result$statistic)) result$statistic else NA,
+            df = if(!is.null(result$parameter)) result$parameter else NA,
+            stringsAsFactors = FALSE
+          )
+          return(test_results_df)
+        } # end if group was empty string
+        else { # there was a group column
+          my_group_col <- my_group[1]
+          # print(is.numeric(my_data[[group_col]]))
+          my_data <- factor_columns(my_data,my_group)
+          # print(is.numeric(my_data[[group_col]]))
+          uniq_res <- levels(my_data[[my_group_col]])
+          print(uniq_res)
+          if (length(uniq_res) > 2) { # if there were at least 3 groups
+            # change to long format
+            my_req_columns <- append(my_group,my_data_columns)
+            my_new_data <- my_data %>%
+              select(all_of(my_req_columns))
+            my_new_data <- my_new_data %>%
+              pivot_longer(cols = my_data_columns, 
+                           names_to = "vars", 
+                           values_to = "values")
+            # Ensure no missing data and that each group has all values for each "vars"
+            my_new_data <- my_new_data %>%
+              drop_na() %>%  # Remove any rows with missing values
+              group_by(!!sym(my_group_col), vars) %>%
+              filter(n() == length(my_data_columns))  # Keep only complete blocks
+            
+            # Now, use as.formula() to construct the correct formula for friedman.test
+            result <- friedman.test(as.formula(paste("values ~ vars |", my_group_col)), data = my_new_data)
+            
+            print(result)
+          } # end if there were at least 3 groups
+          else {
+            print("You need more than 2 groups for Friedman test.")
+            return(data.frame())
+          }
+        } # end if there was a group column name
+      }
+    } # end if there were more than 2 variables
+    
+  } # end Friedman test
   
 } # end compare_medians_nonparametric
+
+########################################################
+# function to preview and visually inspect up till 6 variables on a single plot
+# my_test: "Wilcoxon rank-sum test", "Wilcoxon signed-rank test", "Kruskal-Wallis test", "Friedman test"
+# my_alternative: "two.sided", "greater", "less"
+# my_data_columns = c(), 
+# my_group = NULL,
+# my_test = "One sample t-test",
+# my_mu = 0,
+# my_alternative = "two.sided",
+# my_conf_level = 0.95) {
+plot_medians_nonparametric <- function(df, 
+                                       type_of_test = "Wilcoxon rank-sum test", 
+                                       columns_to_show = c(),
+                                       my_group = c(),
+                                       my_mu = 0,
+                                       my_alternative = "two.sided",
+                                       my_conf_level = 0.95,
+                                       plot_title = "") {
+  
+  if (type_of_test == "Wilcoxon rank-sum test") {
+    # Get columns
+    columns_to_test <- columns_to_show
+    if (!is.null(my_group) && length(my_group) == 1) {
+      if (my_group[1] != "") {
+        # Filter out rows where the grouping variable is NA
+        # Assuming my_group is a character vector with the name of the grouping variable
+        my_group_col <- my_group[1]
+        
+        # Convert the grouping column to a factor
+        df[[my_group_col]] <- as.factor(df[[my_group_col]])
+        
+        # Reshape the data from wide to long format
+        df_long <- df %>%
+          select(all_of(c(my_group_col, columns_to_test))) %>%  # Select relevant columns
+          pivot_longer(cols = all_of(columns_to_test), 
+                       names_to = "Variable", 
+                       values_to = "Value") %>%
+          mutate(Variable = factor(Variable, levels = columns_to_test))  # Set order of 'Variable' as per 'columns_to_test'
+        
+        # Filter out rows where the grouping variable is NA
+        filtered_df <- df_long %>% filter(!is.na(!!sym(my_group_col)))
+        if (length(levels(filtered_df[[my_group_col]])) == 2) { # if there are 2 unique groups
+          # Check the levels of the factor
+          # print(levels(filtered_df[[my_group_col]]))  # This should not include "NA"
+          # Create the boxplot, faceting by Variable and grouping by my_group_col
+          p <- ggboxplot(
+            filtered_df,
+            x = my_group_col,  # Grouping variable (e.g., Gender)
+            y = "Value" ,     # Response variable
+            outlier.size = 0.2,   # Set the size of outliers
+            size = 0.2
+            # color = my_group_col,
+            # palette = "jco"
+          ) +
+            facet_wrap(~ Variable) +  # Facet by Variable (e.g., gluc, chol)
+            labs(title = plot_title,
+                 x = my_group_col,
+            ) +
+            theme_minimal() +
+            theme(
+              axis.title.y = element_blank(),
+              panel.grid = element_blank(),
+              strip.text = element_text(size = 14) 
+            ) +
+            # Add frames around each facet
+            geom_rect(
+              aes(xmin = -Inf, xmax = Inf, ymin = -Inf, ymax = Inf),
+              fill = NA,           # No fill
+              color = "grey",     # Frame color
+              size = 0.5          # Frame line size
+            )
+          # check the y position of p_value
+          label_y_pos <- max(filtered_df$Value, na.rm = TRUE) - 0.5
+          p <- p + stat_compare_means(# by default method is wilcox
+            method.args = list(mu=my_mu, alternative = my_alternative, conf.level = my_conf_level), 
+            label = "p.format",
+            label.x = 1.4,
+            label.y = label_y_pos)
+          return(p)
+        } # end if there were 2 unique groups
+        else {
+          print("More than 2 unique groups.")
+        }
+      } # end if group was not empty string
+      else if (length(columns_to_test) == 2) { # run between columns
+        # Reshape the data from wide to long format
+        df_long <- df %>%
+          select(all_of(columns_to_test)) %>%  # Select relevant columns
+          pivot_longer(cols = all_of(columns_to_test), 
+                       names_to = "Variable", 
+                       values_to = "Value") %>%
+          mutate(Variable = factor(Variable, levels = columns_to_test))  # Set order of 'Variable' as per 'columns_to_test'
+        
+        # Create the boxplot, faceting by Variable and grouping by my_group_col
+        p <- ggboxplot(
+          df_long,
+          x = "Variable",  # Grouping variable (e.g., Gender)
+          y = "Value" ,     # Response variable
+          outlier.size = 0.2,   # Set the size of outliers
+          size = 0.2
+          # color = my_group_col,
+          # palette = "jco"
+        ) +
+          labs(title = plot_title
+          ) +
+          theme_minimal() +
+          theme(
+            axis.title.y = element_blank(),
+            panel.grid = element_blank(),
+            strip.text = element_text(size = 14) 
+          ) 
+        # check the y position of p_value
+        label_y_pos <- max(df_long$Value, na.rm = TRUE) - 0.5
+        p <- p + stat_compare_means(# by default method is wilcox
+          method.args = list(mu=my_mu, alternative = my_alternative, conf.level = my_conf_level), 
+          label = "p.format",
+          label.x = 1.4,
+          label.y = label_y_pos)
+        return(p)
+      } # end running between columns
+      else {
+        print("If no group given, needs exactly 2 columns for Wilcoxon rank-sum test")
+      }
+    } # end if there was a group
+    else { # no group
+      if (length(columns_to_test) == 2) { # run between columns
+        # Reshape the data from wide to long format
+        df_long <- df %>%
+          select(all_of(columns_to_test)) %>%  # Select relevant columns
+          pivot_longer(cols = all_of(columns_to_test), 
+                       names_to = "Variable", 
+                       values_to = "Value") %>%
+          mutate(Variable = factor(Variable, levels = columns_to_test))  # Set order of 'Variable' as per 'columns_to_test'
+        
+        # Create the boxplot, faceting by Variable and grouping by my_group_col
+        p <- ggboxplot(
+          df_long,
+          x = "Variable",  # Grouping variable (e.g., Gender)
+          y = "Value" ,     # Response variable
+          outlier.size = 0.2,   # Set the size of outliers
+          size = 0.2
+          # color = my_group_col,
+          # palette = "jco"
+        ) +
+          labs(title = plot_title
+          ) +
+          theme_minimal() +
+          theme(
+            axis.title.y = element_blank(),
+            panel.grid = element_blank(),
+            strip.text = element_text(size = 14) 
+          ) 
+        # check the y position of p_value
+        label_y_pos <- max(df_long$Value, na.rm = TRUE) - 0.5
+        p <- p + stat_compare_means(# by default method is wilcoxon
+          method.args = list(mu=my_mu, alternative = my_alternative, conf.level = my_conf_level), 
+          label = "p.format",
+          label.x = 1.4,
+          label.y = label_y_pos)
+        return(p)
+      } else {
+        print("If no group given, needs exactly 2 columns for Wilcoxon rank-sum test")
+      }
+    } # end no group
+  } # end if Wilcoxon rank-sum test
+  ##################################################
+  if (type_of_test == "Wilcoxon signed-rank test") {
+    # Get columns
+    columns_to_test <- columns_to_show
+    if (!is.null(my_group) && length(my_group) == 1) {
+      if (my_group[1] != "") {
+        # Filter out rows where the grouping variable is NA
+        # Assuming my_group is a character vector with the name of the grouping variable
+        my_group_col <- my_group[1]
+        
+        # Convert the grouping column to a factor
+        df[[my_group_col]] <- as.factor(df[[my_group_col]])
+        
+        # Reshape the data from wide to long format
+        df_long <- df %>%
+          select(all_of(c(my_group_col, columns_to_test))) %>%  # Select relevant columns
+          pivot_longer(cols = all_of(columns_to_test), 
+                       names_to = "Variable", 
+                       values_to = "Value") %>%
+          mutate(Variable = factor(Variable, levels = columns_to_test))  # Set order of 'Variable' as per 'columns_to_test'
+        
+        # Filter out rows where the grouping variable is NA
+        filtered_df <- df_long %>% filter(!is.na(!!sym(my_group_col)))
+        if (length(levels(filtered_df[[my_group_col]])) == 2) { # if there are 2 unique groups
+          # Create an 'id' column for paired observations
+          filtered_df <- filtered_df %>%
+            group_by(!!sym(my_group_col)) %>%                             # Group by the grouping variable (e.g., Gender)
+            mutate(id = as.integer((row_number() + 1) %/% 2)) %>%  # Assign the same ID to every two rows within each group
+            ungroup()
+          # print(filtered_df)
+          
+          # Create the boxplot, faceting by my_group_col and grouping by Variable
+          p <- ggpaired(
+            filtered_df,
+            x = "Variable",  # Grouping variable (e.g., dop1, dop2)
+            y = "Value" ,     # Response variable
+            id = "id",
+            outlier.size = 0.2,   # Set the size of outliers
+            size = 0.2,
+            line.color = "grey",
+            line.size = 0.2
+          ) +
+            facet_wrap(as.formula(paste("~", my_group_col))) +  # Facet by Gender
+            labs(title = plot_title) +
+            theme_minimal() +
+            theme(
+              axis.title.y = element_blank(),
+              axis.title.x = element_blank(),
+              panel.grid = element_blank(),
+              strip.text = element_text(size = 14)
+            ) +
+            # Add frames around each facet
+            geom_rect(
+              aes(xmin = -Inf, xmax = Inf, ymin = -Inf, ymax = Inf),
+              fill = NA,           # No fill
+              color = "grey",     # Frame color
+              size = 0.5          # Frame line size
+            )
+          
+          # Position for p-values
+          label_y_pos <- max(filtered_df$Value, na.rm = TRUE) - 0.5
+          
+          p <- p + stat_compare_means( # by default method is wilcoxon
+            method.args = list(mu=my_mu, alternative = my_alternative, conf.level = my_conf_level), 
+            paired = TRUE, 
+            label = "p.format", 
+            label.x = 1.4, 
+            label.y = label_y_pos)
+          return(p)
+        } # end if not exactly 2 groups
+        else {
+          print("More than 2 unique groups.")
+        }
+      } # end if group was not empty string
+      else {
+        if (length(columns_to_test) == 2) { # run between columns
+          # Reshape the data from wide to long format
+          df_long <- df %>%
+            select(all_of(columns_to_test)) %>%  # Select relevant columns
+            pivot_longer(cols = all_of(columns_to_test), 
+                         names_to = "Variable", 
+                         values_to = "Value") %>%
+            mutate(Variable = factor(Variable, levels = columns_to_test))  # Set order of 'Variable' as per 'columns_to_test'
+          # print(df_long)
+          # Create an 'id' column for paired observations
+          filtered_df <- df_long %>%
+            mutate(id = as.integer((row_number() + 1) %/% 2)) %>%  # Assign the same ID to every two rows within each group
+            ungroup()
+          # print(filtered_df)
+          p <- ggpaired(
+            filtered_df,
+            x = "Variable",  # Grouping variable (e.g., dop1, dop2)
+            y = "Value" ,     # Response variable
+            id = "id",
+            outlier.size = 0.2,   # Set the size of outliers
+            size = 0.2,
+            line.color = "grey",
+            line.size = 0.2
+          ) +
+            labs(title = plot_title) +
+            theme_minimal() +
+            theme(
+              axis.title.y = element_blank(),
+              axis.title.x = element_blank(),
+              panel.grid = element_blank(),
+              strip.text = element_text(size = 14)
+            ) 
+          
+          # Position for p-values
+          label_y_pos <- max(filtered_df$Value, na.rm = TRUE) - 0.5
+          
+          p <- p + stat_compare_means(# by default method is wilcoxon
+            method.args = list(mu=my_mu, alternative = my_alternative, conf.level = my_conf_level), 
+            paired = TRUE, 
+            label = "p.format", 
+            label.x = 1.4, 
+            label.y = label_y_pos)
+          return(p)
+        } # end if no group but 2 columns
+        else {
+          print("Could not calculate Wilcoxon signed-rank test. Needs exactly 2 variables if no group provided")
+        }
+      }
+    } # end if there was group
+    else {
+      if (length(columns_to_test) == 2) { # run between columns
+        # Reshape the data from wide to long format
+        df_long <- df %>%
+          select(all_of(columns_to_test)) %>%  # Select relevant columns
+          pivot_longer(cols = all_of(columns_to_test), 
+                       names_to = "Variable", 
+                       values_to = "Value") %>%
+          mutate(Variable = factor(Variable, levels = columns_to_test))  # Set order of 'Variable' as per 'columns_to_test'
+        # print(df_long)
+        # Create an 'id' column for paired observations
+        filtered_df <- df_long %>%
+          mutate(id = as.integer((row_number() + 1) %/% 2)) %>%  # Assign the same ID to every two rows within each group
+          ungroup()
+        # print(filtered_df)
+        p <- ggpaired(
+          filtered_df,
+          x = "Variable",  # Grouping variable (e.g., dop1, dop2)
+          y = "Value" ,     # Response variable
+          id = "id",
+          outlier.size = 0.2,   # Set the size of outliers
+          size = 0.2,
+          line.color = "grey",
+          line.size = 0.2
+        ) +
+          labs(title = plot_title) +
+          theme_minimal() +
+          theme(
+            axis.title.y = element_blank(),
+            axis.title.x = element_blank(),
+            panel.grid = element_blank(),
+            strip.text = element_text(size = 14)
+          ) 
+        
+        # Position for p-values
+        label_y_pos <- max(filtered_df$Value, na.rm = TRUE) - 0.5
+        
+        p <- p + stat_compare_means(# by default method is wilcoxon
+          method.args = list(mu=my_mu, alternative = my_alternative, conf.level = my_conf_level), 
+          paired = TRUE, 
+          label = "p.format", 
+          label.x = 1.4, 
+          label.y = label_y_pos)
+        return(p)
+      } # end if no group but 2 columns
+      else {
+        print("Could not calculate Wilcoxon signed-rank test. Needs exactly 2 variables if no group provided")
+      }
+    } # end if no group
+  } # end Wilcoxon signed-rank test
+  ##############################################################################################################
+  if (type_of_test == "Kruskal-Wallis test") {
+    # Get columns
+    columns_to_test <- columns_to_show
+    if (!is.null(my_group) && length(my_group) == 1) {
+      if (my_group[1] != "") {
+        # Filter out rows where the grouping variable is NA
+        # Assuming my_group is a character vector with the name of the grouping variable
+        my_group_col <- my_group[1]
+        
+        # Convert the grouping column to a factor
+        df[[my_group_col]] <- as.factor(df[[my_group_col]])
+        
+        # Reshape the data from wide to long format
+        df_long <- df %>%
+          select(all_of(c(my_group_col, columns_to_test))) %>%  # Select relevant columns
+          pivot_longer(cols = all_of(columns_to_test), 
+                       names_to = "Variable", 
+                       values_to = "Value") %>%
+          mutate(Variable = factor(Variable, levels = columns_to_test))  # Set order of 'Variable' as per 'columns_to_test'
+        
+        # Filter out rows where the grouping variable is NA
+        filtered_df <- df_long %>% filter(!is.na(!!sym(my_group_col)))
+        if (length(levels(filtered_df[[my_group_col]])) > 2) { # if there are > 2 unique groups
+          # Create the boxplot, faceting by Variable and grouping by my_group_col
+          p <- ggboxplot(
+            filtered_df,
+            x = my_group_col,  # Grouping variable (e.g., Gender)
+            y = "Value" ,     # Response variable
+            outlier.size = 0.2,   # Set the size of outliers
+            size = 0.2
+            # color = my_group_col,
+            # palette = "jco"
+          ) +
+            facet_wrap(~ Variable) +  # Facet by Variable (e.g., gluc, chol)
+            labs(title = plot_title,
+                 x = my_group_col,
+            ) +
+            theme_minimal() +
+            theme(
+              axis.title.y = element_blank(),
+              panel.grid = element_blank(),
+              strip.text = element_text(size = 14) 
+            ) +
+            # Add frames around each facet
+            geom_rect(
+              aes(xmin = -Inf, xmax = Inf, ymin = -Inf, ymax = Inf),
+              fill = NA,           # No fill
+              color = "grey",     # Frame color
+              size = 0.5          # Frame line size
+            )
+          # Visualize: Specify the comparisons you want
+          my_all_groups <- levels(filtered_df[[my_group_col]])
+          # Generate all combinations of 2 elements and store them in a list, i.e my_comparisons <- list( c("0.5", "1"), c("1", "2"), c("0.5", "2") )
+          my_comparisons <- combn(my_all_groups, 2, simplify = FALSE)
+          # check the y position of p_value
+          label_y_pos <- max(filtered_df$Value, na.rm = TRUE) + length(my_comparisons)-1 
+          p <- p + 
+            stat_compare_means(
+              method = "kruskal.test",
+              method.args = list(mu=my_mu, alternative = my_alternative, conf.level = my_conf_level),
+              # label = "p.format",
+              label.x = mean(as.numeric(unique(filtered_df[[my_group_col]]))),  # Center horizontally
+              label.y = label_y_pos   # Set above the other comparisons
+            ) +
+            stat_compare_means(comparisons = my_comparisons) 
+          
+          return(p)
+        } # end if there are > 2 unique groups
+        else {
+          print("You need more than 3 unique groups to run Kruskal-Wallis test")
+        }
+      } # end if group was not an empty string
+      else {
+        if (length(columns_to_test) > 2) { # run between columns
+          # Reshape the data from wide to long format
+          df_long <- df %>%
+            select(all_of(columns_to_test)) %>%  # Select relevant columns
+            pivot_longer(cols = all_of(columns_to_test), 
+                         names_to = "Variable", 
+                         values_to = "Value") %>%
+            mutate(Variable = factor(Variable, levels = columns_to_test))  # Set order of 'Variable' as per 'columns_to_test'
+          
+          # Create the boxplot
+          p <- ggboxplot(
+            df_long,
+            x = "Variable",  # Grouping variable (e.g., Gender)
+            y = "Value" ,     # Response variable
+            outlier.size = 0.2,   # Set the size of outliers
+            size = 0.2
+          ) +
+            labs(title = plot_title
+            ) +
+            theme_minimal() +
+            theme(
+              axis.title.y = element_blank(),
+              axis.title.x = element_blank(),
+              panel.grid = element_blank(),
+              strip.text = element_text(size = 14) 
+            ) 
+          # Visualize: Specify the comparisons you want
+          # Generate all combinations of 2 elements and store them in a list, i.e my_comparisons <- list( c("0.5", "1"), c("1", "2"), c("0.5", "2") )
+          my_comparisons <- combn(columns_to_test, 2, simplify = FALSE)
+          print(mean(as.numeric(length(columns_to_test))))
+          # check the y position of p_value
+          label_y_pos <- max(df_long$Value, na.rm = TRUE) + length(my_comparisons)
+          p <- p + 
+            stat_compare_means(
+              method = "kruskal.test",
+              method.args = list(mu=my_mu, alternative = my_alternative, conf.level = my_conf_level),
+              # label = "p.format",
+              label.x = as.numeric(length(columns_to_test)/2+0.2),  # Center horizontally
+              label.y = label_y_pos  # Set above the other comparisons
+            ) +
+            stat_compare_means(comparisons = my_comparisons) 
+          return(p)
+        } # end running between columns
+        else {
+          print("You need more than 3 unique groups to run Kruskal-Wallis test")
+        }
+      } # end if group was empty string
+    } # end if there was a group
+    else {
+      if (length(columns_to_test) > 2) { # run between columns
+        # Reshape the data from wide to long format
+        df_long <- df %>%
+          select(all_of(columns_to_test)) %>%  # Select relevant columns
+          pivot_longer(cols = all_of(columns_to_test), 
+                       names_to = "Variable", 
+                       values_to = "Value") %>%
+          mutate(Variable = factor(Variable, levels = columns_to_test))  # Set order of 'Variable' as per 'columns_to_test'
+        
+        # Create the boxplot
+        p <- ggboxplot(
+          df_long,
+          x = "Variable",  # Grouping variable (e.g., Gender)
+          y = "Value" ,     # Response variable
+          outlier.size = 0.2,   # Set the size of outliers
+          size = 0.2
+        ) +
+          labs(title = plot_title
+          ) +
+          theme_minimal() +
+          theme(
+            axis.title.y = element_blank(),
+            axis.title.x = element_blank(),
+            panel.grid = element_blank(),
+            strip.text = element_text(size = 14) 
+          ) 
+        # Visualize: Specify the comparisons you want
+        # Generate all combinations of 2 elements and store them in a list, i.e my_comparisons <- list( c("0.5", "1"), c("1", "2"), c("0.5", "2") )
+        my_comparisons <- combn(columns_to_test, 2, simplify = FALSE)
+        print(mean(as.numeric(length(columns_to_test))))
+        # check the y position of p_value
+        label_y_pos <- max(df_long$Value, na.rm = TRUE) + length(my_comparisons)
+        p <- p + 
+          stat_compare_means(
+            method = "kruskal.test",
+            method.args = list(mu=my_mu, alternative = my_alternative, conf.level = my_conf_level),
+            # label = "p.format",
+            label.x = as.numeric(length(columns_to_test)/2+0.2),  # Center horizontally
+            label.y = label_y_pos  # Set above the other comparisons
+          ) +
+          stat_compare_means(comparisons = my_comparisons) 
+        return(p)
+      } # end running between columns
+      else {
+        print("You need more than 3 unique groups to run Kruskal-Wallis test")
+      }
+    } # end if no group
+  } # end if Kruskal-Wallis test 
+  
+} # end plot_medians_nonparametric
+
+
 
