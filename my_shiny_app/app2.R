@@ -349,6 +349,10 @@ parametric_view <- sidebarLayout(
                  ) # end div
         ),
         tabPanel("Plot",
+                 # Main panel only with inputs and plot
+                 div(
+                   textInput("param_test_plot_title", "Title", value = "")
+                 ),  # end inputs div
                  div(
                    style = "flex-grow: 1; display: flex; flex-direction: column;",  # Allow the div to grow and fill remaining space
                    card_body(
@@ -1486,6 +1490,7 @@ server <- function(input, output,session) {
               # Render HTML with h5 and the title text
               HTML(paste0("<h5>", title_text, "</h5>"))
             })
+            # create plot
           }, error = function(e) {
             # Handle error
             showModal(modalDialog(
@@ -1578,6 +1583,48 @@ server <- function(input, output,session) {
     )
   }) # end  parametric table
   
+  # Define an plotting event that triggers on button click or title change
+  plot_parametric_data <- eventReactive({
+    input$run_parametric_means   # Trigger on button click
+    input$param_test_plot_title  # Trigger on title text change
+  }, {
+    req(modified_data())
+    req(display_data_parametric_tests())  # Ensure data is available
+    test_result <- display_data_parametric_tests()
+    test_columns <- input$columns_test_param
+    by_group <- input$group_option_parametric
+    by_group <- input$group_option_parametric
+    group_col <- input$group_column_test_param 
+    test <- input$parametric_test_mean
+    if (!by_group && test == "Paired t-test") {
+      group_col <- c()
+    }
+    mu_val <- input$mu_parametric
+    alternative <- input$alternative_parametric
+    conf_level <- input$conf_level_parametric
+    my_title <- input$param_test_plot_title
+
+    # Call the plotting function with the specified parameters
+    plot_means_parametric(
+      modified_data(),
+      test_result,
+      type_of_test = test,
+      columns_to_show = test_columns,
+      my_group = group_col,
+      my_mu = mu_val,
+      my_alternative = alternative,
+      my_conf_level = conf_level,
+      plot_title = my_title
+    )
+  })
+
+  # Render the plot using the eventReactive output
+  output$plot_parametric_test <- renderPlot({
+    req(plot_parametric_data())  # Only generate plot if plot_data has been triggered
+    plot_parametric_data()
+  })
+  
+###########################################################################################
   observeEvent(input$run_nonparametric_medians, {
     req(modified_data())
     test_columns <- input$columns_test_nonparam

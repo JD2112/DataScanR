@@ -1326,7 +1326,7 @@ plot_means_parametric <- function(df,
                                   my_group = c(),
                                   my_mu = 0,
                                   my_alternative = "two.sided",
-                                  myy_conf_level = 0.95,
+                                  my_conf_level = 0.95,
                                   plot_title = ""
                                   ) {
 
@@ -1399,7 +1399,8 @@ plot_means_parametric <- function(df,
           select(all_of(c(my_group_col, columns_to_test))) %>%  # Select relevant columns
           pivot_longer(cols = all_of(columns_to_test), 
                          names_to = "Variable", 
-                         values_to = "Value")
+                         values_to = "Value") %>%
+          mutate(Variable = factor(Variable, levels = columns_to_test))  # Set order of 'Variable' as per 'columns_to_test'
           
         # Filter out rows where the grouping variable is NA
         filtered_df <- df_long %>% filter(!is.na(!!sym(my_group_col)))
@@ -1435,7 +1436,11 @@ plot_means_parametric <- function(df,
             )
         # check the y position of p_value
         label_y_pos <- max(filtered_df$Value, na.rm = TRUE) - 0.5
-        p <- p + stat_compare_means(method = "t.test", label = "p.format",label.x = 1.4,label.y = label_y_pos)
+        p <- p + stat_compare_means(method = "t.test", 
+                                    method.args = list(mu=my_mu, alternative = my_alternative, conf.level = my_conf_level), 
+                                    label = "p.format",
+                                    label.x = 1.4,
+                                    label.y = label_y_pos)
         return(p)
       } # end if group was not empty string
     } # end if there was a group
@@ -1457,7 +1462,8 @@ plot_means_parametric <- function(df,
           select(all_of(c(my_group_col, columns_to_test))) %>%  # Select relevant columns
           pivot_longer(cols = all_of(columns_to_test), 
                        names_to = "Variable", 
-                       values_to = "Value")
+                       values_to = "Value") %>%
+          mutate(Variable = factor(Variable, levels = columns_to_test))  # Set order of 'Variable' as per 'columns_to_test'
         # print(df_long)
         # Filter out rows where the grouping variable is NA
         filtered_df <- df_long %>% filter(!is.na(!!sym(my_group_col)))
@@ -1488,7 +1494,7 @@ plot_means_parametric <- function(df,
             axis.title.x = element_blank(),
             panel.grid = element_blank(),
             strip.text = element_text(size = 14)
-          ) 
+          ) +
           # Add frames around each facet
           geom_rect(
             aes(xmin = -Inf, xmax = Inf, ymin = -Inf, ymax = Inf),
@@ -1509,7 +1515,8 @@ plot_means_parametric <- function(df,
           select(all_of(columns_to_test)) %>%  # Select relevant columns
           pivot_longer(cols = all_of(columns_to_test), 
                        names_to = "Variable", 
-                       values_to = "Value")
+                       values_to = "Value") %>%
+          mutate(Variable = factor(Variable, levels = columns_to_test))  # Set order of 'Variable' as per 'columns_to_test'
         # print(df_long)
         # Create an 'id' column for paired observations
         filtered_df <- df_long %>%
@@ -1538,7 +1545,12 @@ plot_means_parametric <- function(df,
         # Position for p-values
         label_y_pos <- max(filtered_df$Value, na.rm = TRUE) - 0.5
         
-        p <- p + stat_compare_means(method = "t.test", paired = TRUE, label = "p.format", label.x = 1.4, label.y = label_y_pos)
+        p <- p + stat_compare_means(method = "t.test", 
+                                    method.args = list(mu=my_mu, alternative = my_alternative, conf.level = my_conf_level), 
+                                    paired = TRUE, 
+                                    label = "p.format", 
+                                    label.x = 1.4, 
+                                    label.y = label_y_pos)
         return(p)
       } # end if there was no group, but exactly 2 variables to test
       else {
@@ -1552,7 +1564,8 @@ plot_means_parametric <- function(df,
           select(all_of(columns_to_test)) %>%  # Select relevant columns
           pivot_longer(cols = all_of(columns_to_test), 
                        names_to = "Variable", 
-                       values_to = "Value")
+                       values_to = "Value") %>%
+          mutate(Variable = factor(Variable, levels = columns_to_test))  # Set order of 'Variable' as per 'columns_to_test'
         # print(df_long)
         # Create an 'id' column for paired observations
         filtered_df <- df_long %>%
@@ -1581,7 +1594,12 @@ plot_means_parametric <- function(df,
         # Position for p-values
         label_y_pos <- max(filtered_df$Value, na.rm = TRUE) - 0.5
         
-        p <- p + stat_compare_means(method = "t.test", paired = TRUE, label = "p.format", label.x = 1.4, label.y = label_y_pos)
+        p <- p + stat_compare_means(method = "t.test", 
+                                    method.args = list(mu=my_mu, alternative = my_alternative, conf.level = my_conf_level), 
+                                    paired = TRUE, 
+                                    label = "p.format", 
+                                    label.x = 1.4, 
+                                    label.y = label_y_pos)
         return(p)
         
       } # end if exactly 2 columns
