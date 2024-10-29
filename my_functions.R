@@ -13,12 +13,28 @@ library(GGally)
 library(corrplot)
 library(pals)
 library(dlookr)
+library(NbClust)
 #library(stringr)
 
 MAX_FOR_PREVIEW_PLOT = 6
 UNIQUE_FOR_VARIATION = 3
 MISSING_DATA_PCT_THRESHOLD = 40
 MAX_FOR_CORR = 10
+PARAMETRIC_TEST_MEAN_INFO = "One-sample t-test:<br>Compares the sample mean to a known or hypothesized population mean.
+<br><br>Independent two-sample t-test:<br>Compares the means of two independent groups.
+<br><br>Paired t-test:<br>Compares means from the same group at two different times or under two different conditions.
+<br>Can be performed either between two selected variables or on multiple variables by the group variable that has two unique groups."
+NONPARAMETRIC_TEST_MEAN_INFO = "Wilcoxon rank-sum test:<br>Compares the distributions of two independent groups.
+One can compare medians either between two selected variables or select multiple variables and compare by the group variable that has two unique groups.<br><br>
+Wilcoxon signed-rank test:<br>Compares paired data (two related samples or repeated measures on a single sample).
+One can compare medians either between two selected variables or select multiple variables and compare by the group variable that has two unique groups.<br><br>
+Kruskal-Wallis test:<br>Non-parametric alternative to one-way ANOVA, compares more than two independent groups.
+One can compare medians either between multiple selected variables or select multiple variables and compare by the group variable that has more than 2 unique groups."
+SIGNIFICANCE_LEVEL_CORR_INFO = "Value 1 will show all correlation coefficients values on the plot. Regardless of whether they are signifcant or not.
+<br><br>Set this value to your own significance level to see on the plot which correlation coefficients are not signifficant."
+NORMAITY_METHOD_INFO = "Methods to check whether your data is normally distributed.<br><br>Shapiro-Wilk:<br>Recommended for dataset < 2000 observations.
+<br><br>Kolmogorov-Smirnov:<br>Recommended for dataset > 2000 observations.<br><br>p-value < 0.05 and statistic close to 1 tell us that we can 
+reject the null hypothesis of the normally distributed data."
 ###########################################################################################
 # a function to read a csv file with all known csv separators, or return empty data frame
 # if there are comas in the column, it will try to convert that column to numerical
@@ -467,98 +483,6 @@ calculate_cor_short <- function(df, my_columnnames = c(), normality_results) {
   
 } # end calculate_cor
 
-##########################################################################
-# # function to create a complete correlation matrix
-# # if variables have normal distribution, pearson method will be used
-# # otherwise spearman method will be used
-# calculate_corr_matrix_auto_method <- function(df, normality_results,corr_alternative,confidence_level = 0.95) {
-#   
-#   # extract column names which are which
-#   normal_cols <- normality_results$normal_columnnames
-#   non_normal_cols <- normality_results$non_normal_columnnames
-#   
-#   df <- as.data.frame(df)
-#   # Filter the data to include only numeric columns
-#   df_numeric <- df[sapply(df, is.numeric)]
-#   
-#   # create an empty matrix to store correlations
-#   n <- ncol(df_numeric)
-#   cor_matrix <- matrix(NA, nrow = n, ncol = n, dimnames = list(names(df_numeric), names(df_numeric)))
-#   
-#   # Function to determine which correlation method to use
-#   cor_method <- function(col1, col2) {
-#     if (col1 %in% normal_cols && col2 %in% normal_cols) {
-#       return("pearson")
-#     } else {
-#       return("spearman")
-#     }
-#   }
-#   
-#   # Loop through all pairs of numeric columns
-#   for (i in seq_along(names(df_numeric))) {
-#     for (j in seq_along(names(df_numeric))) {
-#       if (i <= j) {  # Only compute upper triangular part
-#         
-#         # Determine the correlation method
-#         method <- cor_method(names(df_numeric)[i], names(df_numeric)[j])
-#         
-#         ###################################################
-#         # # Subset the two columns to pass into correlate
-#         # sub_data <- df_numeric[, c(names(df_numeric)[i], names(df_numeric)[j])]
-#         # 
-#         # # Use dlookr's correlate function for two columns
-#         # cor_result <- correlate(sub_data, method = method)
-#         #######################################################
-#         cor_result <- cor.test(df_numeric[, names(df_numeric)[i]],df_numeric[, names(df_numeric)[j]],
-#                                alternative = corr_alternative,
-#                                method = method,
-#                                na.action = na.omit,
-#                                exact = FALSE
-#                                )
-#         
-#         # Extract the correlation value (it will be in the second column of the result)
-#         cor_value <- cor_result$estimate[[1]]
-#         
-#         # Fill in the correlation matrix (symmetric)
-#         cor_matrix[i, j] <- cor_matrix[j, i] <- cor_value
-#       }
-#     }
-#   } # end for loop
-#   ################################################################
-#   # # get significance matrix
-#   # significance_matrix <- cor.mtest(as.matrix((df_numeric)),
-#   #                                 conf.level = confidence_level,
-#   #                                 alternative = alternative_corr,
-#   #                                 method = method_corr,
-#   #                                 na.action = na.omit,
-#   #                                 exact = FALSE
-#   #                       )
-#   # # Return the correlation matrix and siginficance matrix
-#   # return(list(cor_coef_matrix = cor_matrix, significance_matrix = significance_matrix))
-# } # end calculate_corr_matrix_auto_method
-###########################################################
-# # function to plot correlations for selected column names
-# # takes as argument complete correlation matrix and vector with column names
-# corr_plot_from_corr_matrix <- function(corr_matrix, my_columnnames = c()) {
-#   # ensure the column names exist in the data 
-#   columns_to_select <- my_columnnames[my_columnnames %in% colnames(corr_matrix)]
-#   
-#   if (length(columns_to_select) == 0)  {
-#     print("No variables found in correlation matrix")
-#     return()
-#   }
-#   # Select only the values for the specified columns
-#   selected_cor_matrix <- corr_matrix[columns_to_select, columns_to_select]
-#   
-#   p <- ggcorr(
-#     data = NULL,
-#     cor_matrix = selected_cor_matrix,
-#     label = TRUE,
-#     label_round = 2
-#   )
-#   return(p)
-#   
-# }# end corr_plot_from_corr_matrix
 ##############################################################
 # function to create a complete correlation matrix
 # lets user decide which method to apply
@@ -639,7 +563,8 @@ corr_plot_from_result <- function(corr_matrix_result, plot_type = "upper",
                                   my_ordering ="original",
                                   my_hclust_method = "complete",
                                   my_add_rect = 2,
-                                  my_title = "") {
+                                  my_title = "",
+                                  color_map_pos = "bottom") {
   
   cor_coef_matrix <- corr_matrix_result$cor_coef_matrix
   significant_coef_matrix <- corr_matrix_result$significance_matrix
@@ -647,22 +572,33 @@ corr_plot_from_result <- function(corr_matrix_result, plot_type = "upper",
   my_plotCI = "n"
   my_coef_col = "black"
   my_diag = FALSE
-  color_map_pos = 'r'
+  
+  if (color_map_pos == "bottom") {
+    color_map_pos = "b"
+  }
+  else if (color_map_pos == "right") {
+    color_map_pos = "r"
+  }
+  else if (color_map_pos == "none") {
+    color_map_pos = "n"
+  }
+  
+  # color_map_pos = 'r'
   if (plot_type == "lower") {
     my_pos = "ld"
     my_angle = 0
     my_plotCI = "n"
-    color_map_pos = 'b'
+    # color_map_pos = 'b'
   } else if (plot_type == "upper"){
     my_pos = "td"
     my_angle = 90
     my_plotCI = "n"
-    color_map_pos = 'r'
+    # color_map_pos = 'r'
   } else if (plot_type == "full") {
     my_pos = "lt"
     my_angle = 90
     my_plotCI = "n"
-    color_map_pos = 'r'
+    # color_map_pos = 'r'
   } else if (plot_type == "confidence_interval") {
     plot_type = "full" # always show as full
     my_pos = "lt"
@@ -670,7 +606,7 @@ corr_plot_from_result <- function(corr_matrix_result, plot_type = "upper",
     my_plotCI = "rect"
     my_coef_col= NULL
     my_diag = TRUE
-    color_map_pos = 'n'
+    # color_map_pos = 'n'
   }
   
   ## 
@@ -701,6 +637,31 @@ corr_plot_from_result <- function(corr_matrix_result, plot_type = "upper",
            addgrid.col="grey",
            mar=c(0,0,3,0))
 }# end corr_plot_from_corr_matrix
+
+##############################################################
+# function to find optimal number of clusters
+get_optimal_no_clusters <- function (df, my_cols = c(), my_distance_method="euclidean",my_method = "complete") {
+  if (length(my_cols) == 0) {
+    pritn("No columns selected")
+    return(0)
+  }
+  # select some columns
+  test_corr_df <- df %>%
+    select(all_of((my_cols)))
+  
+  test_corr_df <- as.data.frame(test_corr_df)
+  df_numeric <- test_corr_df[sapply(test_corr_df, is.numeric)]
+  nb <- 0
+  tryCatch({
+    pdf(file = NULL)
+    result <- NbClust(df_numeric, distance = my_distance_method, method = my_method)
+    dev.off()
+    nb <- length(unique(result$Best.partition))
+  }, error = function(e) {
+    print("There was a problem calculating number of clusters")
+  })
+  return(nb)
+} # end get_optimal_no_clusters
 
 #############################################################################################
 # from dlookr github: https://github.com/choonghyunryu/dlookr/blob/HEAD/R/missing.R

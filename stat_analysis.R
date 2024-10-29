@@ -211,12 +211,20 @@ alternative_corr <- "two.sided"
 method_corr <- "pearson"
 conf_level <- 0.95
 
+
 # # select some columns
-# test_corr_df <- data_filtered_columns_with_factors %>% 
+# test_corr_df <- data_filtered_columns_with_factors %>%
 #   select(all_of((test_columns)))
 # 
 # test_corr_df <- as.data.frame(test_corr_df)
 # df_numeric <- test_corr_df[sapply(test_corr_df, is.numeric)]
+source("my_functions.R")
+# test get optimal no clusters
+no_clust <- get_optimal_no_clusters(data_filtered_columns_with_factors,
+                                    my_cols=test_columns,
+                                    my_method="ward.D")
+
+
 # cor_result <- cor.mtest(as.matrix((df_numeric)),
 #                        conf.level = 0.95,
 #                        alternative = alternative_corr,
