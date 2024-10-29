@@ -380,7 +380,7 @@ cards_correlation <- list(
         uiOutput("download_correlation_button_ui")
       ),
       style = "padding: 10px;"
-    )
+    ) # end footer
   ) # end card
 ) # end cards
 ########################################################
@@ -492,7 +492,7 @@ parametric_view <- sidebarLayout(
                      
                      # Add radio buttons
                      radioButtons(
-                       inputId = "param_test_image_format",
+                       inputId = "param_image_format",
                        label = NULL,
                        choices = c("PNG" = "png", "JPEG" = "jpeg", "SVG" = "svg", "TIFF" = "tiff", "PDF" = "pdf"),
                        inline = TRUE,  # Show radio buttons inline
@@ -501,10 +501,10 @@ parametric_view <- sidebarLayout(
                      
                      # Add download button
                      # UI output for the download button
-                     uiOutput("download_parametric_tests_button_ui")
+                     uiOutput("download_param_button_ui")
                    ),
                    style = "padding: 10px;"
-                 )
+                 ) # end footer
         ) # end tabPanel
       )  # End of tabsetPanel
     ) # end card
@@ -2089,13 +2089,13 @@ server <- function(input, output,session) {
   })
   
   # Conditional rendering of the download button
-  output$download_parametric_tests_button_ui <- renderUI({
+  output$download_param_button_ui <- renderUI({
     req(display_data_parametric_tests())
     if (!is.null(print(display_data_parametric_tests())) && nrow(display_data_parametric_tests())>0) {
       # Show the download button if there is a correlation matrix
       downloadButton(
-        "download_param_tests_plot",
-        label = "Download Test",
+        "download_param_plot",
+        label = "Download Plot",
         class = "btn btn-primary ms-3"  # Optional: Bootstrap styling, with margin on the left
       )
     } else {
@@ -2104,39 +2104,40 @@ server <- function(input, output,session) {
     }
   })
   
-  output$download_param_tests_plot <- downloadHandler(
+  output$download_param_plot <- downloadHandler(
     filename = function() {
       # Dynamically set filename based on selected format
-      paste("parametric_tests_plot_", Sys.Date(), ".", input$param_test_image_format, sep="")
+      paste("parametric_tests_plot_", Sys.Date(), ".", input$param_image_format, sep="")
     },
     content = function(file) {
       # Debug: Confirm the full path and selected format
       cat("Saving plot to:", file, "\n")
-      cat("Selected format:", input$param_test_image_format, "\n")
+      cat("Selected format:", input$param_image_format, "\n")
 
       # Open the appropriate graphics device based on selected format
-      if (input$param_test_image_format == "png") {
+      if (input$param_image_format == "png") {
         png(file, width = 800, height = 600)
-      } else if (input$param_test_image_format == "jpeg") {
+      } else if (input$param_image_format == "jpeg") {
         jpeg(file, width = 800, height = 600)
-      } else if (input$param_test_image_format == "pdf") {
+      } else if (input$param_image_format == "pdf") {
         pdf(file, width = 8, height = 6)  # Use inches for PDF
-      } else if (input$param_test_image_format == "svg") {
+      } else if (input$param_image_format == "svg") {
         svg(file, width = 8, height = 6)  # Width and height in inches
-      } else if (input$param_test_image_format == "tiff") {
+      } else if (input$param_image_format == "tiff") {
         tiff(file, width = 800, height = 600)  # Dimensions in pixels
       } else {
         stop("Unsupported file format")
       }
-
-      # req(display_data_parametric_tests())
-      # print()
-      # if (nrow(display_data_parametric_tests())>0) {
-      #     plot_parametric_data()
-      #     dev.off()    # Close the graphics device to finalize the file
-      #   } else {
-      #     print("Plot failed")
-      #   }
+      
+      req(modified_data())
+      req(display_data_parametric_tests())
+      
+      if (nrow(display_data_parametric_tests())>0) {
+          print(plot_parametric_data())
+          dev.off()    # Close the graphics device to finalize the file
+        } else {
+          print("Plot failed")
+        }
       
     })
   
