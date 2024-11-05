@@ -42,6 +42,12 @@ data_original <- fread(data_file) # fread reads separators automatically
 # clean content of text column values
 char_columnnames <- names(data_original)[sapply(data_original, is.character)]
 data_original <- trim_values_in_columns(data_original,custom_colnames=char_columnnames)
+
+# report
+# file.path(OUTPUT_FOLDER, "stats_table.csv")
+data_original %>%
+  diagnose_web_report(subtitle = "Report", output_dir =  ".", 
+                      output_file = "diagnose.html", theme = "blue", browse = FALSE)
 ###################
 # DATA FILTRATION #
 ###################

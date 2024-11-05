@@ -1452,6 +1452,8 @@ plot_means_parametric <- function(df,
         # print(df_long)
         # Filter out rows where the grouping variable is NA
         filtered_df <- df_long %>% filter(!is.na(!!sym(my_group_col)))
+        # Modify the factor column by adding the column name as prefix
+        filtered_df[[my_group_col]] <- factor(paste(my_group_col, filtered_df[[my_group_col]], sep = "_"))
         if (length(levels(filtered_df[[my_group_col]])) == 2) { # if there are 2 unique groups
           # Create an 'id' column for paired observations
           filtered_df <- filtered_df %>%

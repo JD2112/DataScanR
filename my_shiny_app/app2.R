@@ -18,6 +18,56 @@ SIDEBAR_WIDTH_CLEAN_DATA = 200
 SHAPIRO_THRESHOLD = 2000 # max rows to use shapiro for normality
 MAX_FOR_PREVIEW_PLOT = 6
 MESSAGE_COLOR = " #488fda"
+
+#################################################
+# Define a functions to show the error modals
+show_error_modal_with_icon <- function(message_text) {
+  showModal(modalDialog(
+    # Title and icon together in the same div
+    div(
+      style = "position: relative;",  # Relative positioning to align the title and icon
+      # Title on the left
+      span("Info", style = "font-size: 28px;"),
+      # Icon on the top-right corner
+      span(
+        bsicons::bs_icon("exclamation-triangle", fill = MESSAGE_COLOR, size = 40), 
+        style = "position: absolute; top: 0; right: 0;"
+      )
+    ),
+    # Add a line break using <br>
+    HTML("<br>"),
+    # Add a line break using <br>
+    HTML("<br>"),
+    # Custom message text with an icon
+    HTML(paste0(message_text, " ", bsicons::bs_icon("emoji-tear", fill = MESSAGE_COLOR, size = 20))),
+    # Footer with "OK" button
+    footer = modalButton("OK")
+  ))
+}
+
+show_error_modal_no_icon <- function(message_text) {
+  showModal(modalDialog(
+    # Title and icon together in the same div
+    div(
+      style = "position: relative;",  # Relative positioning to align the title and icon
+      # Title on the left
+      span("Info", style = "font-size: 28px;"),
+      # Icon on the top-right corner
+      span(
+        bsicons::bs_icon("exclamation-triangle", fill = MESSAGE_COLOR, size = 40), 
+        style = "position: absolute; top: 0; right: 0;"
+      )
+    ),
+    # Add a line break using <br>
+    HTML("<br>"),
+    # Add a line break using <br>
+    HTML("<br>"),
+    # Custom message text with an icon
+    HTML(paste0(message_text)),
+    # Footer with "OK" button
+    footer = modalButton("OK")
+  ))
+}
 #############################
 # sidebar for cleaning data
 sidebar_data <- layout_sidebar(
@@ -1097,25 +1147,7 @@ server <- function(input, output,session) {
           error_displayed <- TRUE
           error_displayed(error_displayed)
           # Handle error
-          showModal(modalDialog(
-            # Title and icon together in the same div, so we can control their position
-            div(
-              style = "position: relative;",  # Relative positioning to align the title and icon
-              # Title on the left
-              span("Info", style = "font-size: 28px;"),
-              # Icon on the top-right corner
-              span(
-                bsicons::bs_icon("exclamation-triangle", fill = MESSAGE_COLOR, size = 40), 
-                style = "position: absolute; top: 0; right: 0;"
-              )
-            ),
-            # Add a line break using <br>
-            HTML("<br>"),
-            # Add a line break using <br>
-            HTML("<br>"),
-            footer = modalButton("OK"),
-            HTML(paste0("\n\nNo missing data to show ",bsicons::bs_icon("emoji-tear",fill = MESSAGE_COLOR,size=20)))
-          ))
+          show_error_modal_with_icon("\n\nNo missing data to show ")
         })# end try/catch
       } else if (current_plot() == "intersect") {
         tryCatch({
@@ -1128,50 +1160,14 @@ server <- function(input, output,session) {
           error_displayed <- TRUE
           error_displayed(error_displayed)
           # Handle error
-          showModal(modalDialog(
-            # Title and icon together in the same div, so we can control their position
-            div(
-              style = "position: relative;",  # Relative positioning to align the title and icon
-              # Title on the left
-              span("Info", style = "font-size: 28px;"),
-              # Icon on the top-right corner
-              span(
-                bsicons::bs_icon("exclamation-triangle", fill = MESSAGE_COLOR, size = 40), 
-                style = "position: absolute; top: 0; right: 0;"
-              )
-            ),
-            # Add a line break using <br>
-            HTML("<br>"),
-            # Add a line break using <br>
-            HTML("<br>"),
-            footer = modalButton("OK"),
-            HTML(paste0("\n\nNo missing data to show ",bsicons::bs_icon("emoji-tear",fill = MESSAGE_COLOR,size=20)))
-          ))
+          show_error_modal_with_icon("\n\nNo missing data to show ")
         })# end try/catch
       } # END IF INTERSECT
     }# end if missing data exists
     else if (!error_displayed() & !missing_data_exists()){
       print(error_displayed)
       print(missing_data_exists())
-      showModal(modalDialog(
-        # Title and icon together in the same div, so we can control their position
-        div(
-          style = "position: relative;",  # Relative positioning to align the title and icon
-          # Title on the left
-          span("Info", style = "font-size: 28px;"),
-          # Icon on the top-right corner
-          span(
-            bsicons::bs_icon("exclamation-triangle", fill = MESSAGE_COLOR, size = 40), 
-            style = "position: absolute; top: 0; right: 0;"
-          )
-        ),
-        # Add a line break using <br>
-        HTML("<br>"),
-        # Add a line break using <br>
-        HTML("<br>"),
-        footer = modalButton("OK"),
-        HTML(paste0("\n\nNo missing data to show ",bsicons::bs_icon("emoji-tear",fill = MESSAGE_COLOR,size=20)))
-      ))
+      show_error_modal_with_icon("\n\nNo missing data to show ")
     }
   }) # end render plot
   
@@ -1214,25 +1210,7 @@ server <- function(input, output,session) {
         error_displayed <- TRUE
         error_displayed(error_displayed)
         # Handle error
-        showModal(modalDialog(
-          # Title and icon together in the same div, so we can control their position
-          div(
-            style = "position: relative;",  # Relative positioning to align the title and icon
-            # Title on the left
-            span("Info", style = "font-size: 28px;"),
-            # Icon on the top-right corner
-            span(
-              bsicons::bs_icon("exclamation-triangle", fill = MESSAGE_COLOR, size = 40), 
-              style = "position: absolute; top: 0; right: 0;"
-            )
-          ),
-          # Add a line break using <br>
-          HTML("<br>"),
-          # Add a line break using <br>
-          HTML("<br>"),
-          footer = modalButton("OK"),
-          HTML(paste0("No missing data to show!    ",bsicons::bs_icon("emoji-tear",fill = MESSAGE_COLOR,size=20)))
-        ))
+        show_error_modal_with_icon("No missing data to show!    ")
       })# end try/catch
     } 
   }) 
@@ -1264,25 +1242,7 @@ server <- function(input, output,session) {
             normality_df(my_normality_df)
           }, error = function(e) {
             # Handle error
-            showModal(modalDialog(
-              # Title and icon together in the same div, so we can control their position
-              div(
-                style = "position: relative;",  # Relative positioning to align the title and icon
-                # Title on the left
-                span("Info", style = "font-size: 28px;"),
-                # Icon on the top-right corner
-                span(
-                  bsicons::bs_icon("exclamation-triangle", fill = MESSAGE_COLOR, size = 40), 
-                  style = "position: absolute; top: 0; right: 0;"
-                )
-              ),
-              # Add a line break using <br>
-              HTML("<br>"),
-              # Add a line break using <br>
-              HTML("<br>"),
-              footer = modalButton("OK"),
-              HTML(paste0("Problem calculating normality!      ",bsicons::bs_icon("emoji-tear",fill = MESSAGE_COLOR,size=20)))
-            ))
+            show_error_modal_with_icon("Problem calculating normality!      ")
           }) # end trycatch
         } else { # for larger data sets use kolmogorov-Smirnov test to determine normality
           # Update the dropdown 
@@ -1299,25 +1259,7 @@ server <- function(input, output,session) {
             normality_df(my_normality_df)
           }, error = function(e) {
             # Handle error
-            showModal(modalDialog(
-              # Title and icon together in the same div, so we can control their position
-              div(
-                style = "position: relative;",  # Relative positioning to align the title and icon
-                # Title on the left
-                span("Info", style = "font-size: 28px;"),
-                # Icon on the top-right corner
-                span(
-                  bsicons::bs_icon("exclamation-triangle", fill = MESSAGE_COLOR, size = 40), 
-                  style = "position: absolute; top: 0; right: 0;"
-                )
-              ),
-              # Add a line break using <br>
-              HTML("<br>"),
-              # Add a line break using <br>
-              HTML("<br>"),
-              footer = modalButton("OK"),
-              HTML(paste0("Problem calculating normality!      ",bsicons::bs_icon("emoji-tear",fill = MESSAGE_COLOR,size=20)))
-            ))
+            show_error_modal_with_icon("Problem calculating normality!      ")
           }) # end trycatch
         } # end kolmogorov_smirnov test
         current_data_normality(current_data)
@@ -1358,25 +1300,7 @@ server <- function(input, output,session) {
             normality_df(my_normality_df)
           }, error = function(e) {
             # Handle error
-            showModal(modalDialog(
-              # Title and icon together in the same div, so we can control their position
-              div(
-                style = "position: relative;",  # Relative positioning to align the title and icon
-                # Title on the left
-                span("Info", style = "font-size: 28px;"),
-                # Icon on the top-right corner
-                span(
-                  bsicons::bs_icon("exclamation-triangle", fill = MESSAGE_COLOR, size = 40), 
-                  style = "position: absolute; top: 0; right: 0;"
-                )
-              ),
-              # Add a line break using <br>
-              HTML("<br>"),
-              # Add a line break using <br>
-              HTML("<br>"),
-              footer = modalButton("OK"),
-              HTML(paste0("Problem calculating normality!      ",bsicons::bs_icon("emoji-tear",fill = MESSAGE_COLOR,size=20)))
-            ))
+            show_error_modal_with_icon("Problem calculating normality!      ")
           }) # end trycatch
         }
         else if (input$normality_type == "Kolmogorov-Smirnov") {
@@ -1389,25 +1313,7 @@ server <- function(input, output,session) {
           normality_df(my_normality_df)
           }, error = function(e) {
             # Handle error
-            showModal(modalDialog(
-              # Title and icon together in the same div, so we can control their position
-              div(
-                style = "position: relative;",  # Relative positioning to align the title and icon
-                # Title on the left
-                span("Info", style = "font-size: 28px;"),
-                # Icon on the top-right corner
-                span(
-                  bsicons::bs_icon("exclamation-triangle", fill = MESSAGE_COLOR, size = 40), 
-                  style = "position: absolute; top: 0; right: 0;"
-                )
-              ),
-              # Add a line break using <br>
-              HTML("<br>"),
-              # Add a line break using <br>
-              HTML("<br>"),
-              footer = modalButton("OK"),
-              HTML(paste0("Problem calculating normality!      ",bsicons::bs_icon("emoji-tear",fill = MESSAGE_COLOR,size=20)))
-            ))
+            show_error_modal_with_icon("Problem calculating normality!      ")
           }) # end trycatch
         }
       }# end if there is data
@@ -1477,46 +1383,10 @@ server <- function(input, output,session) {
       return(plot)  # Return the plot to be rendered
     } else if (length(currently_selected_coluns_normality) > 1 && input$plot_type == "normality_diagnosis") {
       # Handle error
-      showModal(modalDialog(
-        # Title and icon together in the same div, so we can control their position
-        div(
-          style = "position: relative;",  # Relative positioning to align the title and icon
-          # Title on the left
-          span("Info", style = "font-size: 28px;"),
-          # Icon on the top-right corner
-          span(
-            bsicons::bs_icon("exclamation-triangle", fill = MESSAGE_COLOR, size = 40), 
-            style = "position: absolute; top: 0; right: 0;"
-          )
-        ),
-        # Add a line break using <br>
-        HTML("<br>"),
-        # Add a line break using <br>
-        HTML("<br>"),
-        footer = modalButton("OK"),
-        HTML(paste0("For normality_diagnosis plot,<br>select only one variable at a time."))
-      ))
+      show_error_modal_no_icon("For normality_diagnosis plot,<br>select only one variable at a time.")
     } else {
       # Handle error
-      showModal(modalDialog(
-        # Title and icon together in the same div, so we can control their position
-        div(
-          style = "position: relative;",  # Relative positioning to align the title and icon
-          # Title on the left
-          span("Info", style = "font-size: 28px;"),
-          # Icon on the top-right corner
-          span(
-            bsicons::bs_icon("exclamation-triangle", fill = MESSAGE_COLOR, size = 40), 
-            style = "position: absolute; top: 0; right: 0;"
-          )
-        ),
-        # Add a line break using <br>
-        HTML("<br>"),
-        # Add a line break using <br>
-        HTML("<br>"),
-        footer = modalButton("OK"),
-        HTML(paste0("Select max 6 variables at a time."))
-      ))
+      show_error_modal_no_icon("Select max 6 variables at a time.")
     }
   }) # end render plot
   
@@ -1617,25 +1487,7 @@ server <- function(input, output,session) {
         correlation_result(corr_matrix_result)
       }, error = function(e) {
         # Handle error
-        showModal(modalDialog(
-          # Title and icon together in the same div, so we can control their position
-          div(
-            style = "position: relative;",  # Relative positioning to align the title and icon
-            # Title on the left
-            span("Info", style = "font-size: 28px;"),
-            # Icon on the top-right corner
-            span(
-              bsicons::bs_icon("exclamation-triangle", fill = MESSAGE_COLOR, size = 40), 
-              style = "position: absolute; top: 0; right: 0;"
-            )
-          ),
-          # Add a line break using <br>
-          HTML("<br>"),
-          # Add a line break using <br>
-          HTML("<br>"),
-          footer = modalButton("OK"),
-          HTML(paste0("Problem calculating correlation!<br>Try different variables.     ",bsicons::bs_icon("emoji-tear",fill = MESSAGE_COLOR,size=20)))
-        ))
+        show_error_modal_with_icon("Problem calculating correlation!<br>Try different variables.     ")
       }) # end trycatch
     } # end if columns selected
   })
@@ -1683,47 +1535,11 @@ server <- function(input, output,session) {
         updateNumericInput(session, "cor_hclust_clusters", value = no_clust)
       } # end if we got the result
       else {
-        showModal(modalDialog(
-          # Title and icon together in the same div, so we can control their position
-          div(
-            style = "position: relative;",  # Relative positioning to align the title and icon
-            # Title on the left
-            span("Info", style = "font-size: 28px;"),
-            # Icon on the top-right corner
-            span(
-              bsicons::bs_icon("exclamation-triangle", fill = MESSAGE_COLOR, size = 40), 
-              style = "position: absolute; top: 0; right: 0;"
-            )
-          ),
-          # Add a line break using <br>
-          HTML("<br>"),
-          # Add a line break using <br>
-          HTML("<br>"),
-          footer = modalButton("OK"),
-          HTML(paste0("Problem calculating optimal number of clusters.     ",bsicons::bs_icon("emoji-tear",fill = MESSAGE_COLOR,size=20)))
-        ))
+        show_error_modal_with_icon("Problem calculating optimal number of clusters.     ")
       }
     } # end if columns were selected
     else {
-      showModal(modalDialog(
-        # Title and icon together in the same div, so we can control their position
-        div(
-          style = "position: relative;",  # Relative positioning to align the title and icon
-          # Title on the left
-          span("Info", style = "font-size: 28px;"),
-          # Icon on the top-right corner
-          span(
-            bsicons::bs_icon("exclamation-triangle", fill = MESSAGE_COLOR, size = 40), 
-            style = "position: absolute; top: 0; right: 0;"
-          )
-        ),
-        # Add a line break using <br>
-        HTML("<br>"),
-        # Add a line break using <br>
-        HTML("<br>"),
-        footer = modalButton("OK"),
-        HTML("Please select variables first.")
-      ))
+      show_error_modal_no_icon("Please select variables first.")
     }
   })
   ####################################################
@@ -1875,25 +1691,7 @@ server <- function(input, output,session) {
       if (length(test_columns) <= MAX_FOR_PREVIEW_PLOT) {
         if (group_col[1]== "" && test == "Independent two-sample t-test") {
           # Handle error
-          showModal(modalDialog(
-            # Title and icon together in the same div, so we can control their position
-            div(
-              style = "position: relative;",  # Relative positioning to align the title and icon
-              # Title on the left
-              span("Info", style = "font-size: 28px;"),
-              # Icon on the top-right corner
-              span(
-                bsicons::bs_icon("exclamation-triangle", fill = MESSAGE_COLOR, size = 40), 
-                style = "position: absolute; top: 0; right: 0;"
-              )
-            ),
-            # Add a line break using <br>
-            HTML("<br>"),
-            # Add a line break using <br>
-            HTML("<br>"),
-            footer = modalButton("OK"),
-            HTML("Select one group column for the test.")
-          )) # end message
+          show_error_modal_no_icon("Select one group column for the test.")
         } else {
           if ((test == "Paired t-test" && by_group == FALSE && length(test_columns) == 2) || 
               (test == "Paired t-test" && by_group == TRUE && length(test_columns) == 2) ||
@@ -1931,97 +1729,25 @@ server <- function(input, output,session) {
               # create plot
             }, error = function(e) {
               # Handle error
-              showModal(modalDialog(
-                # Title and icon together in the same div, so we can control their position
-                div(
-                  style = "position: relative;",  # Relative positioning to align the title and icon
-                  # Title on the left
-                  span("Info", style = "font-size: 28px;"),
-                  # Icon on the top-right corner
-                  span(
-                    bsicons::bs_icon("exclamation-triangle", fill = MESSAGE_COLOR, size = 40), 
-                    style = "position: absolute; top: 0; right: 0;"
-                  )
-                ),
-                # Add a line break using <br>
-                HTML("<br>"),
-                # Add a line break using <br>
-                HTML("<br>"),
-                footer = modalButton("OK"),
-                HTML(paste0("Problem calculating test results!<br>Try different variables.     ",bsicons::bs_icon("emoji-tear",fill = MESSAGE_COLOR,size=20)))
-              ))
+              show_error_modal_with_icon("Problem calculating test results!<br>Try different variables.     ")
             }) # end trycatch
           } # end if paired t-test conditions passed
           else {
             # Handle error
-            showModal(modalDialog(
-              # Title and icon together in the same div, so we can control their position
-              div(
-                style = "position: relative;",  # Relative positioning to align the title and icon
-                # Title on the left
-                span("Info", style = "font-size: 28px;"),
-                # Icon on the top-right corner
-                span(
-                  bsicons::bs_icon("exclamation-triangle", fill = MESSAGE_COLOR, size = 40), 
-                  style = "position: absolute; top: 0; right: 0;"
-                )
-              ),
-              # Add a line break using <br>
-              HTML("<br>"),
-              # Add a line break using <br>
-              HTML("<br>"),
-              footer = modalButton("OK"),
-              HTML("For Paired t-test:<br><br>
+            show_error_modal_no_icon("For Paired t-test:<br><br>
                    If one variable is selected,<br>another variable with group must be selected.<br>
                    If two variables are selected,<br>the test can be run either between the selected variables,
                    or additionally: by group.")
-            )) # end message
             }
         } # end else
     } # end if max for plot satisfied
     else {
       # show error that too many columns
-      showModal(modalDialog(
-        # Title and icon together in the same div, so we can control their position
-        div(
-          style = "position: relative;",  # Relative positioning to align the title and icon
-          # Title on the left
-          span("Info", style = "font-size: 28px;"),
-          # Icon on the top-right corner
-          span(
-            bsicons::bs_icon("exclamation-triangle", fill = MESSAGE_COLOR, size = 40), 
-            style = "position: absolute; top: 0; right: 0;"
-          )
-        ),
-        # Add a line break using <br>
-        HTML("<br>"),
-        # Add a line break using <br>
-        HTML("<br>"),
-        footer = modalButton("OK"),
-        HTML(paste0("Max 6 variables at a time allowed.     ",bsicons::bs_icon("emoji-tear",fill = MESSAGE_COLOR,size=20)))
-      ))
+      show_error_modal_with_icon("Max 6 variables at a time allowed.     ")
     }
     } else { # no column selected
       # Handle error
-      showModal(modalDialog(
-        # Title and icon together in the same div, so we can control their position
-        div(
-          style = "position: relative;",  # Relative positioning to align the title and icon
-          # Title on the left
-          span("Info", style = "font-size: 28px;"),
-          # Icon on the top-right corner
-          span(
-            bsicons::bs_icon("exclamation-triangle", fill = MESSAGE_COLOR, size = 40), 
-            style = "position: absolute; top: 0; right: 0;"
-          )
-        ),
-        # Add a line break using <br>
-        HTML("<br>"),
-        # Add a line break using <br>
-        HTML("<br>"),
-        footer = modalButton("OK"),
-        HTML("Select at least one variable for the test.")
-      )) # end message
+      show_error_modal_no_icon("Select at least one variable for the test.")
         }
   }) # end run parametric means
   
@@ -2155,25 +1881,7 @@ server <- function(input, output,session) {
       if (length(test_columns) <= MAX_FOR_PREVIEW_PLOT) {
         if ((length(test_columns) < 2 && by_group == FALSE) || (length(test_columns) < 2 && group_col[1] == "")) {
           # Handle error
-          showModal(modalDialog(
-            # Title and icon together in the same div, so we can control their position
-            div(
-              style = "position: relative;",  # Relative positioning to align the title and icon
-              # Title on the left
-              span("Info", style = "font-size: 28px;"),
-              # Icon on the top-right corner
-              span(
-                bsicons::bs_icon("exclamation-triangle", fill = MESSAGE_COLOR, size = 40), 
-                style = "position: absolute; top: 0; right: 0;"
-              )
-            ),
-            # Add a line break using <br>
-            HTML("<br>"),
-            # Add a line break using <br>
-            HTML("<br>"),
-            footer = modalButton("OK"),
-            HTML(paste0("Remember to select group column."))
-          ))
+          show_error_modal_no_icon("Remember to select group column.")
         } else {
           tryCatch({
             # print(group_col)
@@ -2200,72 +1908,18 @@ server <- function(input, output,session) {
             })
           }, error = function(e) {
             # Handle error
-            showModal(modalDialog(
-              # Title and icon together in the same div, so we can control their position
-              div(
-                style = "position: relative;",  # Relative positioning to align the title and icon
-                # Title on the left
-                span("Info", style = "font-size: 28px;"),
-                # Icon on the top-right corner
-                span(
-                  bsicons::bs_icon("exclamation-triangle", fill = MESSAGE_COLOR, size = 40), 
-                  style = "position: absolute; top: 0; right: 0;"
-                )
-              ),
-              # Add a line break using <br>
-              HTML("<br>"),
-              # Add a line break using <br>
-              HTML("<br>"),
-              footer = modalButton("OK"),
-              HTML(paste0("Problem calculating test results!<br>Try different variables.     ",bsicons::bs_icon("emoji-tear",fill = MESSAGE_COLOR,size=20)))
-            ))
+            show_error_modal_with_icon("Problem calculating test results!<br>Try different variables.     ")
           }) # end trycatch
         } # end else (if the group column was selected)
     } # end if max number od selected columns satisfied
     else {
       # show message
-      showModal(modalDialog(
-        # Title and icon together in the same div, so we can control their position
-        div(
-          style = "position: relative;",  # Relative positioning to align the title and icon
-          # Title on the left
-          span("Info", style = "font-size: 28px;"),
-          # Icon on the top-right corner
-          span(
-            bsicons::bs_icon("exclamation-triangle", fill = MESSAGE_COLOR, size = 40), 
-            style = "position: absolute; top: 0; right: 0;"
-          )
-        ),
-        # Add a line break using <br>
-        HTML("<br>"),
-        # Add a line break using <br>
-        HTML("<br>"),
-        footer = modalButton("OK"),
-        HTML(paste0("Max 6 variables at a time allowed.     ",bsicons::bs_icon("emoji-tear",fill = MESSAGE_COLOR,size=20)))
-      ))
+      show_error_modal_with_icon("Max 6 variables at a time allowed.     ")
     }
     } # end if there were test columns selected
     else { # no columns selected
       # Handle error
-      showModal(modalDialog(
-        # Title and icon together in the same div, so we can control their position
-        div(
-          style = "position: relative;",  # Relative positioning to align the title and icon
-          # Title on the left
-          span("Info", style = "font-size: 28px;"),
-          # Icon on the top-right corner
-          span(
-            bsicons::bs_icon("exclamation-triangle", fill = MESSAGE_COLOR, size = 40), 
-            style = "position: absolute; top: 0; right: 0;"
-          )
-        ),
-        # Add a line break using <br>
-        HTML("<br>"),
-        # Add a line break using <br>
-        HTML("<br>"),
-        footer = modalButton("OK"),
-        HTML("Select at least one variable for the test.")
-      )) # end message
+      show_error_modal_no_icon("Select at least one variable for the test.")
     }
   }) # end observe nonparametric
   

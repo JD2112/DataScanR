@@ -1321,8 +1321,8 @@ plot_means_parametric <- function(df,
     p <- ggplot(test_result, aes(x = vars, y = estimate)) +
       geom_point() +
       geom_errorbar(data = test_result_filtered, aes(
-        ymin = ifelse(is.infinite(lowCI), estimate - 0.5, lowCI),  # Set a placeholder position for lowCI Inf
-        ymax = ifelse(is.infinite(uppCI), estimate + 0.5, uppCI)   # Set a placeholder position for uppCI Inf
+        ymin = ifelse(is.infinite(lowCI), estimate - 0.3, lowCI),  # Set a placeholder position for lowCI Inf
+        ymax = ifelse(is.infinite(uppCI), estimate + 0.3, uppCI)   # Set a placeholder position for uppCI Inf
       ), 
       width = 0.1
       ) +
@@ -1341,8 +1341,8 @@ plot_means_parametric <- function(df,
       geom_text(
         data = test_result_filtered, 
         aes(
-          y = ifelse(is.infinite(uppCI), estimate + 0.5, 
-                     ifelse(is.infinite(lowCI), estimate - 0.5, uppCI + 0.1)),
+          y = ifelse(is.infinite(uppCI), estimate + 0.3, 
+                     ifelse(is.infinite(lowCI), estimate - 0.3, uppCI + 0.1)),
           label = ifelse(is.infinite(uppCI), "Inf", 
                          ifelse(is.infinite(lowCI), "Inf", paste("p =", round(p_value, 3))))
         ),
@@ -1448,7 +1448,8 @@ plot_means_parametric <- function(df,
             mutate(id = as.integer((row_number() + 1) %/% 2)) %>%  # Assign the same ID to every two rows within each group
             ungroup()
           # print(filtered_df)
-          
+          # Modify the factor column by adding the column name as prefix
+          filtered_df[[my_group_col]] <- factor(paste(my_group_col, filtered_df[[my_group_col]], sep = "_"))
           # Create the boxplot, faceting by my_group_col and grouping by Variable
           p <- ggpaired(
             filtered_df,
