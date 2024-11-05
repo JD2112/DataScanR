@@ -93,9 +93,9 @@ sidebar_data <- layout_sidebar(
     actionButton("restoreOriginalButton", "*Restore Original Data")  # restore button
   ), # end sidebar
   htmlOutput("data_table_title"),  # Output placeholder for the title
-  # Download button
-  # Output to dynamically show/hide the button based on reactive data
-  uiOutput("download_button_ui"),
+  # # Download button
+  # # Output to dynamically show/hide the button based on reactive data
+  # uiOutput("download_button_ui"),
   card_body(DT::dataTableOutput("data_table") ) # Output placeholder for the interactive table
 ) # end layout_sidebar
 ###########################
@@ -104,7 +104,20 @@ cards_cleaning_data <- list(
   card(
     full_screen = TRUE,
     card_header("Data"),
-    sidebar_data
+    sidebar_data,
+    # Card footer with download button
+    card_footer(
+      div(
+        class = "d-flex justify-content-end align-items-center",  # Flexbox to align items to the right and center vertically
+        style = "width: 100%;",
+        
+        # Download button
+        # Output to dynamically show/hide the button based on reactive data
+        uiOutput("download_button_ui", style = "margin-right: 10px;"),
+        uiOutput("create_report_button_ui")
+      ),
+      style = "padding: 10px;"
+    ) # end card footer
   ), # end card Data
   card(
     full_screen = TRUE,
@@ -992,6 +1005,44 @@ server <- function(input, output,session) {
       }
     })
   
+  # Dynamically show the report button only when display_data is available
+  output$create_report_button_ui <- renderUI({
+    if (!is.null(display_data()) && nrow(display_data()) > 0) {
+      # If data is available, show the download button
+      downloadButton("create_report_btn", "Save Interactive Report")
+    }
+  })
+  
+  # Define download handler for the html file
+  output$create_report_btn <- downloadHandler(
+    filename = function() { 
+      paste("diagnostic_report_", Sys.Date(), ".html", sep="")
+    },
+    content = function(file) {
+      # Create the HTML report and save it to a temporary file
+      temp_file <- tempfile(fileext = ".html")
+      data2save <- display_data()
+      # Show a loading message or spinner while processing
+      withProgress(message = 'Creating your report. This can take a while...', value = 0, {
+        # Increment the progress
+        incProgress(0.5)  # For illustration, this would be updated in a real scenario
+        # Generate the report
+        diagnose_web_report(data2save,
+                            subtitle = "Report",
+                            output_dir = dirname(temp_file),  # Save to temporary directory
+                            output_file = basename(temp_file), # Temporary file name
+                            theme = "blue",
+                            browse = FALSE
+        )
+        
+        # Copy the temp report to the actual file path provided by downloadHandler
+        file.copy(temp_file, file)
+        
+        # Increment the progress to indicate completion
+        incProgress(0.5)  # Complete progress
+      }) # end content
+    })
+  
   # perform data diagnostics
   observeEvent(input$diagnoseButton, {
     req(modified_data())  # Ensure data is available
@@ -1119,12 +1170,13 @@ server <- function(input, output,session) {
     DT::datatable(
       table_data,
       options = list(
-        pageLength = 20,   # Show n rows by default
+        pageLength = 15,   # Show n rows by default
         autoWidth = TRUE,  # Auto-adjust column width
         dom = 'frtiBp',    # Search box, pagination, etc.
         buttons = c( 'csv', 'excel', 'pdf')
       ),
-      rownames = FALSE,      extensions = "Buttons"
+      rownames = FALSE,      
+      extensions = "Buttons"
     )
   }) # end table
   ####################################################
