@@ -9,11 +9,10 @@ library(DT)
 library(ggplot2)
 library(plotly)
 library(bslib)
-# library(rlang)
-# library(curl)
 library(data.table)
 library(dlookr)
 library(tidyr)
+library(shinycssloaders)
 
 SIDEBAR_WIDTH_CLEAN_DATA = 200
 SHAPIRO_THRESHOLD = 2000 # max rows to use shapiro for normality
@@ -34,12 +33,12 @@ sidebar_data <- layout_sidebar(
     actionButton("diagnoseButton", "Diagnose Current Data"), # button to show diagnostics
     actionButton("summarizeButton", "Summarize Current Data"), # button to show summary stats
     actionButton("showDataButton", "Show Current Data"), # button to show summary stats
-    selectInput("columns_data", "Select Columns:",  # Predefine an empty selectInput for columns
+    selectInput("columns_data", "Select Variables:",  # Predefine an empty selectInput for columns
                 choices = c(),  # Empty choices initially
                 multiple = TRUE
     ),
-    actionButton("removeColButton", "Remove Selected Columns"),  # remove button
-    actionButton("showColButton", "Show Selected Columns"),  # show selected button
+    actionButton("removeColButton", "Remove Selected Variables"),  # remove button
+    actionButton("showColButton", "Show Selected Variables"),  # show selected button
     actionButton("summarizeSelectedButton", "Summarize Selected Data"), # button to show summary stats
     actionButton("restoreOriginalButton", "*Restore Original Data")  # restore button
   ), # end sidebar
@@ -128,11 +127,33 @@ cards_normality <- list(
       # Create a fluid row for inputs above the plot
       fluidRow(
         column(12, 
-               selectInput("normality_type",
-                           label = "Select Normality Method",
-                           choices = c("Shapiro-Wilk","Kolmogorov-Smirnov"),
-                           selected = "Shapiro-Wilk",
-                           multiple = FALSE), # dropdown with available plot types
+               # Wrapping text and icon in tagList to align them
+               tagList(
+                 # Add the selectInput with label and info button
+                 tags$label(
+                   "Select Normality Method:", 
+                   class = "normality_method_label",  # Assign the custom class here
+                   style = "display: inline;",
+                   tags$i(
+                     class = "bi bi-info-circle",  # Bootstrap info-circle icon
+                     style = "cursor: pointer; padding-left: 5px;",
+                     `data-bs-toggle` = "tooltip",  # Tooltip attribute
+                     `data-bs-placement` = "right",
+                     title = NORMAITY_METHOD_INFO,
+                     `data-bs-html` = "true"  # Enable HTML content in tooltip
+                   )  # End of tags$i (info icon for Select Test)
+                 ),  # End of tags$label
+                 selectInput("normality_type",
+                             label = NULL,
+                             choices = c("Shapiro-Wilk","Kolmogorov-Smirnov"),
+                             selected = "Shapiro-Wilk",
+                             multiple = FALSE) # dropdown with available plot types
+               ), # end tagList
+               # # Add text between the selectInput and plot
+               # div(
+               #   HTML("Use Search field to find and select the rows<br>with the variables to show.<br><br>"), 
+               #   style = "margin-top: 0px; font-size: 12px;"  # Adjust styling as needed
+               # ),
                uiOutput("deselect_button_ui") # show deselect button after the data is loaded
         )
       )
@@ -147,11 +168,7 @@ cards_normality <- list(
       class = "table-normality"
     )  # end table div
   ), # end card Data
-  # card(
-  #   full_screen = TRUE,
-  #   card_header("Plot"),
-  #   plotOutput("plot_normality") 
-  # )
+  
   card(
     full_screen = TRUE,
     card_header("Plot"),
@@ -160,19 +177,31 @@ cards_normality <- list(
       # Create a fluid row for inputs above the plot
       fluidRow(
         column(12, 
-               selectInput("plot_type",
-                           label = "Select Plot Type",
-                           choices = c("box","violin","histogram","box_distribution","violin_box","normality_diagnosis"),
-                           selected = "violin_box",
-                           multiple = FALSE), # dropdown with available plot types
+               # Wrapping text and icon in tagList to align them
+               tagList(
+                 # Add the selectInput with label and info button
+                 tags$label(
+                   "Select Plot Type:", 
+                   class = "preview_normality_plot_label",  # Assign the custom class here
+                   style = "display: inline;",
+                   tags$i(
+                     class = "bi bi-info-circle",  # Bootstrap info-circle icon
+                     style = "cursor: pointer; padding-left: 5px;",
+                     `data-bs-toggle` = "tooltip",  # Tooltip attribute
+                     `data-bs-placement` = "right",
+                     title = PLOT_NOTMALITY_INFO,
+                     `data-bs-html` = "true"  # Enable HTML content in tooltip
+                   )  # End of tags$i (info icon for Select Test)
+                 ),  # End of tags$label
+                 selectInput("plot_type",
+                             label = NULL, # defined above
+                             choices = c("box","violin","histogram","box_distribution","violin_box","normality_diagnosis"),
+                             selected = "violin_box",
+                             multiple = FALSE)
+               ), # end tagList
         )
       )
     ),  # end inputs div
-    # Add text between the selectInput and plot
-    div(
-      p("*In the table on the left, select the rows with the variables to show."), 
-      style = "margin-top: 0px; font-size: 12px;"  # Adjust styling as needed
-    ),
     # Output for the plot below the inputs
     div(
       style = "flex-grow: 1; display: flex; flex-direction: column;",  # Allow the div to grow and fill remaining space
@@ -181,7 +210,33 @@ cards_normality <- list(
         style = "flex-grow: 1;"  # Make the table body expand
       ),
       class = "plot-normality"
-    )  # end plot div
+    ),  # end plot div
+    # Card footer with download button
+    card_footer(
+      div(
+        class = "d-flex justify-content-end align-items-center",  # Flexbox to align items to the right and center vertically
+        style = "width: 100%;",
+        
+        # Add radio buttons
+        radioButtons(
+          inputId = "normality_image_format",
+          label = NULL,
+          choices = c("PNG" = "png", "JPEG" = "jpeg", "SVG" = "svg", "TIFF" = "tiff", "PDF" = "pdf"),
+          inline = TRUE,  # Show radio buttons inline
+          selected = "png"
+        ),
+        
+        # Add download button
+        # UI output for the download button
+        uiOutput("download_normality_button_ui")
+        # downloadButton(
+        #   "download_normality_plot",
+        #   label = "Download Plot",
+        #   class = "btn btn-primary ms-3"  # Optional: Bootstrap styling, with margin on the left
+        # )
+      ),
+      style = "padding: 10px;"
+    ) # end card footer
   )# end card
 ) # end cards
 ########################################################
@@ -192,7 +247,7 @@ sidebar_correlation <- layout_sidebar(
   sidebar = sidebar(
     # title = "Data Viewing",
     width = SIDEBAR_WIDTH_CLEAN_DATA,
-    selectInput("columns_correlation", "Select Columns:",  # Predefine an empty selectInput for columns
+    selectInput("columns_correlation", "Select Variables:",  # Predefine an empty selectInput for columns
                 choices = c(),  # Empty choices initially
                 multiple = TRUE
     ),
@@ -239,7 +294,26 @@ cards_correlation <- list(
                            selected = "lower",
                            multiple = FALSE), # dropdown with available plot types
                textInput("cor_plot_title", "Title", value = "Correlation matrix"),
-               numericInput("sig_level", "Significance Level:", value = 1, min = 0, max = 1, step = 0.001),
+               ######################################################################
+               # Wrapping text and icon in tagList to align them
+               tagList(
+                 # Add the selectInput with label and info button
+                 tags$label(
+                   "Significance Level:", 
+                   class = "significance_level_corr_label",  # Assign the custom class here
+                   style = "display: inline;",
+                   tags$i(
+                     class = "bi bi-info-circle",  # Bootstrap info-circle icon
+                     style = "cursor: pointer; padding-left: 5px;",
+                     `data-bs-toggle` = "tooltip",  # Tooltip attribute
+                     `data-bs-placement` = "right",
+                     title = SIGNIFICANCE_LEVEL_CORR_INFO,
+                     `data-bs-html` = "true"  # Enable HTML content in tooltip
+                   )  # End of tags$i (info icon for Select Test)
+                 ),  # End of tags$label
+               ######################################################################
+               numericInput("sig_level", NULL, value = 1, min = 0, max = 1, step = 0.001)
+               ), # end tagList
                # Add a checkbox for advanced options
                checkboxInput("show_advanced_correlation_options", "Show Advanced Options", value = FALSE)
         ), # end column
@@ -247,6 +321,11 @@ cards_correlation <- list(
                # Conditionally show UI elements based on checkbox value
                conditionalPanel(
                  condition = "input.show_advanced_correlation_options == true",
+                 selectInput("corr_col_pos", "Where to position color bar:",  
+                             choices = c("right","bottom","none"),  
+                             selected = "bottom",
+                             multiple = FALSE
+                 ),
                  selectInput("correlation_order", "Order Variables:",  
                              choices = c("original","hclust","AOE","FPC","alphabet"),  
                              selected = "original",
@@ -257,7 +336,14 @@ cards_correlation <- list(
                              selected = "complete",
                              multiple = FALSE
                  ),
-                 numericInput("cor_hclust_clusters", "No. of clusters for hclust", value = 2)
+                 ############################################################################
+                 # Wrapping numericInput and actionButton in a div
+                 div(class = "correlation_clusters_input_group",
+                     tags$label("No. of clusters for hclust", class = "no_clusters_label"),
+                     actionButton("get_no_clusters_btn", "Calculate", class = "get_no_clusters_btn",
+                                  title = "This can take a moment. It will calculate the optimal number of clusters."),
+                     numericInput("cor_hclust_clusters", NULL, value = 2)
+                 )
                ) # end conditional panel 
         ) # end column
         
@@ -273,8 +359,29 @@ cards_correlation <- list(
           plotOutput("plot_correlation"),
           style = "flex-grow: 1;"  # Make the table body expand
         )
-    ) # end div
-  )
+    ), # end div
+    # Card footer with download button
+    card_footer(
+      div(
+        class = "d-flex justify-content-end align-items-center",  # Flexbox to align items to the right and center vertically
+        style = "width: 100%;",
+        
+        # Add radio buttons
+        radioButtons(
+          inputId = "correlation_image_format",
+          label = NULL,
+          choices = c("PNG" = "png", "JPEG" = "jpeg", "SVG" = "svg", "TIFF" = "tiff", "PDF" = "pdf"),
+          inline = TRUE,  # Show radio buttons inline
+          selected = "png"
+        ),
+        
+        # Add download button
+        # UI output for the download button
+        uiOutput("download_correlation_button_ui")
+      ),
+      style = "padding: 10px;"
+    ) # end footer
+  ) # end card
 ) # end cards
 ########################################################
 # TESTS TAB
@@ -290,11 +397,28 @@ parametric_view <- sidebarLayout(
         value ="Compare Means",
         # Add your sidebar content here, such as inputs or filters
         # Add text before the first input
-        p("Compare Means"), 
-        selectInput("parametric_test_mean", "Select Test:", 
+        p("Compare Means"),
+        # Wrapping text and icon in tagList to align them
+        tagList(
+          # Add the selectInput with label and info button
+          tags$label(
+            "Select Test:", 
+            class = "parmam_mean_test_label",  # Assign the custom class here
+            style = "display: inline;",
+            tags$i(
+              class = "bi bi-info-circle",  # Bootstrap info-circle icon
+              style = "cursor: pointer; padding-left: 5px;",
+              `data-bs-toggle` = "tooltip",  # Tooltip attribute
+              `data-bs-placement` = "right",
+              title = PARAMETRIC_TEST_MEAN_INFO,
+              `data-bs-html` = "true"  # Enable HTML content in tooltip
+            )  # End of tags$i (info icon for Select Test)
+          ),  # End of tags$label
+        selectInput("parametric_test_mean", NULL, 
                     choices = c("One sample t-test", "Independent two-sample t-test","Paired t-test"),
-                    selected = "One sample t-test"),
-        selectInput("columns_test_param", "Select Columns:",  # Predefine an empty selectInput for columns
+                    selected = "One sample t-test")
+        ), # end tagList
+        selectInput("columns_test_param", "Select Variables:",  # Predefine an empty selectInput for columns
                     choices = c(),  # Empty choices initially
                     multiple = TRUE
         ),
@@ -351,7 +475,7 @@ parametric_view <- sidebarLayout(
         tabPanel("Plot",
                  # Main panel only with inputs and plot
                  div(
-                   textInput("param_test_plot_title", "Title", value = "")
+                   textInput("param_test_plot_title", "Add Title", value = "")
                  ),  # end inputs div
                  div(
                    style = "flex-grow: 1; display: flex; flex-direction: column;",  # Allow the div to grow and fill remaining space
@@ -359,8 +483,29 @@ parametric_view <- sidebarLayout(
                      plotOutput("plot_parametric_test"),
                      style = "flex-grow: 1;"  # Make the table body expand
                    )
-                 ) # end div
-        )
+                 ), # end div
+                 # Card footer with download button
+                 card_footer(
+                   div(
+                     class = "d-flex justify-content-end align-items-center",  # Flexbox to align items to the right and center vertically
+                     style = "width: 100%;",
+                     
+                     # Add radio buttons
+                     radioButtons(
+                       inputId = "param_image_format",
+                       label = NULL,
+                       choices = c("PNG" = "png", "JPEG" = "jpeg", "SVG" = "svg", "TIFF" = "tiff", "PDF" = "pdf"),
+                       inline = TRUE,  # Show radio buttons inline
+                       selected = "png"
+                     ),
+                     
+                     # Add download button
+                     # UI output for the download button
+                     uiOutput("download_param_button_ui")
+                   ),
+                   style = "padding: 10px;"
+                 ) # end footer
+        ) # end tabPanel
       )  # End of tabsetPanel
     ) # end card
   ) # end mainPanel
@@ -378,10 +523,27 @@ non_parametric_view <- sidebarLayout(
         # Add your sidebar content here, such as inputs or filters
         # Add text before the first input
         p("Compare Medians"), 
-        selectInput("nonparametric_test_median", "Select Test:", 
-                    choices = c("Wilcoxon rank-sum test", "Wilcoxon signed-rank test","Kruskal-Wallis test", "Friedman test"),
-                    selected = "Wilcoxon rank-sum test"),
-        selectInput("columns_test_nonparam", "Select Columns:",  # Predefine an empty selectInput for columns
+        # Wrapping text and icon in tagList to align them
+        tagList(
+          # Add the selectInput with label and info button
+          tags$label(
+            "Select Test:", 
+            class = "nonparmam_mean_test_label",  # Assign the custom class here
+            style = "display: inline;",
+            tags$i(
+              class = "bi bi-info-circle",  # Bootstrap info-circle icon
+              style = "cursor: pointer; padding-left: 5px;",
+              `data-bs-toggle` = "tooltip",  # Tooltip attribute
+              `data-bs-placement` = "right",
+              title = NONPARAMETRIC_TEST_MEAN_INFO,
+              `data-bs-html` = "true"  # Enable HTML content in tooltip
+            )  # End of tags$i (info icon for Select Test)
+          ),  # End of tags$label
+        selectInput("nonparametric_test_median", NULL, # label defined above 
+                    choices = c("Wilcoxon rank-sum test", "Wilcoxon signed-rank test","Kruskal-Wallis test"),
+                    selected = "Wilcoxon rank-sum test")
+        ), # end tagList
+        selectInput("columns_test_nonparam", "Select Variables:",  # Predefine an empty selectInput for columns
                     choices = c(),  # Empty choices initially
                     multiple = TRUE
         ),
@@ -434,12 +596,36 @@ non_parametric_view <- sidebarLayout(
         ),
         tabPanel("Plot",
                  div(
+                   textInput("nonparam_test_plot_title", "Add Title", value = "")
+                 ),  # end inputs div
+                 div(
                    style = "flex-grow: 1; display: flex; flex-direction: column;",  # Allow the div to grow and fill remaining space
                    card_body(
                      plotOutput("plot_nonparametric_test"),
                      style = "flex-grow: 1;"  # Make the table body expand
                    )
-                 ) # end div
+                 ), # end div
+                 # Card footer with download button
+                 card_footer(
+                   div(
+                     class = "d-flex justify-content-end align-items-center",  # Flexbox to align items to the right and center vertically
+                     style = "width: 100%;",
+                     
+                     # Add radio buttons
+                     radioButtons(
+                       inputId = "nonparam_image_format",
+                       label = NULL,
+                       choices = c("PNG" = "png", "JPEG" = "jpeg", "SVG" = "svg", "TIFF" = "tiff", "PDF" = "pdf"),
+                       inline = TRUE,  # Show radio buttons inline
+                       selected = "png"
+                     ),
+                     
+                     # Add download button
+                     # UI output for the download button
+                     uiOutput("download_nonparam_button_ui")
+                   ),
+                   style = "padding: 10px;"
+                 )
         )
       )  # End of tabsetPanel
     ) # end card
@@ -450,8 +636,11 @@ non_parametric_view <- sidebarLayout(
 ui <- page_navbar(
   title = "Exploratory Data Analysis",
   id = "nav_tabs",  # Set an ID to observe selected panel
+  theme = bs_theme(version = 5),  # Use Bootstrap 5 for compatibility with tooltips
   # Add custom CSS for ensuring modal is always in front
   # Custom CSS to lower the full-screen card z-index
+  # Load Bootstrap Icons
+  tags$link(rel = "stylesheet", href = "https://cdnjs.cloudflare.com/ajax/libs/bootstrap-icons/1.5.0/font/bootstrap-icons.min.css"),
   tags$head(
     # CSS to force modal z-index higher
     tags$style(HTML("
@@ -549,6 +738,58 @@ ui <- page_navbar(
         background-color: white; 
         color: black; 
       }
+      
+      .tooltip-inner {
+        color: black !important;          /* Black text color */
+        background-color: white !important; /* White background color */
+        border: 1px solid #ccc;            /* Optional: Add a light border */
+      }
+      .tooltip.bs-tooltip-end .tooltip-arrow::before,
+      .tooltip.bs-tooltip-right .tooltip-arrow::before {
+        border-right-color: white !important; /* White arrow for right-aligned tooltips */
+      }
+      .tooltip.bs-tooltip-start .tooltip-arrow::before,
+      .tooltip.bs-tooltip-left .tooltip-arrow::before {
+        border-left-color: white !important; /* White arrow for left-aligned tooltips */
+      }
+      .tooltip.bs-tooltip-top .tooltip-arrow::before {
+        border-top-color: white !important;  /* White arrow for top-aligned tooltips */
+      }
+      .tooltip.bs-tooltip-bottom .tooltip-arrow::before {
+        border-bottom-color: white !important; /* White arrow for bottom-aligned tooltips */
+      }
+      
+      .parmam_mean_test_label {
+      font-size: 12px;  /* Adjust font size here */
+      }
+      .nonparmam_mean_test_label {
+        font-size: 12px;  /* Adjust font size here */
+      }
+      .normality_method_label {
+        font-size: 12px;
+      }
+      .preview_normality_plot_label {
+        font-size: 12px;  /* Adjust font size here */
+      }
+      .significance_level_corr_label {
+        font-size: 12px;
+      }
+      .correlation_clusters_input_groupp {
+      display: flex;
+      align-items: center;
+      }
+      .no_clusters_label {
+        margin-right: 5px;
+        font-size: 12px;
+      }
+      .get_no_clusters_btn {
+        padding: 0px 5px;
+        height: 20px;
+        font-size: 12px;
+        cursor: pointer;
+        margin-bottom: 5px;  /* Space specifically beneath the button */
+      }
+      
     ")),
     
     # jQuery for dynamically adjusting modal and full-screen z-index
@@ -571,6 +812,15 @@ ui <- page_navbar(
           $('.modal-backdrop').css('z-index', 1099);  /* Keep backdrop right below */
         }
       }, 500);  /* Check every 500ms */
+    ")),
+    # Custom JavaScript to initialize tooltips
+    tags$script(HTML("
+      $(document).on('shiny:connected', function() {
+        var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle=\"tooltip\"]'))
+        var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+          return new bootstrap.Tooltip(tooltipTriggerEl)
+        })
+      });
     "))
   ),
   
@@ -584,10 +834,14 @@ ui <- page_navbar(
                            cards_normality[[2]])
   ), # end nav_panel
   nav_panel("Correlation", 
-            layout_columns(cards_correlation[[1]],
-            layout_columns(cards_correlation[[2]],
-                           cards_correlation[[3]], 
-                           col_widths = c(12, 12))# end inner layout
+            layout_columns(layout_columns(cards_correlation[[1]],
+                                          cards_correlation[[2]],
+                                          col_widths = c(12, 12)),
+                                          cards_correlation[[3]]
+            # layout_columns(cards_correlation[[1]],
+            # layout_columns(cards_correlation[[2]],
+            #                cards_correlation[[3]], 
+            #                col_widths = c(12, 12))# end inner layout
             )#end column_layout
   ), # end nav_panel
   nav_panel("Tests", 
@@ -672,7 +926,7 @@ server <- function(input, output,session) {
   output$download_button_ui <- renderUI({
     if (!is.null(display_data()) && nrow(display_data()) > 0) {
       # If data is available, show the download button
-      downloadButton("save_csv", "Download CSV")
+      downloadButton("save_csv", "Download all as CSV")
     }
   })
   
@@ -817,12 +1071,10 @@ server <- function(input, output,session) {
       options = list(
         pageLength = 20,   # Show n rows by default
         autoWidth = TRUE,  # Auto-adjust column width
-        dom = 'frtip'    # Search box, pagination, etc.
-        # buttons = c( 'csv', 'excel', 'pdf')
+        dom = 'frtiBp',    # Search box, pagination, etc.
+        buttons = c( 'csv', 'excel', 'pdf')
       ),
-      rownames = FALSE,
-      selection = 'none'
-      # extensions = "Buttons"
+      rownames = FALSE,      extensions = "Buttons"
     )
   }) # end table
   ####################################################
@@ -985,6 +1237,7 @@ server <- function(input, output,session) {
     } 
   }) 
   ###############################################################################################################
+  # NORMALITY TAB
   # Observe when the selected nav panel changes
   observeEvent(input$nav_tabs, {
     selected_tab <- input$nav_tabs  # Access the currently selected tab
@@ -999,7 +1252,7 @@ server <- function(input, output,session) {
         if (nrow(current_data) < SHAPIRO_THRESHOLD) {
           # Update the dropdown 
           updateSelectInput(session,"normality_type",
-                             label = "Select Normality Method",
+                             label = NULL,
                              choices = c("Shapiro-Wilk","Kolmogorov-Smirnov"),
                              selected = "Shapiro-Wilk")
           tryCatch({
@@ -1034,7 +1287,7 @@ server <- function(input, output,session) {
         } else { # for larger data sets use kolmogorov-Smirnov test to determine normality
           # Update the dropdown 
           updateSelectInput(session,"normality_type",
-                            label = "Select Normality Method",
+                            label = NULL,
                             choices = c("Shapiro-Wilk","Kolmogorov-Smirnov"),
                             selected = "Kolmogorov-Smirnov")
           tryCatch({
@@ -1200,7 +1453,7 @@ server <- function(input, output,session) {
         pageLength = 20,   # Show n rows by default
         autoWidth = TRUE,  # Auto-adjust column width
         dom = 'frtiBp',    # Search box, pagination, etc.
-        buttons = c( 'csv')  # Add export buttons
+        buttons = c( 'csv', 'excel', 'pdf')  # Add export buttons
       ),
       rownames = FALSE,
       selection = 'multiple',
@@ -1264,14 +1517,68 @@ server <- function(input, output,session) {
         footer = modalButton("OK"),
         HTML(paste0("Select max 6 variables at a time."))
       ))
-      # # Create an empty plot
-      # plot.new()  # Start a new plot
-      # # Add text to the plot
-      # text(0.5, 0.5, "Select max 6 variables at a time.", cex = 1.5, col = "red", adj = c(0.5, 0.5))
     }
   }) # end render plot
+  
+  
+  # Conditional rendering of the download button
+  output$download_normality_button_ui <- renderUI({
+    currently_selected_columns_normality <- columns_plot_normality()  # Get the selected columns
+    
+    if (length(currently_selected_columns_normality) > 0) {
+      # Show the download button if there are selected columns
+      downloadButton(
+        "download_normality_plot",
+        label = "Download Plot",
+        class = "btn btn-primary ms-3"  # Optional: Bootstrap styling, with margin on the left
+      )
+    } else {
+      # Return NULL if there are no selected columns, which hides the button
+      NULL
+    }
+  })
+  
+  output$download_normality_plot <- downloadHandler(
+    filename = function() { 
+      # Dynamically set filename based on selected format
+      paste("normality_plot_", Sys.Date(), ".", input$normality_image_format, sep="")
+    },
+    content = function(file) {
+      # Debug: Confirm the full path and selected format
+      cat("Saving plot to:", file, "\n")
+      cat("Selected format:", input$normality_image_format, "\n")
+      
+      # Open the appropriate graphics device based on selected format
+      if (input$normality_image_format == "png") {
+        png(file, width = 800, height = 600)
+      } else if (input$normality_image_format == "jpeg") {
+        jpeg(file, width = 800, height = 600)
+      } else if (input$normality_image_format == "pdf") {
+        pdf(file, width = 8, height = 6)  # Use inches for PDF
+      } else if (input$normality_image_format == "svg") {
+        svg(file, width = 8, height = 6)  # Width and height in inches
+      } else if (input$normality_image_format == "tiff") {
+        tiff(file, width = 800, height = 600)  # Dimensions in pixels
+      } else {
+        stop("Unsupported file format")
+      }
+      
+      # Generate the plot and save to the selected device
+      currently_selected_columns_normality <- columns_plot_normality()
+      if (length(currently_selected_columns_normality) <= MAX_FOR_PREVIEW_PLOT && 
+          length(currently_selected_columns_normality) > 0 && 
+          input$plot_type != "normality_diagnosis") {
+        plot <- preview_basic_distribution(modified_data(), type_of_plot = input$plot_type, currently_selected_columns_normality)
+      } else if (length(currently_selected_columns_normality) == 1 && input$plot_type == "normality_diagnosis") {
+        plot <- preview_basic_distribution(modified_data(), type_of_plot = input$plot_type, currently_selected_columns_normality)
+      }
+      
+      print(plot)  # Render the plot to the device
+      dev.off()    # Close the graphics device to finalize the file
+    }
+  )
   ###############################################################################################################
-  # Correlation tab
+  # CORRELATION TAB
   observeEvent(input$nav_tabs, {
     selected_tab <- input$nav_tabs  # Access the currently selected tab
     if (selected_tab == "Correlation") {
@@ -1327,7 +1634,7 @@ server <- function(input, output,session) {
           # Add a line break using <br>
           HTML("<br>"),
           footer = modalButton("OK"),
-          HTML(paste0("Problem calculating correlation!<br>Try different columns.     ",bsicons::bs_icon("emoji-tear",fill = MESSAGE_COLOR,size=20)))
+          HTML(paste0("Problem calculating correlation!<br>Try different variables.     ",bsicons::bs_icon("emoji-tear",fill = MESSAGE_COLOR,size=20)))
         ))
       }) # end trycatch
     } # end if columns selected
@@ -1345,13 +1652,80 @@ server <- function(input, output,session) {
         pageLength = 20,   # Show n rows by default
         autoWidth = TRUE,  # Auto-adjust column width
         dom = 'frtiBp',    # Search box, pagination, etc.
-        buttons = c( 'csv')  # Add export buttons
+        buttons = c( 'csv', 'excel', 'pdf')  # Add export buttons
       ),
       # rownames = FALSE,
       selection = 'none',
       extensions = 'Buttons'  # Enable export options
     )
   }) # end table
+  
+  observeEvent(input$get_no_clusters_btn, {
+    req(modified_data())
+    selected_cols <- input$columns_correlation
+    cor_hclust <- input$cor_hclust_method
+    if (length(selected_cols) > 0) {
+      # Show a loading message or spinner while processing
+      withProgress(message = 'Calculating optimal clusters...', value = 0, {
+        # Increment the progress
+        incProgress(0.5)  # For illustration, this would be updated in a real scenario
+        
+        # Simulate getting the optimal number of clusters
+        no_clust <- get_optimal_no_clusters(modified_data(), 
+                                            my_cols = selected_cols, 
+                                            my_method = cor_hclust)
+        
+        # Increment the progress to indicate completion
+        incProgress(0.5)  # Complete progress
+      })
+      if (no_clust != 0) {
+        # Update the numericInput
+        updateNumericInput(session, "cor_hclust_clusters", value = no_clust)
+      } # end if we got the result
+      else {
+        showModal(modalDialog(
+          # Title and icon together in the same div, so we can control their position
+          div(
+            style = "position: relative;",  # Relative positioning to align the title and icon
+            # Title on the left
+            span("Info", style = "font-size: 28px;"),
+            # Icon on the top-right corner
+            span(
+              bsicons::bs_icon("exclamation-triangle", fill = MESSAGE_COLOR, size = 40), 
+              style = "position: absolute; top: 0; right: 0;"
+            )
+          ),
+          # Add a line break using <br>
+          HTML("<br>"),
+          # Add a line break using <br>
+          HTML("<br>"),
+          footer = modalButton("OK"),
+          HTML(paste0("Problem calculating optimal number of clusters.     ",bsicons::bs_icon("emoji-tear",fill = MESSAGE_COLOR,size=20)))
+        ))
+      }
+    } # end if columns were selected
+    else {
+      showModal(modalDialog(
+        # Title and icon together in the same div, so we can control their position
+        div(
+          style = "position: relative;",  # Relative positioning to align the title and icon
+          # Title on the left
+          span("Info", style = "font-size: 28px;"),
+          # Icon on the top-right corner
+          span(
+            bsicons::bs_icon("exclamation-triangle", fill = MESSAGE_COLOR, size = 40), 
+            style = "position: absolute; top: 0; right: 0;"
+          )
+        ),
+        # Add a line break using <br>
+        HTML("<br>"),
+        # Add a line break using <br>
+        HTML("<br>"),
+        footer = modalButton("OK"),
+        HTML("Please select variables first.")
+      ))
+    }
+  })
   ####################################################
   # Plot
   # Render the plot
@@ -1365,6 +1739,7 @@ server <- function(input, output,session) {
     cor_order <- input$correlation_order
     cor_hclust <- input$cor_hclust_method
     cor_no_clusters <- input$cor_hclust_clusters
+    col_pos <- input$corr_col_pos
     results <- correlation_result()
     if (nrow(cor_df)>0) {
       corr_plot_from_result(results,
@@ -1373,9 +1748,70 @@ server <- function(input, output,session) {
                             my_hclust_method = cor_hclust,
                             my_add_rect = cor_no_clusters,
                             sig_level_crossed = sig_level,
-                            my_title=plot_title)
+                            my_title=plot_title,
+                            color_map_pos = col_pos)
     }
   })
+  
+  # Conditional rendering of the download button
+  output$download_correlation_button_ui <- renderUI({
+    req(modified_data())  # Ensure modified data is available
+    req(correlation_result())
+    if (nrow(correlation_result()$correlation_df)>0) {
+      # Show the download button if there is a correlation matrix
+      downloadButton(
+        "download_correlation_plot",
+        label = "Download Plot",
+        class = "btn btn-primary ms-3"  # Optional: Bootstrap styling, with margin on the left
+      )
+    } else {
+      # Return NULL if there are no selected columns, which hides the button
+      NULL
+    }
+  })
+  
+  output$download_correlation_plot <- downloadHandler(
+    filename = function() { 
+      # Dynamically set filename based on selected format
+      paste("correlation_plot_", Sys.Date(), ".", input$correlation_image_format, sep="")
+    },
+    content = function(file) {
+      # Debug: Confirm the full path and selected format
+      cat("Saving plot to:", file, "\n")
+      cat("Selected format:", input$correlation_image_format, "\n")
+      
+      # Open the appropriate graphics device based on selected format
+      if (input$correlation_image_format == "png") {
+        png(file, width = 800, height = 600)
+      } else if (input$correlation_image_format == "jpeg") {
+        jpeg(file, width = 800, height = 600)
+      } else if (input$correlation_image_format == "pdf") {
+        pdf(file, width = 8, height = 6)  # Use inches for PDF
+      } else if (input$correlation_image_format == "svg") {
+        svg(file, width = 8, height = 6)  # Width and height in inches
+      } else if (input$correlation_image_format == "tiff") {
+        tiff(file, width = 800, height = 600)  # Dimensions in pixels
+      } else {
+        stop("Unsupported file format")
+      }
+      
+      req(modified_data())  # Ensure modified data is available
+      req(correlation_result())
+      
+      if (nrow(correlation_result()$correlation_df)>0) {
+        corr_plot_from_result(correlation_result(),
+                              plot_type=input$plot_type_correlation,
+                              my_ordering = input$correlation_order,
+                              my_hclust_method = input$cor_hclust_method,
+                              my_add_rect = input$cor_hclust_clusters,
+                              sig_level_crossed = input$sig_level,
+                              my_title=input$cor_plot_title,
+                              color_map_pos = input$corr_col_pos)
+        # print(plot)  # Render the plot to the device
+        dev.off()    # Close the graphics device to finalize the file
+      }
+    }
+  )
   ###############################################################################################################
   # TESTS TAB
   observeEvent(input$nav_tabs, {
@@ -1436,86 +1872,8 @@ server <- function(input, output,session) {
     alternative <- input$alternative_parametric
     conf_level <-input$conf_level_parametric
     if (length(test_columns) > 0) {
-      if (group_col[1]== "" && test == "Independent two-sample t-test") {
-        # Handle error
-        showModal(modalDialog(
-          # Title and icon together in the same div, so we can control their position
-          div(
-            style = "position: relative;",  # Relative positioning to align the title and icon
-            # Title on the left
-            span("Info", style = "font-size: 28px;"),
-            # Icon on the top-right corner
-            span(
-              bsicons::bs_icon("exclamation-triangle", fill = MESSAGE_COLOR, size = 40), 
-              style = "position: absolute; top: 0; right: 0;"
-            )
-          ),
-          # Add a line break using <br>
-          HTML("<br>"),
-          # Add a line break using <br>
-          HTML("<br>"),
-          footer = modalButton("OK"),
-          HTML("Select one group column for the test.")
-        )) # end message
-      } else {
-        if ((test == "Paired t-test" && by_group == FALSE && length(test_columns) == 2) || 
-            (test == "Paired t-test" && by_group == TRUE && length(test_columns) == 2) ||
-            (test == "Paired t-test" && by_group == TRUE && length(test_columns) == 1) ||
-            test == "Independent two-sample t-test" ||
-            test == "One sample t-test" 
-            ) {
-          group_col <- c(group_col)
-          if (test == "Paired t-test" && by_group == FALSE) {
-            group_col <- c()
-          }
-          tryCatch({
-            # print(group_col)
-            if (length(group_col) == 0) {
-              group_col <- c()
-            }
-            res <- compare_means_parametric(modified_data(),
-                                 test_columns,
-                                 my_group = group_col,
-                                 my_test = test,
-                                 my_mu = mu_val,
-                                 my_alternative = alternative,
-                                 my_conf_level = conf_level)
-            currently_selected_columns_param_tests(test_columns)
-            currently_selected_group_col_param_tests(group_col)
-            display_data_parametric_tests(res)
-            output$param_test_table_title <- renderUI({
-              title_text <- paste0("<br><br>","&nbsp;&nbsp;&nbsp;&nbsp;",test)
-              if (test == "Independent two-sample t-test") {
-                title_text <- paste0("<br><br>","&nbsp;&nbsp;&nbsp;&nbsp;",test,"<br><br>","&nbsp;&nbsp;&nbsp;&nbsp;","Group: ",group_col[1])
-              }
-              # Render HTML with h5 and the title text
-              HTML(paste0("<h5>", title_text, "</h5>"))
-            })
-            # create plot
-          }, error = function(e) {
-            # Handle error
-            showModal(modalDialog(
-              # Title and icon together in the same div, so we can control their position
-              div(
-                style = "position: relative;",  # Relative positioning to align the title and icon
-                # Title on the left
-                span("Info", style = "font-size: 28px;"),
-                # Icon on the top-right corner
-                span(
-                  bsicons::bs_icon("exclamation-triangle", fill = MESSAGE_COLOR, size = 40), 
-                  style = "position: absolute; top: 0; right: 0;"
-                )
-              ),
-              # Add a line break using <br>
-              HTML("<br>"),
-              # Add a line break using <br>
-              HTML("<br>"),
-              footer = modalButton("OK"),
-              HTML(paste0("Problem calculating test results!<br>Try different columns.     ",bsicons::bs_icon("emoji-tear",fill = MESSAGE_COLOR,size=20)))
-            ))
-          }) # end trycatch
-        } # end if paired t-test conditions passed
-        else {
+      if (length(test_columns) <= MAX_FOR_PREVIEW_PLOT) {
+        if (group_col[1]== "" && test == "Independent two-sample t-test") {
           # Handle error
           showModal(modalDialog(
             # Title and icon together in the same div, so we can control their position
@@ -1534,13 +1892,115 @@ server <- function(input, output,session) {
             # Add a line break using <br>
             HTML("<br>"),
             footer = modalButton("OK"),
-            HTML("For Paired t-test:<br><br>
-                 If one column is selected,<br>another column with group must be selected.<br>
-                 If two columns are selected,<br>the test can be run either between the selected columns,
-                 or additionally: by group.")
+            HTML("Select one group column for the test.")
           )) # end message
-          }
-      } # end else
+        } else {
+          if ((test == "Paired t-test" && by_group == FALSE && length(test_columns) == 2) || 
+              (test == "Paired t-test" && by_group == TRUE && length(test_columns) == 2) ||
+              (test == "Paired t-test" && by_group == TRUE && length(test_columns) == 1) ||
+              test == "Independent two-sample t-test" ||
+              test == "One sample t-test" 
+              ) {
+            group_col <- c(group_col)
+            if (test == "Paired t-test" && by_group == FALSE) {
+              group_col <- c()
+            }
+            tryCatch({
+              # print(group_col)
+              if (length(group_col) == 0) {
+                group_col <- c()
+              }
+              res <- compare_means_parametric(modified_data(),
+                                   test_columns,
+                                   my_group = group_col,
+                                   my_test = test,
+                                   my_mu = mu_val,
+                                   my_alternative = alternative,
+                                   my_conf_level = conf_level)
+              currently_selected_columns_param_tests(test_columns)
+              currently_selected_group_col_param_tests(group_col)
+              display_data_parametric_tests(res)
+              output$param_test_table_title <- renderUI({
+                title_text <- paste0("<br><br>","&nbsp;&nbsp;&nbsp;&nbsp;",test)
+                if (test == "Independent two-sample t-test") {
+                  title_text <- paste0("<br><br>","&nbsp;&nbsp;&nbsp;&nbsp;",test,"<br><br>","&nbsp;&nbsp;&nbsp;&nbsp;","Group: ",group_col[1])
+                }
+                # Render HTML with h5 and the title text
+                HTML(paste0("<h5>", title_text, "</h5>"))
+              })
+              # create plot
+            }, error = function(e) {
+              # Handle error
+              showModal(modalDialog(
+                # Title and icon together in the same div, so we can control their position
+                div(
+                  style = "position: relative;",  # Relative positioning to align the title and icon
+                  # Title on the left
+                  span("Info", style = "font-size: 28px;"),
+                  # Icon on the top-right corner
+                  span(
+                    bsicons::bs_icon("exclamation-triangle", fill = MESSAGE_COLOR, size = 40), 
+                    style = "position: absolute; top: 0; right: 0;"
+                  )
+                ),
+                # Add a line break using <br>
+                HTML("<br>"),
+                # Add a line break using <br>
+                HTML("<br>"),
+                footer = modalButton("OK"),
+                HTML(paste0("Problem calculating test results!<br>Try different variables.     ",bsicons::bs_icon("emoji-tear",fill = MESSAGE_COLOR,size=20)))
+              ))
+            }) # end trycatch
+          } # end if paired t-test conditions passed
+          else {
+            # Handle error
+            showModal(modalDialog(
+              # Title and icon together in the same div, so we can control their position
+              div(
+                style = "position: relative;",  # Relative positioning to align the title and icon
+                # Title on the left
+                span("Info", style = "font-size: 28px;"),
+                # Icon on the top-right corner
+                span(
+                  bsicons::bs_icon("exclamation-triangle", fill = MESSAGE_COLOR, size = 40), 
+                  style = "position: absolute; top: 0; right: 0;"
+                )
+              ),
+              # Add a line break using <br>
+              HTML("<br>"),
+              # Add a line break using <br>
+              HTML("<br>"),
+              footer = modalButton("OK"),
+              HTML("For Paired t-test:<br><br>
+                   If one variable is selected,<br>another variable with group must be selected.<br>
+                   If two variables are selected,<br>the test can be run either between the selected variables,
+                   or additionally: by group.")
+            )) # end message
+            }
+        } # end else
+    } # end if max for plot satisfied
+    else {
+      # show error that too many columns
+      showModal(modalDialog(
+        # Title and icon together in the same div, so we can control their position
+        div(
+          style = "position: relative;",  # Relative positioning to align the title and icon
+          # Title on the left
+          span("Info", style = "font-size: 28px;"),
+          # Icon on the top-right corner
+          span(
+            bsicons::bs_icon("exclamation-triangle", fill = MESSAGE_COLOR, size = 40), 
+            style = "position: absolute; top: 0; right: 0;"
+          )
+        ),
+        # Add a line break using <br>
+        HTML("<br>"),
+        # Add a line break using <br>
+        HTML("<br>"),
+        footer = modalButton("OK"),
+        HTML(paste0("Max 6 variables at a time allowed.     ",bsicons::bs_icon("emoji-tear",fill = MESSAGE_COLOR,size=20)))
+      ))
+    }
     } else { # no column selected
       # Handle error
       showModal(modalDialog(
@@ -1560,7 +2020,7 @@ server <- function(input, output,session) {
         # Add a line break using <br>
         HTML("<br>"),
         footer = modalButton("OK"),
-        HTML("Select at least one column for the test.")
+        HTML("Select at least one variable for the test.")
       )) # end message
         }
   }) # end run parametric means
@@ -1576,7 +2036,7 @@ server <- function(input, output,session) {
         pageLength = 20,   # Show n rows by default
         autoWidth = TRUE,  # Auto-adjust column width
         dom = 'frtiBp',    # Search box, pagination, etc.
-        buttons = c( 'csv')  # Add export buttons
+        buttons = c( 'csv', 'excel', 'pdf')  # Add export buttons
       ),
       rownames = FALSE,
       selection = 'none',
@@ -1593,7 +2053,6 @@ server <- function(input, output,session) {
     req(display_data_parametric_tests())  # Ensure data is available
     test_result <- display_data_parametric_tests()
     test_columns <- input$columns_test_param
-    by_group <- input$group_option_parametric
     by_group <- input$group_option_parametric
     group_col <- input$group_column_test_param 
     test <- input$parametric_test_mean
@@ -1622,8 +2081,65 @@ server <- function(input, output,session) {
   # Render the plot using the eventReactive output
   output$plot_parametric_test <- renderPlot({
     req(plot_parametric_data())  # Only generate plot if plot_data has been triggered
-    plot_parametric_data()
+    if (nrow(display_data_parametric_tests())>0) {
+      plot_parametric_data()
+    } else {
+      print("Test failed")
+    }
   })
+  
+  # Conditional rendering of the download button
+  output$download_param_button_ui <- renderUI({
+    req(display_data_parametric_tests())
+    if (!is.null(display_data_parametric_tests()) && nrow(display_data_parametric_tests())>0) {
+      # Show the download button if there is a correlation matrix
+      downloadButton(
+        "download_param_plot",
+        label = "Download Plot",
+        class = "btn btn-primary ms-3"  # Optional: Bootstrap styling, with margin on the left
+      )
+    } else {
+      # Return NULL if there are no selected columns, which hides the button
+      NULL
+    }
+  })
+  
+  output$download_param_plot <- downloadHandler(
+    filename = function() {
+      # Dynamically set filename based on selected format
+      paste("parametric_tests_plot_", Sys.Date(), ".", input$param_image_format, sep="")
+    },
+    content = function(file) {
+      # Debug: Confirm the full path and selected format
+      cat("Saving plot to:", file, "\n")
+      cat("Selected format:", input$param_image_format, "\n")
+
+      # Open the appropriate graphics device based on selected format
+      if (input$param_image_format == "png") {
+        png(file, width = 800, height = 600)
+      } else if (input$param_image_format == "jpeg") {
+        jpeg(file, width = 800, height = 600)
+      } else if (input$param_image_format == "pdf") {
+        pdf(file, width = 8, height = 6)  # Use inches for PDF
+      } else if (input$param_image_format == "svg") {
+        svg(file, width = 8, height = 6)  # Width and height in inches
+      } else if (input$param_image_format == "tiff") {
+        tiff(file, width = 800, height = 600)  # Dimensions in pixels
+      } else {
+        stop("Unsupported file format")
+      }
+      
+      req(modified_data())
+      req(display_data_parametric_tests())
+      
+      if (nrow(display_data_parametric_tests())>0) {
+          print(plot_parametric_data())
+          dev.off()    # Close the graphics device to finalize the file
+        } else {
+          print("Plot failed")
+        }
+      
+    })
   
 ###########################################################################################
   observeEvent(input$run_nonparametric_medians, {
@@ -1636,52 +2152,8 @@ server <- function(input, output,session) {
     alternative <- input$alternative_nonparametric
     conf_level <-input$conf_level_nonparametric
     if (length(test_columns) > 0) {
-      if ((length(test_columns) < 2 && by_group == FALSE) || (length(test_columns) < 2 && group_col[1] == "")) {
-        # Handle error
-        showModal(modalDialog(
-          # Title and icon together in the same div, so we can control their position
-          div(
-            style = "position: relative;",  # Relative positioning to align the title and icon
-            # Title on the left
-            span("Info", style = "font-size: 28px;"),
-            # Icon on the top-right corner
-            span(
-              bsicons::bs_icon("exclamation-triangle", fill = MESSAGE_COLOR, size = 40), 
-              style = "position: absolute; top: 0; right: 0;"
-            )
-          ),
-          # Add a line break using <br>
-          HTML("<br>"),
-          # Add a line break using <br>
-          HTML("<br>"),
-          footer = modalButton("OK"),
-          HTML(paste0("Remember to select group column."))
-        ))
-      } else {
-        tryCatch({
-          # print(group_col)
-          if (length(group_col) == 0 || by_group == FALSE) {
-            group_col <- c()
-          }
-          res <- compare_medians_nonparametric(modified_data(),
-                                          test_columns,
-                                          my_group = group_col,
-                                          my_test = test,
-                                          my_mu = mu_val,
-                                          my_alternative = alternative,
-                                          my_conf_level = conf_level)
-          currently_selected_columns_nonparam_tests(test_columns)
-          currently_selected_group_col_nonparam_tests(group_col)
-          display_data_nonparametric_tests(res)
-          output$nonparam_test_table_title <- renderUI({
-            title_text <- paste0("<br><br>","&nbsp;&nbsp;&nbsp;&nbsp;",test)
-            if (by_group == TRUE) {
-              title_text <- paste0("<br><br>","&nbsp;&nbsp;&nbsp;&nbsp;",test,"<br><br>","&nbsp;&nbsp;&nbsp;&nbsp;","Group: ",group_col[1])
-            }
-            # Render HTML with h5 and the title text
-            HTML(paste0("<h5>", title_text, "</h5>"))
-          })
-        }, error = function(e) {
+      if (length(test_columns) <= MAX_FOR_PREVIEW_PLOT) {
+        if ((length(test_columns) < 2 && by_group == FALSE) || (length(test_columns) < 2 && group_col[1] == "")) {
           # Handle error
           showModal(modalDialog(
             # Title and icon together in the same div, so we can control their position
@@ -1700,10 +2172,78 @@ server <- function(input, output,session) {
             # Add a line break using <br>
             HTML("<br>"),
             footer = modalButton("OK"),
-            HTML(paste0("Problem calculating test results!<br>Try different columns.     ",bsicons::bs_icon("emoji-tear",fill = MESSAGE_COLOR,size=20)))
+            HTML(paste0("Remember to select group column."))
           ))
-        }) # end trycatch
-      } # end else (if the group column was selected)
+        } else {
+          tryCatch({
+            # print(group_col)
+            if (length(group_col) == 0 || by_group == FALSE) {
+              group_col <- c()
+            }
+            res <- compare_medians_nonparametric(modified_data(),
+                                            test_columns,
+                                            my_group = group_col,
+                                            my_test = test,
+                                            my_mu = mu_val,
+                                            my_alternative = alternative,
+                                            my_conf_level = conf_level)
+            currently_selected_columns_nonparam_tests(test_columns)
+            currently_selected_group_col_nonparam_tests(group_col)
+            display_data_nonparametric_tests(res)
+            output$nonparam_test_table_title <- renderUI({
+              title_text <- paste0("<br><br>","&nbsp;&nbsp;&nbsp;&nbsp;",test)
+              if (by_group == TRUE) {
+                title_text <- paste0("<br><br>","&nbsp;&nbsp;&nbsp;&nbsp;",test,"<br><br>","&nbsp;&nbsp;&nbsp;&nbsp;","Group: ",group_col[1])
+              }
+              # Render HTML with h5 and the title text
+              HTML(paste0("<h5>", title_text, "</h5>"))
+            })
+          }, error = function(e) {
+            # Handle error
+            showModal(modalDialog(
+              # Title and icon together in the same div, so we can control their position
+              div(
+                style = "position: relative;",  # Relative positioning to align the title and icon
+                # Title on the left
+                span("Info", style = "font-size: 28px;"),
+                # Icon on the top-right corner
+                span(
+                  bsicons::bs_icon("exclamation-triangle", fill = MESSAGE_COLOR, size = 40), 
+                  style = "position: absolute; top: 0; right: 0;"
+                )
+              ),
+              # Add a line break using <br>
+              HTML("<br>"),
+              # Add a line break using <br>
+              HTML("<br>"),
+              footer = modalButton("OK"),
+              HTML(paste0("Problem calculating test results!<br>Try different variables.     ",bsicons::bs_icon("emoji-tear",fill = MESSAGE_COLOR,size=20)))
+            ))
+          }) # end trycatch
+        } # end else (if the group column was selected)
+    } # end if max number od selected columns satisfied
+    else {
+      # show message
+      showModal(modalDialog(
+        # Title and icon together in the same div, so we can control their position
+        div(
+          style = "position: relative;",  # Relative positioning to align the title and icon
+          # Title on the left
+          span("Info", style = "font-size: 28px;"),
+          # Icon on the top-right corner
+          span(
+            bsicons::bs_icon("exclamation-triangle", fill = MESSAGE_COLOR, size = 40), 
+            style = "position: absolute; top: 0; right: 0;"
+          )
+        ),
+        # Add a line break using <br>
+        HTML("<br>"),
+        # Add a line break using <br>
+        HTML("<br>"),
+        footer = modalButton("OK"),
+        HTML(paste0("Max 6 variables at a time allowed.     ",bsicons::bs_icon("emoji-tear",fill = MESSAGE_COLOR,size=20)))
+      ))
+    }
     } # end if there were test columns selected
     else { # no columns selected
       # Handle error
@@ -1724,7 +2264,7 @@ server <- function(input, output,session) {
         # Add a line break using <br>
         HTML("<br>"),
         footer = modalButton("OK"),
-        HTML("Select at least one column for the test.")
+        HTML("Select at least one variable for the test.")
       )) # end message
     }
   }) # end observe nonparametric
@@ -1740,13 +2280,109 @@ server <- function(input, output,session) {
         pageLength = 20,   # Show n rows by default
         autoWidth = TRUE,  # Auto-adjust column width
         dom = 'frtiBp',    # Search box, pagination, etc.
-        buttons = c( 'csv')  # Add export buttons
+        buttons = c( 'csv', 'excel', 'pdf')  # Add export buttons
       ),
       rownames = FALSE,
       selection = 'none',
       extensions = 'Buttons'  # Enable export options
     )
   }) # end  parametric table
+  
+  # Define an plotting event that triggers on button click or title change
+  plot_nonparametric_data <- eventReactive({
+    input$run_nonparametric_medians   # Trigger on button click
+    input$nonparam_test_plot_title  # Trigger on title text change
+  }, {
+    req(modified_data())
+    req(display_data_nonparametric_tests())  # Ensure data is available
+    test_result <- display_data_nonparametric_tests()
+    test_columns <- input$columns_test_nonparam
+    by_group <- input$group_option_nonparametric
+    group_col <- input$group_column_test_nonparam 
+    test <- input$nonparametric_test_median
+    if (!by_group ) {
+      group_col <- c()
+    }
+    mu_val <- input$mu_nonparametric
+    alternative <- input$alternative_nonparametric
+    conf_level <- input$conf_level_nonparametric
+    my_title <- input$nonparam_test_plot_title
+    
+    # Call the plotting function with the specified parameters
+    plot_medians_nonparametric(
+      modified_data(),
+      type_of_test = test,
+      columns_to_show = test_columns,
+      my_group = group_col,
+      my_mu = mu_val,
+      my_alternative = alternative,
+      my_conf_level = conf_level,
+      plot_title = my_title
+    )
+  })
+  
+  # Render the plot using the eventReactive output
+  output$plot_nonparametric_test <- renderPlot({
+    req(plot_nonparametric_data())  # Only generate plot if plot_data has been triggered
+    if (nrow(display_data_nonparametric_tests())>0) {
+      plot_nonparametric_data()
+    } else {
+      print("Test failed")
+    }
+  })
+  
+  # Conditional rendering of the download button
+  output$download_nonparam_button_ui <- renderUI({
+    req(display_data_nonparametric_tests())
+    if (!is.null(display_data_nonparametric_tests()) && nrow(display_data_nonparametric_tests())>0) {
+      # Show the download button if there is a correlation matrix
+      downloadButton(
+        "download_nonparam_plot",
+        label = "Download Plot",
+        class = "btn btn-primary ms-3"  # Optional: Bootstrap styling, with margin on the left
+      )
+    } else {
+      # Return NULL if there are no selected columns, which hides the button
+      NULL
+    }
+  })
+
+  output$download_nonparam_plot <- downloadHandler(
+    filename = function() {
+      # Dynamically set filename based on selected format
+      paste("nonparametric_tests_plot_", Sys.Date(), ".", input$nonparam_image_format, sep="")
+    },
+    content = function(file) {
+      # Debug: Confirm the full path and selected format
+      cat("Saving plot to:", file, "\n")
+      cat("Selected format:", input$nonparam_image_format, "\n")
+
+      # Open the appropriate graphics device based on selected format
+      if (input$nonparam_image_format == "png") {
+        png(file, width = 800, height = 600)
+      } else if (input$nonparam_image_format == "jpeg") {
+        jpeg(file, width = 800, height = 600)
+      } else if (input$nonparam_image_format == "pdf") {
+        pdf(file, width = 8, height = 6)  # Use inches for PDF
+      } else if (input$nonparam_image_format == "svg") {
+        svg(file, width = 8, height = 6)  # Width and height in inches
+      } else if (input$nonparam_image_format == "tiff") {
+        tiff(file, width = 800, height = 600)  # Dimensions in pixels
+      } else {
+        stop("Unsupported file format")
+      }
+
+      req(modified_data())
+      req(display_data_nonparametric_tests())
+
+      if (nrow(display_data_nonparametric_tests())>0) {
+        print(plot_nonparametric_data())
+        dev.off()    # Close the graphics device to finalize the file
+      } else {
+        print("Plot failed")
+      }
+
+    })
   
 } # end server
 

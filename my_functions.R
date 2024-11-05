@@ -30,6 +30,7 @@ Wilcoxon signed-rank test:<br>Compares paired data (two related samples or repea
 One can compare medians either between two selected variables or select multiple variables and compare by the group variable that has two unique groups.<br><br>
 Kruskal-Wallis test:<br>Non-parametric alternative to one-way ANOVA, compares more than two independent groups.
 One can compare medians either between multiple selected variables or select multiple variables and compare by the group variable that has more than 2 unique groups."
+PLOT_NOTMALITY_INFO = "Select up till 6 variables from the table to the left.<br>For normality diagnosis plot, select only one variable at a time."
 SIGNIFICANCE_LEVEL_CORR_INFO = "Value 1 will show all correlation coefficients values on the plot. Regardless of whether they are signifcant or not.
 <br><br>Set this value to your own significance level to see on the plot which correlation coefficients are not signifficant."
 NORMAITY_METHOD_INFO = "Methods to check whether your data is normally distributed.<br><br>Shapiro-Wilk:<br>Recommended for dataset < 2000 observations.
@@ -771,9 +772,8 @@ plot_na_pareto_modified <- function (x, only_na = FALSE, relative = FALSE, main 
 }
 #########################################################################################
 plot_na_intersect_modified <- function (x, only_na = TRUE, n_intersacts = NULL, 
-                                                 n_vars = NULL, main = NULL)
+                                        n_vars = NULL, main = NULL)
 {
-  base_family = "Roboto Condensed"
   N <- nrow(x)
   
   if (sum(is.na(x)) == 0) {
@@ -848,11 +848,23 @@ plot_na_intersect_modified <- function (x, only_na = TRUE, n_intersacts = NULL,
   if (is.null(main)) 
     main = "Missing with intersection of variables"
   
+  ##############################################################################
   # Create a plotly object
   p <- plot_ly()
   # Create hover text combining value and corresponding name
-  my_variable_names <- names(x) 
-  dframe$hover_text <- paste("Value:", dframe$value, "<br>Name:", my_variable_names[dframe$Var1])
+  my_variable_names <- names(x) # get variable names 
+  my_missing_values <- marginal_var$n_var # get missing values per variable from top plot
+  # print(length(my_variable_names))
+  # print(length(dframe$Var1))
+  # print(length(dframe$Var2))
+  # print(marginal_var$n_var) # top plot values
+  # print(length(marginal_var$n_var)) 
+  # print(marginal_obs$n_obs) # bottom plot values
+  # print(length(marginal_obs$n_obs))
+  
+  # dframe$hover_text <- paste("Value:", dframe$value, "<br>Name:", my_variable_names[dframe$Var1])
+  # dframe$hover_text <- paste("Name:", my_variable_names[dframe$Var1])
+  dframe$hover_text <- paste("X:", dframe$Var1, "<br>Y:", dframe$Var2,"<br>Missing values:",my_missing_values[dframe$Var1], "<br>Name:", my_variable_names[dframe$Var1])
   
   # Add trace for tile representation using scatter plot
   p <- p %>%
@@ -873,17 +885,17 @@ plot_na_intersect_modified <- function (x, only_na = TRUE, n_intersacts = NULL,
     layout(
       title = list(
         text = main,  # Set your title here
-        font = list(size = 16, color = "black",
-                    family = "Helvetica",  
-                    weight = "bold"),  # Customize title font size and color
-        x = 0.02,  # Left-align title (0 = far left, 1 = far right)
-        y = 1.01  # Position title slightly above the plot
+        font = list(size = 16, 
+                    color = "black",
+                    family = "Times New Roman"),  # Customize title font size and color
+        x = 0,  # Left-align title (0 = far left, 1 = far right)
+        y = 1.5  # Position title slightly above the plot
       ),
-      margin = list(t = 100, b = 100),  # Add margin above the title (adjust value as needed)
+      margin = list(t = 40, b = 10,l=0),  # Add margin above the title (adjust value as needed)
       xaxis = list(
         title = list(
           text = "Variables",
-          font = list(family = "Helvetica", size = 12)  # Set font for x-axis title
+          font = list(family = "Times New Roman", size = 16)  # Set font for x-axis title
         ),
         zeroline = FALSE, 
         gridcolor = "black",  # Set grid line color
@@ -898,11 +910,19 @@ plot_na_intersect_modified <- function (x, only_na = TRUE, n_intersacts = NULL,
         tickvals = NULL, 
         ticktext = NULL
       ),
-      plot_bgcolor = "#e8e8e8",  # White background for cleaner look
+      hoverlabel = list(
+        bgcolor = "white",  # Set hover label background color to white
+        bordercolor = "black",  # Optional: Set border color for the hover label
+        font = list(color = "black")  # Optional: Set font color for the hover text
+      ),
+      # plot_bgcolor = "#e8e8e8",  # White background for cleaner look
+      plot_bgcolor = "white",  # White background for cleaner look
       showlegend = FALSE  # No legend needed for static color
     )
+  
   # Display the plot
   p
+  
 } # end na_intercept
 
 # for replace reshape2::melt()

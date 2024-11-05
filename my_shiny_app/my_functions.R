@@ -29,7 +29,7 @@ Wilcoxon signed-rank test:<br>Compares paired data (two related samples or repea
 One can compare medians either between two selected variables or select multiple variables and compare by the group variable that has two unique groups.<br><br>
 Kruskal-Wallis test:<br>Non-parametric alternative to one-way ANOVA, compares more than two independent groups.
 One can compare medians either between multiple selected variables or select multiple variables and compare by the group variable that has more than 2 unique groups."
-PLOT_NOTMALITY_INFO = "Select up till 6 variables from the table to the left.<br>For normality diagnosis plot select only one variable at a time."
+PLOT_NOTMALITY_INFO = "Select up till 6 variables from the table to the left.<br>For normality diagnosis plot, select only one variable at a time."
 SIGNIFICANCE_LEVEL_CORR_INFO = "Value 1 will show all correlation coefficients values on the plot. Regardless of whether they are signifcant or not.
 <br><br>Set this value to your own significance level to see on the plot which correlation coefficients are not signifficant."
 NORMAITY_METHOD_INFO = "Methods to check whether your data is normally distributed.<br><br>Shapiro-Wilk:<br>Recommended for dataset < 2000 observations.
@@ -498,12 +498,21 @@ calculate_corr_matrix <- function(df, my_columnnames = c(), corr_alternative, co
   col_names <- colnames(cor_matrix)[col(cor_matrix)[lower.tri(cor_matrix)]]
   
   # Create a data frame
-  corr_df <- data.frame(var1 = row_names,
-                        var2 = col_names,
-                        corr_coef = lower_values_corr, 
-                        p = lower_values_p, 
-                        lowCI = lower_values_lowCI,
-                        uppCI = lower_values_uppCI)
+  # don't show CI columns if all values were NA
+  if (all(is.na(lower_values_lowCI)) && all(is.na(lower_values_uppCI))) {
+    corr_df <- data.frame(var1 = row_names,
+                          var2 = col_names,
+                          corr_coef = lower_values_corr, 
+                          p = lower_values_p)
+  } else {
+    # Create a data frame with CI columns
+    corr_df <- data.frame(var1 = row_names,
+                          var2 = col_names,
+                          corr_coef = lower_values_corr, 
+                          p = lower_values_p, 
+                          lowCI = lower_values_lowCI,
+                          uppCI = lower_values_uppCI)
+  }
   # Return the correlation matrix and significance matrix
   return(list(cor_coef_matrix = cor_matrix, significance_matrix = significance_matrix,correlation_df = corr_df))
 } # end calculate_corr_matrix
@@ -829,9 +838,21 @@ plot_na_intersect_modified <- function (x, only_na = TRUE, n_intersacts = NULL,
   p <- plot_ly()
   # Create hover text combining value and corresponding name
   my_variable_names <- names(x) 
+  my_variable_names <- names(x) # get variable names 
+  my_missing_values <- marginal_var$n_var # get missing values per variable from top plot
+  # print(length(my_variable_names))
+  # print(length(dframe$Var1))
+  # print(length(dframe$Var2))
+  # print(marginal_var$n_var) # top plot values
+  # print(length(marginal_var$n_var)) 
+  # print(marginal_obs$n_obs) # bottom plot values
+  # print(length(marginal_obs$n_obs))
+  
   # dframe$hover_text <- paste("Value:", dframe$value, "<br>Name:", my_variable_names[dframe$Var1])
   # dframe$hover_text <- paste("Name:", my_variable_names[dframe$Var1])
-  dframe$hover_text <- paste("X:", dframe$Var1, "<br>Y:", dframe$Var2,"<br>Name:", my_variable_names[dframe$Var1])
+  dframe$hover_text <- paste("X:", dframe$Var1, "<br>Y:", dframe$Var2,"<br>Missing values:",my_missing_values[dframe$Var1], "<br>Name:", my_variable_names[dframe$Var1])
+  
+  # dframe$hover_text <- paste("X:", dframe$Var1, "<br>Y:", dframe$Var2,"<br>Name:", my_variable_names[dframe$Var1])
   
   # Add trace for tile representation using scatter plot
   p <- p %>%

@@ -60,8 +60,9 @@ data_original <- trim_values_in_columns(data_original,custom_colnames=char_colum
 # 
 # sorted_qc <- qc %>%
 #   arrange(cumulative)
-# data_original %>% 
-#   plot_na_intersect(only_na = FALSE, n_intersacts = 7)
+# source("my_functions.R")
+# data_original %>%
+#   plot_na_intersect_modified()
 
 
 # get a list of columns that only have one unique value and list of columns that 
