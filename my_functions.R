@@ -2122,13 +2122,13 @@ compare_medians_nonparametric <- function (my_data,
 # my_alternative = "two.sided",
 # my_conf_level = 0.95) {
 plot_medians_nonparametric <- function(df, 
-                                  type_of_test = "Wilcoxon rank-sum test", 
-                                  columns_to_show = c(),
-                                  my_group = c(),
-                                  my_mu = 0,
-                                  my_alternative = "two.sided",
-                                  my_conf_level = 0.95,
-                                  plot_title = "") {
+                                       type_of_test = "Wilcoxon rank-sum test", 
+                                       columns_to_show = c(),
+                                       my_group = c(),
+                                       my_mu = 0,
+                                       my_alternative = "two.sided",
+                                       my_conf_level = 0.95,
+                                       plot_title = "") {
   
   if (type_of_test == "Wilcoxon rank-sum test") {
     # Get columns
@@ -2185,10 +2185,10 @@ plot_medians_nonparametric <- function(df,
           # check the y position of p_value
           label_y_pos <- max(filtered_df$Value, na.rm = TRUE) - 0.5
           p <- p + stat_compare_means(# by default method is wilcox
-                                      method.args = list(mu=my_mu, alternative = my_alternative, conf.level = my_conf_level), 
-                                      label = "p.format",
-                                      label.x = 1.4,
-                                      label.y = label_y_pos)
+            method.args = list(mu=my_mu, alternative = my_alternative, conf.level = my_conf_level), 
+            label = "p.format",
+            label.x = 1.4,
+            label.y = label_y_pos)
           return(p)
         } # end if there were 2 unique groups
         else {
@@ -2244,33 +2244,33 @@ plot_medians_nonparametric <- function(df,
                        names_to = "Variable", 
                        values_to = "Value") %>%
           mutate(Variable = factor(Variable, levels = columns_to_test))  # Set order of 'Variable' as per 'columns_to_test'
-
-          # Create the boxplot, faceting by Variable and grouping by my_group_col
-          p <- ggboxplot(
-            df_long,
-            x = "Variable",  # Grouping variable (e.g., Gender)
-            y = "Value" ,     # Response variable
-            outlier.size = 0.2,   # Set the size of outliers
-            size = 0.2
-            # color = my_group_col,
-            # palette = "jco"
+        
+        # Create the boxplot, faceting by Variable and grouping by my_group_col
+        p <- ggboxplot(
+          df_long,
+          x = "Variable",  # Grouping variable (e.g., Gender)
+          y = "Value" ,     # Response variable
+          outlier.size = 0.2,   # Set the size of outliers
+          size = 0.2
+          # color = my_group_col,
+          # palette = "jco"
+        ) +
+          labs(title = plot_title
           ) +
-            labs(title = plot_title
-            ) +
-            theme_minimal() +
-            theme(
-              axis.title.y = element_blank(),
-              panel.grid = element_blank(),
-              strip.text = element_text(size = 14) 
-            ) 
-          # check the y position of p_value
-          label_y_pos <- max(df_long$Value, na.rm = TRUE) - 0.5
-          p <- p + stat_compare_means(# by default method is wilcoxon
-            method.args = list(mu=my_mu, alternative = my_alternative, conf.level = my_conf_level), 
-            label = "p.format",
-            label.x = 1.4,
-            label.y = label_y_pos)
-          return(p)
+          theme_minimal() +
+          theme(
+            axis.title.y = element_blank(),
+            panel.grid = element_blank(),
+            strip.text = element_text(size = 14) 
+          ) 
+        # check the y position of p_value
+        label_y_pos <- max(df_long$Value, na.rm = TRUE) - 0.5
+        p <- p + stat_compare_means(# by default method is wilcoxon
+          method.args = list(mu=my_mu, alternative = my_alternative, conf.level = my_conf_level), 
+          label = "p.format",
+          label.x = 1.4,
+          label.y = label_y_pos)
+        return(p)
       } else {
         print("If no group given, needs exactly 2 columns for Wilcoxon rank-sum test")
       }
@@ -2306,7 +2306,9 @@ plot_medians_nonparametric <- function(df,
             mutate(id = as.integer((row_number() + 1) %/% 2)) %>%  # Assign the same ID to every two rows within each group
             ungroup()
           # print(filtered_df)
-          
+          # Modify the factor column by adding the column name as prefix
+          filtered_df[[my_group_col]] <- factor(paste(my_group_col, filtered_df[[my_group_col]], sep = "_"))
+         
           # Create the boxplot, faceting by my_group_col and grouping by Variable
           p <- ggpaired(
             filtered_df,
@@ -2339,11 +2341,11 @@ plot_medians_nonparametric <- function(df,
           label_y_pos <- max(filtered_df$Value, na.rm = TRUE) - 0.5
           
           p <- p + stat_compare_means( # by default method is wilcoxon
-                              method.args = list(mu=my_mu, alternative = my_alternative, conf.level = my_conf_level), 
-                              paired = TRUE, 
-                              label = "p.format", 
-                              label.x = 1.4, 
-                              label.y = label_y_pos)
+            method.args = list(mu=my_mu, alternative = my_alternative, conf.level = my_conf_level), 
+            paired = TRUE, 
+            label = "p.format", 
+            label.x = 1.4, 
+            label.y = label_y_pos)
           return(p)
         } # end if not exactly 2 groups
         else {
@@ -2364,6 +2366,7 @@ plot_medians_nonparametric <- function(df,
           filtered_df <- df_long %>%
             mutate(id = as.integer((row_number() + 1) %/% 2)) %>%  # Assign the same ID to every two rows within each group
             ungroup()
+          
           # print(filtered_df)
           p <- ggpaired(
             filtered_df,
@@ -2414,6 +2417,7 @@ plot_medians_nonparametric <- function(df,
         filtered_df <- df_long %>%
           mutate(id = as.integer((row_number() + 1) %/% 2)) %>%  # Assign the same ID to every two rows within each group
           ungroup()
+        
         # print(filtered_df)
         p <- ggpaired(
           filtered_df,
@@ -2438,11 +2442,11 @@ plot_medians_nonparametric <- function(df,
         label_y_pos <- max(filtered_df$Value, na.rm = TRUE) - 0.5
         
         p <- p + stat_compare_means(# by default method is wilcoxon
-                                    method.args = list(mu=my_mu, alternative = my_alternative, conf.level = my_conf_level), 
-                                    paired = TRUE, 
-                                    label = "p.format", 
-                                    label.x = 1.4, 
-                                    label.y = label_y_pos)
+          method.args = list(mu=my_mu, alternative = my_alternative, conf.level = my_conf_level), 
+          paired = TRUE, 
+          label = "p.format", 
+          label.x = 1.4, 
+          label.y = label_y_pos)
         return(p)
       } # end if no group but 2 columns
       else {
@@ -2514,9 +2518,9 @@ plot_medians_nonparametric <- function(df,
               # label = "p.format",
               label.x = mean(as.numeric(unique(filtered_df[[my_group_col]]))),  # Center horizontally
               label.y = label_y_pos   # Set above the other comparisons
-              ) +
+            ) +
             stat_compare_means(comparisons = my_comparisons) 
-            
+          
           return(p)
         } # end if there are > 2 unique groups
         else {
@@ -2623,4 +2627,3 @@ plot_medians_nonparametric <- function(df,
   } # end if Kruskal-Wallis test 
   
 } # end plot_medians_nonparametric
-

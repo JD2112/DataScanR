@@ -2294,7 +2294,9 @@ plot_medians_nonparametric <- function(df,
             mutate(id = as.integer((row_number() + 1) %/% 2)) %>%  # Assign the same ID to every two rows within each group
             ungroup()
           # print(filtered_df)
-          
+          # Modify the factor column by adding the column name as prefix
+          filtered_df[[my_group_col]] <- factor(paste(my_group_col, filtered_df[[my_group_col]], sep = "_"))
+       
           # Create the boxplot, faceting by my_group_col and grouping by Variable
           p <- ggpaired(
             filtered_df,
@@ -2352,6 +2354,7 @@ plot_medians_nonparametric <- function(df,
           filtered_df <- df_long %>%
             mutate(id = as.integer((row_number() + 1) %/% 2)) %>%  # Assign the same ID to every two rows within each group
             ungroup()
+          
           # print(filtered_df)
           p <- ggpaired(
             filtered_df,
@@ -2402,6 +2405,7 @@ plot_medians_nonparametric <- function(df,
         filtered_df <- df_long %>%
           mutate(id = as.integer((row_number() + 1) %/% 2)) %>%  # Assign the same ID to every two rows within each group
           ungroup()
+        
         # print(filtered_df)
         p <- ggpaired(
           filtered_df,
@@ -2496,13 +2500,13 @@ plot_medians_nonparametric <- function(df,
           # check the y position of p_value
           label_y_pos <- max(filtered_df$Value, na.rm = TRUE) + length(my_comparisons)-1 
           p <- p + 
-            stat_compare_means(
-              method = "kruskal.test",
-              method.args = list(mu=my_mu, alternative = my_alternative, conf.level = my_conf_level),
-              # label = "p.format",
-              label.x = mean(as.numeric(unique(filtered_df[[my_group_col]]))),  # Center horizontally
-              label.y = label_y_pos   # Set above the other comparisons
-            ) +
+            # stat_compare_means(
+            #   method = "kruskal.test",
+            #   method.args = list(mu=my_mu, alternative = my_alternative, conf.level = my_conf_level),
+            #   # label = "p.format",
+            #   label.x = mean(as.numeric(unique(filtered_df[[my_group_col]]))),  # Center horizontally
+            #   label.y = label_y_pos   # Set above the other comparisons
+            # ) +
             stat_compare_means(comparisons = my_comparisons) 
           
           return(p)
@@ -2545,13 +2549,13 @@ plot_medians_nonparametric <- function(df,
           # check the y position of p_value
           label_y_pos <- max(df_long$Value, na.rm = TRUE) + length(my_comparisons)
           p <- p + 
-            stat_compare_means(
-              method = "kruskal.test",
-              method.args = list(mu=my_mu, alternative = my_alternative, conf.level = my_conf_level),
-              # label = "p.format",
-              label.x = as.numeric(length(columns_to_test)/2+0.2),  # Center horizontally
-              label.y = label_y_pos  # Set above the other comparisons
-            ) +
+            # stat_compare_means(
+            #   method = "kruskal.test",
+            #   method.args = list(mu=my_mu, alternative = my_alternative, conf.level = my_conf_level),
+            #   # label = "p.format",
+            #   label.x = as.numeric(length(columns_to_test)/2+0.2),  # Center horizontally
+            #   label.y = label_y_pos  # Set above the other comparisons
+            # ) +
             stat_compare_means(comparisons = my_comparisons) 
           return(p)
         } # end running between columns
@@ -2594,13 +2598,13 @@ plot_medians_nonparametric <- function(df,
         # check the y position of p_value
         label_y_pos <- max(df_long$Value, na.rm = TRUE) + length(my_comparisons)
         p <- p + 
-          stat_compare_means(
-            method = "kruskal.test",
-            method.args = list(mu=my_mu, alternative = my_alternative, conf.level = my_conf_level),
-            # label = "p.format",
-            label.x = as.numeric(length(columns_to_test)/2+0.2),  # Center horizontally
-            label.y = label_y_pos  # Set above the other comparisons
-          ) +
+          # stat_compare_means(
+          #   method = "kruskal.test",
+          #   method.args = list(mu=my_mu, alternative = my_alternative, conf.level = my_conf_level),
+          #   # label = "p.format",
+          #   label.x = as.numeric(length(columns_to_test)/2+0.2),  # Center horizontally
+          #   label.y = label_y_pos  # Set above the other comparisons
+          # ) +
           stat_compare_means(comparisons = my_comparisons) 
         return(p)
       } # end running between columns

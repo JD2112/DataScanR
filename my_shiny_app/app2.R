@@ -212,11 +212,6 @@ cards_normality <- list(
                              selected = "Shapiro-Wilk",
                              multiple = FALSE) # dropdown with available plot types
                ), # end tagList
-               # # Add text between the selectInput and plot
-               # div(
-               #   HTML("Use Search field to find and select the rows<br>with the variables to show.<br><br>"), 
-               #   style = "margin-top: 0px; font-size: 12px;"  # Adjust styling as needed
-               # ),
                uiOutput("deselect_button_ui") # show deselect button after the data is loaded
         )
       )
@@ -292,11 +287,6 @@ cards_normality <- list(
         # Add download button
         # UI output for the download button
         uiOutput("download_normality_button_ui")
-        # downloadButton(
-        #   "download_normality_plot",
-        #   label = "Download Plot",
-        #   class = "btn btn-primary ms-3"  # Optional: Bootstrap styling, with margin on the left
-        # )
       ),
       style = "padding: 10px;"
     ) # end card footer
@@ -852,7 +842,6 @@ ui <- page_navbar(
         cursor: pointer;
         margin-bottom: 5px;  /* Space specifically beneath the button */
       }
-      
     ")),
     
     # jQuery for dynamically adjusting modal and full-screen z-index
@@ -1170,7 +1159,7 @@ server <- function(input, output,session) {
     DT::datatable(
       table_data,
       options = list(
-        pageLength = 15,   # Show n rows by default
+        pageLength = 10,   # Show n rows by default
         autoWidth = TRUE,  # Auto-adjust column width
         dom = 'frtiBp',    # Search box, pagination, etc.
         buttons = c( 'csv', 'excel', 'pdf')
