@@ -23,3 +23,32 @@ package added to the docker image
 
 ## Statistical tests
 1. `parametric` by `groups` -> `plots`?
+
+
+## List of libraries
+
+```
+library(shiny)
+library(DT)
+library(ggplot2)
+library(plotly)
+library(bslib)
+library(data.table)
+library(dlookr)
+library(tidyr)
+library(shinycssloaders)
+library(dplyr)
+
+
+library(patchwork)
+library(ggpubr)
+library(hrbrthemes)
+library(ggdist)
+library(corrplot)
+library(pals)
+
+library(NbClust)
+
+## missing libraries
+library(bsicons)
+```
