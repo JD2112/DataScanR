@@ -3,7 +3,6 @@
 [![DOI](https://zenodo.org/badge/490592846.svg)](https://doi.org/10.5281/zenodo.11105016)
 [![](https://img.shields.io/badge/Shiny-shinyapps.io-447099"?style=flat&labelColor=white&logo=Posit&logoColor=447099")](https://jyotirmoydas.shinyapps.io/edais/)
 
-![https://jyotirmoydas.shinyapps.io/edais/](https://jyotirmoydas.shinyapps.io/edais/)
 
 **Using R packages - [dlookr](https://choonghyunryu.github.io/dlookr/)**
 
