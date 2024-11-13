@@ -1,7 +1,7 @@
 # bugs and issues
 
 ## Upload file size
-need to set the size of the file (now is 5MB as default)
+need to set the size of the file (now is 5MB as default) - Set to 100MB
 
 ## Data Cleaning
 1. if possible to have the horizontal scroll bar for the table (Data cleaning) right below the table, not at the bottom!
@@ -16,7 +16,8 @@ need to set the size of the file (now is 5MB as default)
 Warning: Error in loadNamespace: there is no package called ‘bsicons’
 ```
 
-package added to the docker image
+**fixed** package added to the docker image
+
 2. automatically calculates normality and prompt `problem calculating normality`!!!
 
 ## Correlation
