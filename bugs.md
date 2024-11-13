@@ -1,5 +1,8 @@
 # bugs and issues
 
+## Upload file size
+need to set the size of the file (now is 5MB as default)
+
 ## Data Cleaning
 1. if possible to have the horizontal scroll bar for the table (Data cleaning) right below the table, not at the bottom!
 2. With the horizontal scroll bar the whole window is moving, have to go back to go to next page :D 
