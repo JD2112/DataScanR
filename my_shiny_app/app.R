@@ -909,6 +909,7 @@ ui <- page_navbar(
 ###################################################################################
 # SERVER
 server <- function(input, output,session) {
+  options(shiny.maxRequestSize = 100 * 1024^2) # set to 100MB file size
   # Reactive values 
   display_data <- reactiveVal(NULL)
   modified_data <- reactiveVal(NULL)
