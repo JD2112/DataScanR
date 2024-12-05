@@ -635,7 +635,7 @@ get_optimal_no_clusters <- function (df, my_cols = c(), my_distance_method="eucl
 } # end get_optimal_no_clusters
 
 #########################################################################################################
-# from dlookr github: https://github.com/choonghyunryu/dlookr/blob/HEAD/R/missing.R
+# modified from dlookr github: https://github.com/choonghyunryu/dlookr/blob/HEAD/R/missing.R
 plot_na_pareto_modified <- function (x, only_na = FALSE, relative = FALSE, main = NULL, col = "black",
                                      grade = list(Good = 0.05, OK = 0.1, NotBad = 0.2, Bad = 0.5, Remove = 1),
                                      plot = TRUE, typographic = TRUE, base_family = NULL)
@@ -756,6 +756,8 @@ plot_na_pareto_modified <- function (x, only_na = FALSE, relative = FALSE, main 
 }
 
 #########################################################################################
+# modified from
+# https://github.com/choonghyunryu/dlookr/blob/master/R/missing.R
 plot_na_intersect_modified <- function (x, only_na = TRUE, n_intersacts = NULL, 
                                         n_vars = NULL, main = NULL)
 {
