@@ -9,6 +9,7 @@ library(DT)
 library(ggplot2)
 library(plotly)
 library(bslib)
+library(bsicons)
 library(data.table)
 library(dlookr)
 library(tidyr)
@@ -341,11 +342,31 @@ cards_correlation <- list(
       # Create a fluid row for inputs above the plot
       fluidRow(
         column(6, 
+               ######################################################################
+               # Wrapping text and icon in tagList to align them
+               tagList(
+                 # Add the selectInput with label and info button
+                 tags$label(
+                   "Select Correlation Plot Type:", 
+                   class = "plot_type_correlation_label",  # Assign the custom class here
+                   style = "display: inline;",
+                   tags$i(
+                     class = "bi bi-info-circle",  # Bootstrap info-circle icon
+                     style = "cursor: pointer; padding-left: 5px;",
+                     `data-bs-toggle` = "tooltip",  # Tooltip attribute
+                     `data-bs-placement` = "right",
+                     title = CORRELATION_PLOT_TYPE_INFO,
+                     `data-bs-html` = "true"  # Enable HTML content in tooltip
+                   )  # End of tags$i (info icon for Select Test)
+                 ),  # End of tags$label
+                 ######################################################################
                selectInput("plot_type_correlation",
-                           label = "Select Correlation Plot Type",
+                           NULL,
+                           #label = "Select Correlation Plot Type",
                            choices = c("upper","lower", "full","confidence_interval"),
                            selected = "lower",
                            multiple = FALSE), # dropdown with available plot types
+               ), # end tagList
                textInput("cor_plot_title", "Title", value = "Correlation matrix"),
                ######################################################################
                # Wrapping text and icon in tagList to align them
@@ -710,6 +731,11 @@ ui <- page_navbar(
         z-index: 1050 !important;  /* Lower z-index for full-screen cards */
       }
       
+      /* Move the horizontal scrollbar above buttons */
+      div.dataTables_wrapper div.dataTables_scroll {
+        margin-bottom: 1em; /* Space between scrollbar and buttons */
+      }
+      
       /* Style for file input placeholder text */
       .sidebar input[type='file'] {
         font-size: 12px !important; /* Adjusts the font size for the file input */
@@ -823,6 +849,9 @@ ui <- page_navbar(
       }
       .preview_normality_plot_label {
         font-size: 12px;  /* Adjust font size here */
+      }
+      .plot_type_correlation_label {
+        font-size: 12px;
       }
       .significance_level_corr_label {
         font-size: 12px;
@@ -1083,21 +1112,32 @@ server <- function(input, output,session) {
       currently_selected_columns_data(selected_columns)
       # currently_selected_columns_plot(selected_columns)
       stats_preview <- describe(new_data[, ..selected_columns])
-      display_data(stats_preview) # set display_data
+      if (nrow(stats_preview)==0) { # none of cols were numerical, describe will return empty table
+        show_error_modal_with_icon("There is no numerical data to summarize.")
+      }
+      else {
+        display_data(stats_preview) # set display_data
+        output$data_table_title <- renderUI({
+        h5("Selected Summary")
+      })
+      }
     }
-    output$data_table_title <- renderUI({
-      h5("Selected Summary")
-    })
+    
   }) # end summarize selected data only
   
   # Summarize all data
   observeEvent(input$summarizeButton, {
     req(modified_data()) 
     stats_preview <- describe(modified_data())
-    display_data(stats_preview) # set display_data
-    output$data_table_title <- renderUI({
-      h5("Summary")
-    })
+    if (nrow(stats_preview)==0) { # none of cols were numerical, describe will return empty table
+      show_error_modal_with_icon("There is no numerical data to summarize.")
+    }
+    else {
+      display_data(stats_preview) # set display_data
+      output$data_table_title <- renderUI({
+        h5("Summary")
+      })
+    }
   }) # end summarize all data
   # Show all current data
   observeEvent(input$showDataButton, {
@@ -1163,7 +1203,8 @@ server <- function(input, output,session) {
         pageLength = 10,   # Show n rows by default
         autoWidth = TRUE,  # Auto-adjust column width
         dom = 'frtiBp',    # Search box, pagination, etc.
-        buttons = c( 'csv', 'excel', 'pdf')
+        buttons = c( 'csv', 'excel', 'pdf'),
+        scrollX = TRUE        # Enable horizontal scrolling
       ),
       rownames = FALSE,      
       extensions = "Buttons"
@@ -1499,7 +1540,11 @@ server <- function(input, output,session) {
       current_data <- modified_data()
       if (! is.null(current_data) && nrow(current_data) > 0) {
         # Dynamically update the column selector when the data is loaded
-        column_names <- colnames(modified_data())  # Get column names from the loaded data
+        #column_names <- colnames(modified_data())  # Get column names from the loaded data
+        # Select only numerical columns
+        data <- modified_data()
+        numerical_data <- data %>% select_if(is.numeric)
+        column_names <- colnames(numerical_data)  
         selected_cols <- currently_selected_columns_corr()
         if (!is.null(selected_cols) && length(selected_cols) > 0) {
           updateSelectInput(session, "columns_correlation", choices = column_names, selected = selected_cols)

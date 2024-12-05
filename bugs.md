@@ -1,12 +1,11 @@
 # bugs and issues
 
 ## Upload file size
-need to set the size of the file (now is 5MB as default) - Set to 100MB
+**FIXED BY J in server:** need to set the size of the file (now is 5MB as default) - Set to 100MB
 
 ## Data Cleaning
-1. if possible to have the horizontal scroll bar for the table (Data cleaning) right below the table, not at the bottom!
-2. With the horizontal scroll bar the whole window is moving, have to go back to go to next page :D 
-3. `Summarize selected Data` is not working!!!
+**FIXED** 1. if possible to have the horizontal scroll bar for the table (Data cleaning) right below the table, not at the bottom! With the horizontal scroll bar the whole window is moving, have to go back to go to next page :D 
+**FIXED** 2. `Summarize selected Data` is not working!!!**- for only non-numerical data, it will show an info window with explanation about the lack of numerical data to summarize.**
 
 ## Normality
 
@@ -21,9 +20,8 @@ Warning: Error in loadNamespace: there is no package called ‘bsicons’
 2. automatically calculates normality and prompt `problem calculating normality`!!!
 
 ## Correlation
-1. should have a notification, `select numeric variables``?
-2. cluster will only generate when `hclust` is selected as `ordered variables` and with `full` plot type. Include an `info` button?
-3. 
+**FIXED**1. should have a notification, `select numeric variables` **- only numerical variables are in the dropdown**
+**FIXED**2. cluster will only generate when `hclust` is selected as `ordered variables` and with `full` plot type. Include an `info` button? **-fixed with info button next to Select Correlation Plot Type**
 
 ## Statistical tests
 1. `parametric` by `groups` -> `plots`?

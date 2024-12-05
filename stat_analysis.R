@@ -82,6 +82,12 @@ data_original %>%
 # have more than some threshold percent of missing values and filter them out
 data_filtered_by_missing_threshold <- remove_missing_data_columns_by_threshold(data_original,c(0,MISSING_DATA_PCT_THRESHOLD))
 diagnostic <- diagnose(data_filtered_by_missing_threshold)
+##############################################
+# test summary=describe) for non numeric data
+# data_filtered_by_missing_threshold %>%
+#   select(all_of(c("UniProt","Assay","Panel"))) -> char_df
+# char_summary <- describe(char_df)
+########################################################
 # if one knows which columns are not important in the analysis, one can remove them here
 # by column name
 non_informative_columns <- c("sXXX","sXXX.x","X.x","Index","X.y","SampleID","Index","filter_.","AscA_ID","filter_.")

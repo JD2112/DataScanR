@@ -35,6 +35,8 @@ SIGNIFICANCE_LEVEL_CORR_INFO = "Value 1 will show all correlation coefficients v
 NORMAITY_METHOD_INFO = "Methods to check whether your data is normally distributed.<br><br>Shapiro-Wilk:<br>Recommended for dataset < 2000 observations.
 <br><br>Kolmogorov-Smirnov:<br>Recommended for dataset > 2000 observations.<br><br>p-value < 0.05 and statistic close to 1 tell us that we can 
 reject the null hypothesis of the normally distributed data."
+CORRELATION_PLOT_TYPE_INFO = "full<br>This plot type will show clustering squares only if hclust is selected in Order Variables drop down menu (Advanced Options).<br>
+<br>conficence_interval<br>This plot type will show confidence intervals only if they were calculated in the table above."
 ###########################################################################################
 # a function to read a csv file with all known csv separators, or return empty data frame
 # if there are comas in the column, it will try to convert that column to numerical
