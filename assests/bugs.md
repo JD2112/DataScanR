@@ -20,11 +20,14 @@ Warning: Error in loadNamespace: there is no package called ‘bsicons’
 2. automatically calculates normality and prompt `problem calculating normality`!!!
 
 ## Correlation
-**FIXED**1. should have a notification, `select numeric variables` **- only numerical variables are in the dropdown**<br>
-**FIXED**2. cluster will only generate when `hclust` is selected as `ordered variables` and with `full` plot type. Include an `info` button? **-fixed with info button next to Select Correlation Plot Type**<br>
+**FIXED** 1. should have a notification, `select numeric variables` **- only numerical variables are in the dropdown**<br>
+**FIXED** 2. cluster will only generate when `hclust` is selected as `ordered variables` and with `full` plot type. Include an `info` button? **-fixed with info button next to Select Correlation Plot Type**<br>
 
 ## Statistical tests
 1. `parametric` by `groups` -> `plots`?
+
+## Round numbers in the displayed tables
+**fixed**
 
 
 ## List of libraries
@@ -51,6 +54,5 @@ library(pals)
 
 library(NbClust)
 
-## missing libraries
 library(bsicons)
 ```

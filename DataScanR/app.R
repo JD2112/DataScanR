@@ -16,6 +16,7 @@ library(tidyr)
 library(shinycssloaders)
 
 SIDEBAR_WIDTH_CLEAN_DATA = 200
+ROUND_DECIMALS = 3       # to how many decimals should the tables show
 SHAPIRO_THRESHOLD = 2000 # max rows to use shapiro for normality
 MAX_FOR_PREVIEW_PLOT = 6
 MESSAGE_COLOR = " #488fda"
@@ -708,7 +709,7 @@ non_parametric_view <- sidebarLayout(
 #######################################################
 # UI part
 ui <- page_navbar(
-  title = "Exploratory Data Analysis",
+  title = "DataScanR",
   id = "nav_tabs",  # Set an ID to observe selected panel
   theme = bs_theme(version = 5),  # Use Bootstrap 5 for compatibility with tooltips
   # Add custom CSS for ensuring modal is always in front
@@ -946,7 +947,7 @@ server <- function(input, output,session) {
   currently_selected_columns_data <- reactiveVal(c())
   removed_columns_data <- reactiveVal(c())
   current_plot <- reactiveVal("empty")
-  normality_results <- reactiveVal(NULL)
+  # normality_results <- reactiveVal(NULL)
   normality_df <- reactiveVal(NULL)
   display_data_normality <- reactiveVal(NULL)
   missing_data_exists <- reactiveVal(TRUE)
@@ -1066,6 +1067,9 @@ server <- function(input, output,session) {
   observeEvent(input$diagnoseButton, {
     req(modified_data())  # Ensure data is available
     new_data <- diagnose(modified_data())  # Remove selected columns
+    # round numeric columns to 3 decimals
+    new_data <- new_data %>%
+      mutate(across(where(is.numeric), ~ round(.x, ROUND_DECIMALS)))
     display_data(new_data)
     output$data_table_title <- renderUI({
       h5("Diagnostics")
@@ -1112,6 +1116,9 @@ server <- function(input, output,session) {
       currently_selected_columns_data(selected_columns)
       # currently_selected_columns_plot(selected_columns)
       stats_preview <- describe(new_data[, ..selected_columns])
+      # round numeric columns to 3 decimals
+      stats_preview <- stats_preview %>%
+        mutate(across(where(is.numeric), ~ round(.x, ROUND_DECIMALS)))
       if (nrow(stats_preview)==0) { # none of cols were numerical, describe will return empty table
         show_error_modal_with_icon("There is no numerical data to summarize.")
       }
@@ -1129,6 +1136,9 @@ server <- function(input, output,session) {
   observeEvent(input$summarizeButton, {
     req(modified_data()) 
     stats_preview <- describe(modified_data())
+    # round numeric columns to 3 decimals
+    stats_preview <- stats_preview %>%
+      mutate(across(where(is.numeric), ~ round(.x, ROUND_DECIMALS)))
     if (nrow(stats_preview)==0) { # none of cols were numerical, describe will return empty table
       show_error_modal_with_icon("There is no numerical data to summarize.")
     }
@@ -1318,10 +1328,13 @@ server <- function(input, output,session) {
                              selected = "Shapiro-Wilk")
           tryCatch({
             # function will perform shapiro test
-            # first element of the list is a vector with non_normal_columnnames, second with normal_columnnames
-            my_normality_results <- check_normality_shapiro(current_data)
+            # # first element of the list is a vector with non_normal_columnnames, second with normal_columnnames
+            # my_normality_results <- check_normality_shapiro(current_data)
             my_normality_df <- get_normality_shapiro(current_data)
-            normality_results(my_normality_results)
+            # normality_results(my_normality_results)
+            # round numeric columns to 3 decimals
+            my_normality_df <- my_normality_df %>%
+              mutate(across(where(is.numeric), ~ round(.x, ROUND_DECIMALS)))
             normality_df(my_normality_df)
           }, error = function(e) {
             # Handle error
@@ -1335,10 +1348,13 @@ server <- function(input, output,session) {
                             selected = "Kolmogorov-Smirnov")
           tryCatch({
             # function will apply ks test for each numeric column and return a list
-            # first element of the list is a vector with non_normal_columnnames, second with normal_columnnames
-            my_normality_results <- check_normality_ks(current_data)
+            # # first element of the list is a vector with non_normal_columnnames, second with normal_columnnames
+            # my_normality_results <- check_normality_ks(current_data)
             my_normality_df <- get_normality_ks(current_data)
-            normality_results(my_normality_results)
+            # normality_results(my_normality_results)
+            # round numeric columns to 3 decimals
+            my_normality_df <- my_normality_df %>%
+              mutate(across(where(is.numeric), ~ round(.x, ROUND_DECIMALS)))
             normality_df(my_normality_df)
           }, error = function(e) {
             # Handle error
@@ -1376,10 +1392,13 @@ server <- function(input, output,session) {
         if (input$normality_type == "Shapiro-Wilk") {
           tryCatch({
             # function will perform shapiro test
-            # first element of the list is a vector with non_normal_columnnames, second with normal_columnnames
-            my_normality_results <- check_normality_shapiro(current_data)
+            # # first element of the list is a vector with non_normal_columnnames, second with normal_columnnames
+            # my_normality_results <- check_normality_shapiro(current_data)
             my_normality_df <- get_normality_shapiro(current_data)
-            normality_results(my_normality_results)
+            # normality_results(my_normality_results)
+            # round numeric columns to 3 decimals
+            my_normality_df <- my_normality_df %>%
+              mutate(across(where(is.numeric), ~ round(.x, ROUND_DECIMALS)))
             normality_df(my_normality_df)
           }, error = function(e) {
             # Handle error
@@ -1389,10 +1408,13 @@ server <- function(input, output,session) {
         else if (input$normality_type == "Kolmogorov-Smirnov") {
           tryCatch({
           # function will apply ks test for each numeric column and return a list
-          # first element of the list is a vector with non_normal_columnnames, second with normal_columnnames
-          my_normality_results <- check_normality_ks(current_data)
+          # # first element of the list is a vector with non_normal_columnnames, second with normal_columnnames
+          # my_normality_results <- check_normality_ks(current_data)
           my_normality_df <- get_normality_ks(current_data)
-          normality_results(my_normality_results)
+          # normality_results(my_normality_results)
+          # round numeric columns to 3 decimals
+          my_normality_df <- my_normality_df %>%
+            mutate(across(where(is.numeric), ~ round(.x, ROUND_DECIMALS)))
           normality_df(my_normality_df)
           }, error = function(e) {
             # Handle error
@@ -1442,7 +1464,8 @@ server <- function(input, output,session) {
         pageLength = 20,   # Show n rows by default
         autoWidth = TRUE,  # Auto-adjust column width
         dom = 'frtiBp',    # Search box, pagination, etc.
-        buttons = c( 'csv', 'excel', 'pdf')  # Add export buttons
+        buttons = c( 'csv', 'excel', 'pdf'),  # Add export buttons
+        scrollX = TRUE        # Enable horizontal scrolling
       ),
       rownames = FALSE,
       selection = 'multiple',
@@ -1584,6 +1607,9 @@ server <- function(input, output,session) {
   output$correlation_table <- DT::renderDataTable({
     req(correlation_result())  # Ensure data is available
     table_data <- correlation_result()$correlation_df
+    # round numeric columns to 3 decimals
+    table_data <- table_data %>%
+      mutate(across(where(is.numeric), ~ round(.x, ROUND_DECIMALS)))
     # Render the table using DT for interactivity
     DT::datatable(
       table_data,
@@ -1591,7 +1617,8 @@ server <- function(input, output,session) {
         pageLength = 20,   # Show n rows by default
         autoWidth = TRUE,  # Auto-adjust column width
         dom = 'frtiBp',    # Search box, pagination, etc.
-        buttons = c( 'csv', 'excel', 'pdf')  # Add export buttons
+        buttons = c( 'csv', 'excel', 'pdf'),  # Add export buttons
+        scrollX = TRUE        # Enable horizontal scrolling
       ),
       # rownames = FALSE,
       selection = 'none',
@@ -1804,6 +1831,9 @@ server <- function(input, output,session) {
                                    my_conf_level = conf_level)
               currently_selected_columns_param_tests(test_columns)
               currently_selected_group_col_param_tests(group_col)
+              # round numeric columns to 3 decimals
+              res <- res %>%
+                mutate(across(where(is.numeric), ~ round(.x, ROUND_DECIMALS)))
               display_data_parametric_tests(res)
               output$param_test_table_title <- renderUI({
                 title_text <- paste0("<br><br>","&nbsp;&nbsp;&nbsp;&nbsp;",test)
@@ -1849,7 +1879,8 @@ server <- function(input, output,session) {
         pageLength = 20,   # Show n rows by default
         autoWidth = TRUE,  # Auto-adjust column width
         dom = 'frtiBp',    # Search box, pagination, etc.
-        buttons = c( 'csv', 'excel', 'pdf')  # Add export buttons
+        buttons = c( 'csv', 'excel', 'pdf'),  # Add export buttons
+        scrollX = TRUE        # Enable horizontal scrolling
       ),
       rownames = FALSE,
       selection = 'none',
@@ -1984,6 +2015,9 @@ server <- function(input, output,session) {
                                             my_conf_level = conf_level)
             currently_selected_columns_nonparam_tests(test_columns)
             currently_selected_group_col_nonparam_tests(group_col)
+            # round numeric columns to 3 decimals
+            res <- res %>%
+                mutate(across(where(is.numeric), ~ round(.x, ROUND_DECIMALS)))
             display_data_nonparametric_tests(res)
             output$nonparam_test_table_title <- renderUI({
               title_text <- paste0("<br><br>","&nbsp;&nbsp;&nbsp;&nbsp;",test)
@@ -2021,7 +2055,8 @@ server <- function(input, output,session) {
         pageLength = 20,   # Show n rows by default
         autoWidth = TRUE,  # Auto-adjust column width
         dom = 'frtiBp',    # Search box, pagination, etc.
-        buttons = c( 'csv', 'excel', 'pdf')  # Add export buttons
+        buttons = c( 'csv', 'excel', 'pdf'),  # Add export buttons
+        scrollX = TRUE        # Enable horizontal scrolling
       ),
       rownames = FALSE,
       selection = 'none',
