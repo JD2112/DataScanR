@@ -22,9 +22,14 @@ Warning: Error in loadNamespace: there is no package called ‘bsicons’
 ## Correlation
 **FIXED** 1. should have a notification, `select numeric variables` **- only numerical variables are in the dropdown**<br>
 **FIXED** 2. cluster will only generate when `hclust` is selected as `ordered variables` and with `full` plot type. Include an `info` button? **-fixed with info button next to Select Correlation Plot Type**<br>
+3. add info that only numerical values are visible and point: 5<br>
+4. add option to hide corr_coef on the plot (under advanced)<br>
+5. add some check for variable uniqueness (similar as for normality)<br>
+6. remove automativ fill for selected columns...<br>
 
 ## Statistical tests
-1. `parametric` by `groups` -> `plots`?
+1. `parametric` by `groups` -> `plots`?<br>
+2. remove automativ fill for selected columns...<br>
 
 ## Round numbers in the displayed tables
 **fixed**
