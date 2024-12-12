@@ -103,6 +103,7 @@ sidebar_data <- layout_sidebar(
 ###########################
 # cards for cleaning data
 cards_cleaning_data <- list(
+ 
   card(
     full_screen = TRUE,
     card_header("Data"),
@@ -121,6 +122,7 @@ cards_cleaning_data <- list(
       style = "padding: 10px;"
     ) # end card footer
   ), # end card Data
+
   card(
     full_screen = TRUE,
     card_header("Plot"),
@@ -179,7 +181,8 @@ cards_cleaning_data <- list(
       plotlyOutput("plot_data_cleaning"),  # Specify height for the plot
       class = "plot-output"  # Add class for margin
     )  # end plot div
-  )
+  ) # end plot card
+
 ) # end cards
 ###########################
 # cards for normality part data
@@ -709,8 +712,17 @@ non_parametric_view <- sidebarLayout(
 #######################################################
 # UI part
 ui <- page_navbar(
-  title = "DataScanR",
+  # title = "DataScanR",
   id = "nav_tabs",  # Set an ID to observe selected panel
+  # Custom header placed at the top
+  header = tags$div(
+    style = "position: fixed; top: 0; left: 0; width: 100%; text-align: center; padding: 10px; background-color: #f8f9fa; font-size: 20px;font-weight:bold; z-index: 999;",
+    HTML("DataScanR")
+  ),
+  footer = tags$footer(
+    style = "text-align: center; padding: 10px; font-size: 12px; color: #555;",
+    HTML("Copyright © 2024-2025. Ilona Szczot and Jyotirmoy Das. Created with R, Shiny.")
+  ),
   theme = bs_theme(version = 5),  # Use Bootstrap 5 for compatibility with tooltips
   # Add custom CSS for ensuring modal is always in front
   # Custom CSS to lower the full-screen card z-index
@@ -719,6 +731,11 @@ ui <- page_navbar(
   tags$head(
     # CSS to force modal z-index higher
     tags$style(HTML("
+      /* Ensure the header does not obscure nav_panels */
+      .bslib-page-navbar { 
+        padding-top: 50px !important; /* Adjust padding for header height */
+        }
+    
       /* Ensure the modal has the highest z-index */
       .modal {
         z-index: 1100 !important;  /* Even higher z-index for modal */
@@ -908,7 +925,7 @@ ui <- page_navbar(
   
   nav_panel("Data Cleaning", 
             layout_columns(cards_cleaning_data[[1]],
-                           cards_cleaning_data[[2]])
+                            cards_cleaning_data[[2]])
   ), # end nav_panel
   nav_panel("Normality",
             # sidebar_normality

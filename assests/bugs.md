@@ -9,13 +9,13 @@
 
 ## Normality
 
-1. 
+**FIXED** 1. 
 ```{r}
 [1] "Normality tab selected!"
 Warning: Error in loadNamespace: there is no package called ‘bsicons’
 ```
 
-**fixed** package added to the docker image
+**fixed** package added to the docker image **added to library imports**
 
 2. automatically calculates normality and prompt `problem calculating normality`!!!
 
