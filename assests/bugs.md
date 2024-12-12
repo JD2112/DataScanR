@@ -17,7 +17,7 @@ Warning: Error in loadNamespace: there is no package called ‘bsicons’
 
 **fixed** package added to the docker image **added to library imports**
 
-2. automatically calculates normality and prompt `problem calculating normality`!!!
+**FIXED** 2. automatically calculates normality and prompt `problem calculating normality`!!! **- when there are less than 3 non-NA values, the normality crashed. Added automatic removing of variables with less than 3 non-NA variables to perform normality check**
 
 ## Correlation
 **FIXED** 1. should have a notification, `select numeric variables` **- only numerical variables are in the dropdown**<br>

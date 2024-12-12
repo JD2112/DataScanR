@@ -10,8 +10,9 @@ big_data_file <- "big_data_table.csv"
 big_data <- read_all_csv_separators(big_data_file)
 
 # read other data
-other_data_file <- "Sample_sheet.csv"
+other_data_file <- "../Sample_sheet.csv"
 other_data <- read_all_csv_separators(other_data_file)
+other_data <- fread(other_data_file)
 
 # clean subject IDs and Sample IDs from leading or ending artefacts
 # one can add custom colnames to clean

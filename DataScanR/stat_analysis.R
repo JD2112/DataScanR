@@ -31,7 +31,8 @@ if (!dir.exists(OUTPUT_FOLDER)) {
 # READ DATA #
 #############
 # read excel file with unit information
-data_file <- "downsampled_data.csv" # 1500 samples from original non normal file
+data_file <- "../Sample_sheet.csv"
+#data_file <- "../downsampled_data.csv" # 1500 samples from original non normal file
 # data_file <- "downsampled_large_data.csv" # 3000 samples from original non normal file
 # data_file <- "downsampled_data_normal.csv" # 1500 samples from generated normal file
 # data_file <- "downsampled_data_normal_large.csv" # 3000 samples from generated normal file
@@ -43,6 +44,7 @@ data_original <- fread(data_file) # fread reads separators automatically
 char_columnnames <- names(data_original)[sapply(data_original, is.character)]
 data_original <- trim_values_in_columns(data_original,custom_colnames=char_columnnames)
 
+
 # report
 # file.path(OUTPUT_FOLDER, "stats_table.csv")
 data_original %>%
@@ -53,15 +55,16 @@ data_original %>%
 ###################
 
 ######################################################
-# DATA CLEANING
+# # DATA CLEANING
 # diagnostic <- diagnose(data_original)
-# # get missing 
+# # get missing
 # source("my_functions.R")
 # plot_na_intersect_modified(data_original)
 # plot_na_intersect(data_original)
-# plot_na_pareto_modified(data_original)
+# p <- plot_na_pareto_modified(data_original)
+# p
 # plot_na_pareto(data_original)
-# qc <- data_original %>% 
+# qc <- data_original %>%
 #   plot_na_pareto(plot = FALSE)
 # 
 # sorted_qc <- qc %>%
@@ -69,7 +72,7 @@ data_original %>%
 # source("my_functions.R")
 # data_original %>%
 #   plot_na_intersect_modified()
-
+# 
 
 # get a list of columns that only have one unique value and list of columns that 
 # data_filtered_by_missing_threshold <- data_original %>%

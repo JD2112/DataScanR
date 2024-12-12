@@ -703,6 +703,7 @@ plot_na_pareto_modified <- function (x, only_na = FALSE, relative = FALSE, main 
               "#E31A1C", "#BD0026", "#800026")
   }  
   
+  
   p <- ggplot(info_na, aes(x = variable)) +
     # geom_bar(aes(y = frequencies, fill = grade,
     #              text = paste0("Variable: ", variable, "\nGrade: ", grade,

@@ -716,12 +716,12 @@ ui <- page_navbar(
   id = "nav_tabs",  # Set an ID to observe selected panel
   # Custom header placed at the top
   header = tags$div(
-    style = "position: fixed; top: 0; left: 0; width: 100%; text-align: center; padding: 10px; background-color: #f8f9fa; font-size: 20px;font-weight:bold; z-index: 999;",
+    style = "position: fixed; top: 0; left: 0; width: 100%; text-align: center; padding: 10px; background-color: #f8f9fa; font-size: 24px;font-style: italic;font-weight:normal;font-family: Arial, Helvetica, sans-serif; z-index: 999;",
     HTML("DataScanR")
   ),
   footer = tags$footer(
     style = "text-align: center; padding: 10px; font-size: 12px; color: #555;",
-    HTML("Copyright © 2024-2025. Ilona Szczot and Jyotirmoy Das. Created with R, Shiny.")
+    HTML("Copyright © 2024-2025. Ilona Szczot and Jyotirmoy Das. Created with R, Shiny. v1.0.0")
   ),
   theme = bs_theme(version = 5),  # Use Bootstrap 5 for compatibility with tooltips
   # Add custom CSS for ensuring modal is always in front
@@ -1337,6 +1337,9 @@ server <- function(input, output,session) {
         # do normality test
         # remove limited variation numerical columns 
         current_data <- remove_limited_variation(current_data,3)
+        # Filter variables with at least 3 non-NA values
+        current_data <- current_data %>%
+          select(where(~ sum(!is.na(.)) >= 3))
         if (nrow(current_data) < SHAPIRO_THRESHOLD) {
           # Update the dropdown 
           updateSelectInput(session,"normality_type",
