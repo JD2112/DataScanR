@@ -31,7 +31,8 @@ if (!dir.exists(OUTPUT_FOLDER)) {
 # READ DATA #
 #############
 # read excel file with unit information
-data_file <- "../Sample_sheet.csv"
+# data_file <- "../Sample_sheet.csv"
+data_file <- "/home/ilosz01/Downloads/unit_clustering/all_units.csv"
 #data_file <- "../downsampled_data.csv" # 1500 samples from original non normal file
 # data_file <- "downsampled_large_data.csv" # 3000 samples from original non normal file
 # data_file <- "downsampled_data_normal.csv" # 1500 samples from generated normal file
@@ -55,36 +56,37 @@ data_original %>%
 ###################
 
 ######################################################
-# # DATA CLEANING
-# diagnostic <- diagnose(data_original)
-# # get missing
-# source("my_functions.R")
-# plot_na_intersect_modified(data_original)
-# plot_na_intersect(data_original)
-# p <- plot_na_pareto_modified(data_original)
-# p
-# plot_na_pareto(data_original)
-# qc <- data_original %>%
-#   plot_na_pareto(plot = FALSE)
-# 
-# sorted_qc <- qc %>%
-#   arrange(cumulative)
-# source("my_functions.R")
-# data_original %>%
-#   plot_na_intersect_modified()
-# 
+# DATA CLEANING
+diagnostic <- diagnose(data_original)
+# get missing
+source("my_functions.R")
+plot_na_intersect_modified(data_original)
+plot_na_intersect(data_original)
+p <- plot_na_pareto_modified(data_original)
+p
+plot_na_pareto(data_original)
+qc <- data_original %>%
+  plot_na_pareto(plot = FALSE)
 
-# get a list of columns that only have one unique value and list of columns that 
-# data_filtered_by_missing_threshold <- data_original %>%
-#   select(-one_of( #select(-one_of(...)) removes the columns from data_original based on the extracted names
-#     diagnostic %>% # extract the column names where unique_count == 1 or missing % was above threshold
-#       filter(unique_count == 1 | missing_percent > MISSING_DATA_PCT_THRESHOLD) %>%
-#       pull(variables)
-#   ))
+sorted_qc <- qc %>%
+  arrange(cumulative)
+source("my_functions.R")
+data_original %>%
+  plot_na_intersect_modified()
+
+
+#get a list of columns that only have one unique value and list of columns that
+data_filtered_by_missing_threshold <- data_original %>%
+  select(-one_of( #select(-one_of(...)) removes the columns from data_original based on the extracted names
+    diagnostic %>% # extract the column names where unique_count == 1 or missing % was above threshold
+      filter(unique_count == 1 | missing_percent > MISSING_DATA_PCT_THRESHOLD) %>%
+      pull(variables)
+  ))
 
 # have more than some threshold percent of missing values and filter them out
 data_filtered_by_missing_threshold <- remove_missing_data_columns_by_threshold(data_original,c(0,MISSING_DATA_PCT_THRESHOLD))
 diagnostic <- diagnose(data_filtered_by_missing_threshold)
+
 ##############################################
 # test summary=describe) for non numeric data
 # data_filtered_by_missing_threshold %>%

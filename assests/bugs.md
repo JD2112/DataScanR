@@ -14,7 +14,6 @@
 [1] "Normality tab selected!"
 Warning: Error in loadNamespace: there is no package called ‘bsicons’
 ```
-
 **fixed** package added to the docker image **added to library imports**
 
 **FIXED** 2. automatically calculates normality and prompt `problem calculating normality`!!! **- when there are less than 3 non-NA values, the normality crashed. Added automatic removing of variables with less than 3 non-NA variables to perform normality check**
@@ -22,14 +21,15 @@ Warning: Error in loadNamespace: there is no package called ‘bsicons’
 ## Correlation
 **FIXED** 1. should have a notification, `select numeric variables` **- only numerical variables are in the dropdown**<br>
 **FIXED** 2. cluster will only generate when `hclust` is selected as `ordered variables` and with `full` plot type. Include an `info` button? **-fixed with info button next to Select Correlation Plot Type**<br>
-3. add info that only numerical values are visible and point: 5<br>
+**FIXED** 3. add info that only numerical values are visible and point: 5<br>
 4. add option to hide corr_coef on the plot (under advanced)<br>
-5. add some check for variable uniqueness (similar as for normality)<br>
-6. remove automativ fill for selected columns...<br>
+**FIXED** 5. add some check for variable uniqueness (similar as for normality)<br>
+**FIXED** 6. check for NA values in corr matrix<br>
+7. remove automatic fill for selected columns...?<br>
 
 ## Statistical tests
 1. `parametric` by `groups` -> `plots`?<br>
-2. remove automativ fill for selected columns...<br>
+2. remove automatic fill for selected columns...<br>
 
 ## Round numbers in the displayed tables
 **fixed**

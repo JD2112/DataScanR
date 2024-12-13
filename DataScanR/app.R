@@ -305,10 +305,28 @@ sidebar_correlation <- layout_sidebar(
   sidebar = sidebar(
     # title = "Data Viewing",
     width = SIDEBAR_WIDTH_CLEAN_DATA,
-    selectInput("columns_correlation", "Select Variables:",  # Predefine an empty selectInput for columns
+    ######################################################################
+    # Wrapping text and icon in tagList to align them
+    tagList(
+      # Add the selectInput with label and info button
+      tags$label(
+        "Select Variables:", 
+        class = "select_correlation_variables_label",  # Assign the custom class here
+        style = "display: inline;",
+        tags$i(
+          class = "bi bi-info-circle",  # Bootstrap info-circle icon
+          style = "cursor: pointer; padding-left: 5px;",
+          `data-bs-toggle` = "tooltip",  # Tooltip attribute
+          `data-bs-placement` = "right",
+          title = CORRELATION_VARIABLES_INFO,
+          `data-bs-html` = "true"  # Enable HTML content in tooltip
+        )  # End of tags$i (info icon for Select Test)
+      ),  # End of tags$label
+    selectInput("columns_correlation", NULL,  
                 choices = c(),  # Empty choices initially
                 multiple = TRUE
     ),
+    ), # end tagList
     selectInput("correlation_method", "Correlation Method:",  
                 choices = c("pearson","kendall","spearman"),  
                 selected = "pearson",
@@ -867,6 +885,9 @@ ui <- page_navbar(
       }
       .preview_normality_plot_label {
         font-size: 12px;  /* Adjust font size here */
+      }
+      .select_correlation_variables_label {
+        font-size: 12px;
       }
       .plot_type_correlation_label {
         font-size: 12px;
@@ -1587,6 +1608,13 @@ server <- function(input, output,session) {
         # Select only numerical columns
         data <- modified_data()
         numerical_data <- data %>% select_if(is.numeric)
+        
+        # # remove limited variation numerical columns 
+        # numerical_data <- remove_limited_variation(numerical_data,3)
+        # Filter variables with at least 3 non-NA values
+        numerical_data <- numerical_data %>%
+          select(where(~ sum(!is.na(.)) >= 3))
+        
         column_names <- colnames(numerical_data)  
         selected_cols <- currently_selected_columns_corr()
         if (!is.null(selected_cols) && length(selected_cols) > 0) {
@@ -1611,8 +1639,26 @@ server <- function(input, output,session) {
                                                     selected_alternative,
                                                     selected_method,
                                                     confidence_level = selected_conf_level)
-        column_names <- colnames(modified_data())
-        updateSelectInput(session, "columns_correlation", choices = column_names, selected = selected_cols)
+        # add check for NA values
+        # remove those variables and show info popup
+        coef_matrix <- corr_matrix_result$correlation_df
+        filtered_coef_matrix <- coef_matrix %>%
+          filter(!is.na(corr_coef) & !is.na(p))
+        if (!(nrow(coef_matrix)==nrow(filtered_coef_matrix))){
+          # re-calculate corr_matrix with non-NA results
+          unique_var <- filtered_coef_matrix %>%
+            distinct(var1) %>%
+            pull(var1)
+          corr_matrix_result <- calculate_corr_matrix(modified_data(),
+                                                      my_columnnames = unique_var,
+                                                      selected_alternative,
+                                                      selected_method,
+                                                      confidence_level = selected_conf_level)
+          # show info
+          show_error_modal_with_icon("Correlation could not be calculated for some of the variables. They will not be shown on the plot.")
+        }
+        # column_names <- colnames(modified_data())
+        # updateSelectInput(session, "columns_correlation", choices = column_names, selected = selected_cols)
         currently_selected_columns_corr(selected_cols)
         correlation_result(corr_matrix_result)
       }, error = function(e) {

@@ -37,6 +37,7 @@ NORMAITY_METHOD_INFO = "Methods to check whether your data is normally distribut
 reject the null hypothesis of the normally distributed data."
 CORRELATION_PLOT_TYPE_INFO = "full<br>This plot type will show clustering squares only if hclust is selected in Order Variables drop down menu (Advanced Options).<br>
 <br>conficence_interval<br>This plot type will show confidence intervals only if they were calculated in the table above."
+CORRELATION_VARIABLES_INFO = "Only numerical variables with at least 3 non-NA values"
 ###########################################################################################
 # a function to read a csv file with all known csv separators, or return empty data frame
 # if there are comas in the column, it will try to convert that column to numerical
