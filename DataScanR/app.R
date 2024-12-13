@@ -411,7 +411,13 @@ cards_correlation <- list(
                numericInput("sig_level", NULL, value = 1, min = 0, max = 1, step = 0.001)
                ), # end tagList
                # Add a checkbox for advanced options
-               checkboxInput("show_advanced_correlation_options", "Show Advanced Options", value = FALSE)
+               checkboxInput("show_advanced_correlation_options", "Show Advanced Options", value = FALSE),
+               # Conditionally show UI elements based on checkbox value
+               conditionalPanel(
+                 condition = "input.show_advanced_correlation_options == true",
+                 # Add a checkbox for showing corr_coefs on the plot
+                 checkboxInput("show_correlation_coef", "Show Correlation Coefficients", value = FALSE)
+               )
         ), # end column
         column(6, 
                # Conditionally show UI elements based on checkbox value
@@ -433,13 +439,33 @@ cards_correlation <- list(
                              multiple = FALSE
                  ),
                  ############################################################################
+                 tagList(
+                   # Add the selectInput with label and info button
+                   tags$label(
+                     "No. of clusters for hclust:", 
+                     class = "no_clusters_label",  # Assign the custom class here
+                     style = "display: inline;",
+                     tags$i(
+                       class = "bi bi-info-circle",  # Bootstrap info-circle icon
+                       style = "cursor: pointer; padding-left: 5px;",
+                       `data-bs-toggle` = "tooltip",  # Tooltip attribute
+                       `data-bs-placement` = "right",
+                       title = NBCLUST_INFO,
+                       `data-bs-html` = "true"  # Enable HTML content in tooltip
+                     )  # End of tags$i (info icon for Select Test)
+                   ),  # End of tags$label
+                   ######################################################################
+                       actionButton("get_no_clusters_btn", "Calculate", class = "get_no_clusters_btn"),
+                       numericInput("cor_hclust_clusters", NULL, value = 2)
+                 ), # end tagList
                  # Wrapping numericInput and actionButton in a div
-                 div(class = "correlation_clusters_input_group",
-                     tags$label("No. of clusters for hclust", class = "no_clusters_label"),
-                     actionButton("get_no_clusters_btn", "Calculate", class = "get_no_clusters_btn",
-                                  title = "This can take a moment. It will calculate the optimal number of clusters."),
-                     numericInput("cor_hclust_clusters", NULL, value = 2)
-                 )
+                 # div(class = "correlation_clusters_input_group",
+                 #     tags$label("No. of clusters for hclust", class = "no_clusters_label"),
+                 #     actionButton("get_no_clusters_btn", "Calculate", class = "get_no_clusters_btn",
+                 #                  title = "This can take a moment. It will calculate the optimal number of clusters. If there are many missing values, the number of clusters migh vary between calculation runs."),
+                 #     numericInput("cor_hclust_clusters", NULL, value = 2)
+                 # ) # end calculate button div
+                 
                ) # end conditional panel 
         ) # end column
         
@@ -1646,19 +1672,24 @@ server <- function(input, output,session) {
           filter(!is.na(corr_coef) & !is.na(p))
         if (!(nrow(coef_matrix)==nrow(filtered_coef_matrix))){
           # re-calculate corr_matrix with non-NA results
-          unique_var <- filtered_coef_matrix %>%
+          selected_cols <- filtered_coef_matrix %>%
             distinct(var1) %>%
             pull(var1)
           corr_matrix_result <- calculate_corr_matrix(modified_data(),
-                                                      my_columnnames = unique_var,
+                                                      my_columnnames = selected_cols,
                                                       selected_alternative,
                                                       selected_method,
                                                       confidence_level = selected_conf_level)
           # show info
           show_error_modal_with_icon("Correlation could not be calculated for some of the variables. They will not be shown on the plot.")
         }
-        # column_names <- colnames(modified_data())
-        # updateSelectInput(session, "columns_correlation", choices = column_names, selected = selected_cols)
+        data <- modified_data()
+        numerical_data <- data %>% select_if(is.numeric)
+        # Filter variables with at least 3 non-NA values
+        numerical_data <- numerical_data %>%
+          select(where(~ sum(!is.na(.)) >= 3))
+        column_names <- colnames(numerical_data)  
+        updateSelectInput(session, "columns_correlation", choices = column_names, selected = selected_cols)
         currently_selected_columns_corr(selected_cols)
         correlation_result(corr_matrix_result)
       }, error = function(e) {
@@ -1715,7 +1746,7 @@ server <- function(input, output,session) {
         updateNumericInput(session, "cor_hclust_clusters", value = no_clust)
       } # end if we got the result
       else {
-        show_error_modal_with_icon("Problem calculating optimal number of clusters.     ")
+        show_error_modal_with_icon("Problem calculating optimal number of clusters. Some variables might have too many missing values.     ")
       }
     } # end if columns were selected
     else {
@@ -1736,6 +1767,11 @@ server <- function(input, output,session) {
     cor_hclust <- input$cor_hclust_method
     cor_no_clusters <- input$cor_hclust_clusters
     col_pos <- input$corr_col_pos
+    if (input$show_correlation_coef) {
+      show_coefs <- "black"
+    } else {
+      show_coefs <- NULL
+    }
     results <- correlation_result()
     if (nrow(cor_df)>0) {
       corr_plot_from_result(results,
@@ -1745,7 +1781,8 @@ server <- function(input, output,session) {
                             my_add_rect = cor_no_clusters,
                             sig_level_crossed = sig_level,
                             my_title=plot_title,
-                            color_map_pos = col_pos)
+                            color_map_pos = col_pos,
+                            show_coefs = show_coefs)
     }
   })
   
@@ -1795,6 +1832,11 @@ server <- function(input, output,session) {
       req(correlation_result())
       
       if (nrow(correlation_result()$correlation_df)>0) {
+        if (input$show_correlation_coef) {
+          show_coefs <- "black"
+        } else {
+          show_coefs <- NULL
+        }
         corr_plot_from_result(correlation_result(),
                               plot_type=input$plot_type_correlation,
                               my_ordering = input$correlation_order,
@@ -1802,7 +1844,8 @@ server <- function(input, output,session) {
                               my_add_rect = input$cor_hclust_clusters,
                               sig_level_crossed = input$sig_level,
                               my_title=input$cor_plot_title,
-                              color_map_pos = input$corr_col_pos)
+                              color_map_pos = input$corr_col_pos,
+                              show_coefs = show_coefs)
         # print(plot)  # Render the plot to the device
         dev.off()    # Close the graphics device to finalize the file
       }

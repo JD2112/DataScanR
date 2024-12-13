@@ -22,10 +22,11 @@ Warning: Error in loadNamespace: there is no package called ‘bsicons’
 **FIXED** 1. should have a notification, `select numeric variables` **- only numerical variables are in the dropdown**<br>
 **FIXED** 2. cluster will only generate when `hclust` is selected as `ordered variables` and with `full` plot type. Include an `info` button? **-fixed with info button next to Select Correlation Plot Type**<br>
 **FIXED** 3. add info that only numerical values are visible and point: 5<br>
-4. add option to hide corr_coef on the plot (under advanced)<br>
+**FIXED** 4. add option to hide corr_coef on the plot (under advanced)<br>
 **FIXED** 5. add some check for variable uniqueness (similar as for normality)<br>
 **FIXED** 6. check for NA values in corr matrix<br>
-7. remove automatic fill for selected columns...?<br>
+**FIXED** 7. NbClust crashes<br>
+
 
 ## Statistical tests
 1. `parametric` by `groups` -> `plots`?<br>

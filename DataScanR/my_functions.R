@@ -13,6 +13,7 @@ library(corrplot)
 library(pals)
 library(dlookr)
 library(NbClust)
+library(mice)
 
 
 MAX_FOR_PREVIEW_PLOT = 6
@@ -38,6 +39,8 @@ reject the null hypothesis of the normally distributed data."
 CORRELATION_PLOT_TYPE_INFO = "full<br>This plot type will show clustering squares only if hclust is selected in Order Variables drop down menu (Advanced Options).<br>
 <br>conficence_interval<br>This plot type will show confidence intervals only if they were calculated in the table above."
 CORRELATION_VARIABLES_INFO = "Only numerical variables with at least 3 non-NA values"
+NBCLUST_INFO = "This can take a moment.<br>It will calculate the optimal number of clusters.<br>
+<br>If there are many missing values, the number of clusters migh vary between calculation runs."
 ###########################################################################################
 # a function to read a csv file with all known csv separators, or return empty data frame
 # if there are comas in the column, it will try to convert that column to numerical
@@ -538,13 +541,14 @@ corr_plot_from_result <- function(corr_matrix_result, plot_type = "upper",
                                   my_hclust_method = "complete",
                                   my_add_rect = 2,
                                   my_title = "",
-                                  color_map_pos = "bottom") {
+                                  color_map_pos = "bottom",
+                                  show_coefs = NULL) {
   
   cor_coef_matrix <- corr_matrix_result$cor_coef_matrix
   significant_coef_matrix <- corr_matrix_result$significance_matrix
   my_angle = 0
   my_plotCI = "n"
-  my_coef_col = "black"
+  my_coef_col = show_coefs # NULL for no coefficients on the plot, "black" to show
   my_diag = FALSE
   
   if (color_map_pos == "bottom") {
@@ -628,11 +632,23 @@ get_optimal_no_clusters <- function (df, my_cols = c(), my_distance_method="eucl
   nb <- 0
   tryCatch({
     pdf(file = NULL)
+    # if there are still many NA values
+    # try to impute them first
+    missing_no <- sum(is.na(df_numeric))  # Total number of NA values
+    print("Missing values before:")
+    print(missing_no)
+    if (missing_no > 0) {
+      df_numeric <- complete(mice(df_numeric))
+      missing_no <- sum(is.na(df_numeric))
+      print("Missing values after imputing:")
+      print(missing_no)
+    }
     result <- NbClust(df_numeric, distance = my_distance_method, method = my_method)
     dev.off()
     nb <- length(unique(result$Best.partition))
   }, error = function(e) {
     print("There was a problem calculating number of clusters")
+    print(e)
   })
   return(nb)
 } # end get_optimal_no_clusters
