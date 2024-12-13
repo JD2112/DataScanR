@@ -39,6 +39,9 @@ reject the null hypothesis of the normally distributed data."
 CORRELATION_PLOT_TYPE_INFO = "full<br>This plot type will show clustering squares only if hclust is selected in Order Variables drop down menu (Advanced Options).<br>
 <br>conficence_interval<br>This plot type will show confidence intervals only if they were calculated in the table above."
 CORRELATION_VARIABLES_INFO = "Only numerical variables with at least 3 non-NA values"
+CORRELATION_ORDER_VARIABLES_INFO = "original<br>the original order<br><br>AOE<br>the angular order of the eigenvectors<br><br>
+FPC<br>the first principal component order<br><br>hclust<br>the hierarchical clustering order<br><br>
+alphabet<br>alphabetical order"
 NBCLUST_INFO = "This can take a moment.<br>It will calculate the optimal number of clusters.<br>
 <br>If there are many missing values, the number of clusters migh vary between calculation runs."
 ###########################################################################################
@@ -1793,7 +1796,8 @@ compare_medians_nonparametric <- function (my_data,
         }
       } # end if group column was empty string
       else { #group was not empty string
-        if (length(my_data_columns)==2) {
+        if (length(my_data_columns) > 0) {
+          print("paired and by group")
           # the test is for 2 groups only, so check if the group column has exactly 2 unique values
           group_col = my_group[1]
           # print(is.numeric(my_data[[group_col]]))

@@ -103,7 +103,7 @@ sidebar_data <- layout_sidebar(
 ###########################
 # cards for cleaning data
 cards_cleaning_data <- list(
- 
+  
   card(
     full_screen = TRUE,
     card_header("Data"),
@@ -428,11 +428,30 @@ cards_correlation <- list(
                              selected = "bottom",
                              multiple = FALSE
                  ),
-                 selectInput("correlation_order", "Order Variables:",  
-                             choices = c("original","hclust","AOE","FPC","alphabet"),  
-                             selected = "original",
-                             multiple = FALSE
-                 ),
+                 # Wrapping text and icon in tagList to align them
+                 tagList(
+                   # Add the selectInput with label and info button
+                   tags$label(
+                     "Order Variables:", 
+                     class = "order_corr_variables_label",  # Assign the custom class here
+                     style = "display: inline;",
+                     tags$i(
+                       class = "bi bi-info-circle",  # Bootstrap info-circle icon
+                       style = "cursor: pointer; padding-left: 5px;",
+                       `data-bs-toggle` = "tooltip",  # Tooltip attribute
+                       `data-bs-placement` = "right",
+                       title = CORRELATION_ORDER_VARIABLES_INFO,
+                       `data-bs-html` = "true"  # Enable HTML content in tooltip
+                     )  # End of tags$i (info icon for Select Test)
+                   ),  # End of tags$label
+                   ######################################################################
+                   selectInput("correlation_order", NULL,  
+                               choices = c("original","hclust","AOE","FPC","alphabet"),  
+                               selected = "original",
+                               multiple = FALSE
+                   )
+                 ), # end tagList
+                 
                  selectInput("cor_hclust_method", "Agglomeration method for hclust:",  
                              choices = c("complete","ward.D","ward.D2","single","average","mcquitty","median","centroid"),  
                              selected = "complete",
@@ -921,6 +940,9 @@ ui <- page_navbar(
       .significance_level_corr_label {
         font-size: 12px;
       }
+      .order_corr_variables_label{
+        font-size: 12px;
+      }
       .correlation_clusters_input_groupp {
       display: flex;
       align-items: center;
@@ -972,12 +994,14 @@ ui <- page_navbar(
   
   nav_panel("Data Cleaning", 
             layout_columns(cards_cleaning_data[[1]],
-                            cards_cleaning_data[[2]])
+                            cards_cleaning_data[[2]],
+                           col_widths = c(7,5))
   ), # end nav_panel
   nav_panel("Normality",
             # sidebar_normality
             layout_columns(cards_normality[[1]],
-                           cards_normality[[2]])
+                           cards_normality[[2]],
+                           col_widths = c(5,7))
   ), # end nav_panel
   nav_panel("Correlation", 
             layout_columns(layout_columns(cards_correlation[[1]],
@@ -1868,17 +1892,18 @@ server <- function(input, output,session) {
         selected_group_col_param_tests <- currently_selected_group_col_param_tests()
         selected_group_col_nonparam_tests <- currently_selected_group_col_nonparam_tests()
         
-        selected_cols_corr <- currently_selected_columns_corr()
+        # selected_cols_corr <- currently_selected_columns_corr()
         # fill out parametric test sidebar
         if (!is.null(selected_cols_param_tests) && length(selected_cols_param_tests) > 0) {
           updateSelectInput(session, "columns_test_param", choices = c(column_names), selected = selected_cols_param_tests)
           if (!is.null(selected_group_col_param_tests) && length(selected_group_col_param_tests) > 0) {
             updateSelectInput(session, "group_column_test_param", choices = c(column_names), selected = selected_group_col_param_tests)
           }
-        } else if (!is.null(selected_cols_corr) && length(selected_cols_corr) > 0) {
-          updateSelectInput(session, "columns_test_param", choices = column_names, selected = selected_cols_corr)
-          updateSelectInput(session, "group_column_test_param", choices = c("",column_names), selected = "")
-        }
+        } 
+        # else if (!is.null(selected_cols_corr) && length(selected_cols_corr) > 0) {
+        #   updateSelectInput(session, "columns_test_param", choices = column_names, selected = selected_cols_corr)
+        #   updateSelectInput(session, "group_column_test_param", choices = c("",column_names), selected = "")
+        # }
         else {
           updateSelectInput(session, "columns_test_param", choices = column_names, selected = c())
           updateSelectInput(session, "group_column_test_param", choices = c("",column_names), selected = "")
@@ -1889,10 +1914,11 @@ server <- function(input, output,session) {
           if (!is.null(selected_group_col_nonparam_tests) && length(selected_group_col_nonparam_tests) > 0) {
             updateSelectInput(session, "group_column_test_nonparam", choices = c(column_names), selected = selected_group_col_nonparam_tests)
           }
-        } else if (!is.null(selected_cols_corr) && length(selected_cols_corr) > 0) {
-          updateSelectInput(session, "columns_test_nonparam", choices = column_names, selected = selected_cols_corr)
-          updateSelectInput(session, "group_column_test_nonparam", choices = c("",column_names), selected = "")
-        }
+        } 
+        # else if (!is.null(selected_cols_corr) && length(selected_cols_corr) > 0) {
+        #   updateSelectInput(session, "columns_test_nonparam", choices = column_names, selected = selected_cols_corr)
+        #   updateSelectInput(session, "group_column_test_nonparam", choices = c("",column_names), selected = "")
+        # }
         else {
           updateSelectInput(session, "columns_test_nonparam", choices = column_names, selected = c())
           updateSelectInput(session, "group_column_test_nonparam", choices = c("",column_names), selected = "")

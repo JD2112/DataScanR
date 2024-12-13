@@ -30,7 +30,7 @@ Warning: Error in loadNamespace: there is no package called ‘bsicons’
 
 ## Statistical tests
 1. `parametric` by `groups` -> `plots`?<br>
-2. remove automatic fill for selected columns...<br>
+**FIXED** 2. remove automatic fill for selected columns...<br>
 
 ## Round numbers in the displayed tables
 **fixed**
