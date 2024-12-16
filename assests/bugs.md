@@ -25,12 +25,14 @@ Warning: Error in loadNamespace: there is no package called ‘bsicons’
 **FIXED** 4. add option to hide corr_coef on the plot (under advanced)<br>
 **FIXED** 5. add some check for variable uniqueness (similar as for normality)<br>
 **FIXED** 6. check for NA values in corr matrix<br>
-**FIXED** 7. NbClust crashes<br>
+**FIXED** 7. NbClust crashes<br> **-imputation before calculating clusters**
 
 
 ## Statistical tests
 1. `parametric` by `groups` -> `plots`?<br>
 **FIXED** 2. remove automatic fill for selected columns...<br>
+3. non-parametric wilocoxon signed rank test needs to run based on group column for multiple variables or between 2 variables
+4. parametric paired t-test needs to run based on group column for multiple variables or between 2 variables
 
 ## Round numbers in the displayed tables
 **fixed**
@@ -61,4 +63,6 @@ library(pals)
 library(NbClust)
 
 library(bsicons)
+
+library(mice)
 ```

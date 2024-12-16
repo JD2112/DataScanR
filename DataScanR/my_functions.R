@@ -1805,7 +1805,7 @@ compare_medians_nonparametric <- function (my_data,
           # print(is.numeric(my_data[[group_col]]))
           uniq_res <- levels(my_data[[group_col]])
           # print(uniq_res)
-          if (length(uniq_res) == 2) {
+          if (length(uniq_res) == 2) { # there are exactly 2 unique groups
             # Initialize an empty data frame to store the results
             test_results_df <- data.frame(
               vars = character(),
@@ -1824,101 +1824,55 @@ compare_medians_nonparametric <- function (my_data,
               samples_group2 = numeric(),
               stringsAsFactors = FALSE
             )
-            x1 <- c()
-            y1 <- c()
-            x2 <- c()
-            y2 <- c()
-            for (i in seq_along(my_data_columns)) { # assume 2 columns (i.e. before and after)
+            for (i in seq_along(my_data_columns)) { # each col will be split ny the group
               # Split the 'value' column into two separate vectors based on 'group'
               test_col <- my_data_columns[i]
-              if (i==1) { # get x data based on groups 
-                x1 <- my_data[[test_col]][my_data[[group_col]] == uniq_res[1]]
-                x2 <- my_data[[test_col]][my_data[[group_col]] == uniq_res[2]]
-                # print(length(x1))
-                # print(length(x2))
-              } else {# get y data based on groups 
-                y1 <- my_data[[test_col]][my_data[[group_col]] == uniq_res[1]]
-                y2 <- my_data[[test_col]][my_data[[group_col]] == uniq_res[2]]
-                # print(length(y1))
-                # print(length(y2))
-              } # end creating data for tests
-            } # end for
-            # make sure they are equal lengths
-            if (length(x1) < length(y1)) {
-              y1 <- sample(y1, length(x1), replace = FALSE, prob = NULL)
-            } else if (length(x1) > length(y1)){
-              x1 <- sample(x1, length(y1), replace = FALSE, prob = NULL)
-            }
-            if (length(x2) < length(y2)) {
-              y2 <- sample(y2, length(x2), replace = FALSE, prob = NULL)
-            } else if (length(x2) > length(y2)){
-              x2 <- sample(x2, length(y2), replace = FALSE, prob = NULL)
-            }
-            # run test for the first group
-            result <- wilcox.test(x1,y1,
-                                  alternative = my_alternative, 
-                                  paired = TRUE,
-                                  conf.int = TRUE,
-                                  correct = FALSE,
-                                  conf.level = my_conf_level)
-            # Add the results to dataframe
-            new_row <- data.frame(
-              vars = paste0("Group_1_",my_data_columns[1],"_vs_",my_data_columns[2]),
-              null_val = my_mu,
-              median1 = median(x1, na.rm =TRUE),
-              median2 = median(y1, na.rm =TRUE),
-              median_difference = if(!is.null(result$estimate)) result$estimate else NA,
-              alternative = my_alternative,
-              p_value = if(!is.null(result$p.value)) result$p.value else NA,
-              lowCI = if(!is.null(result$conf.int)) result$conf.int[1] else NA,
-              uppCI = if(!is.null(result$conf.int)) result$conf.int[2] else NA,
-              conf_level = my_conf_level,
-              statistic =  if(!is.null(result$statistic)) result$statistic else NA,
-              parameter = if(!is.null(result$parameter)) result$parameter else NA,
-              samples_group1 = length(x1),
-              samples_group2 = length(y1),
-              stringsAsFactors = FALSE
-            )
-            # Append new rows to the original data frame
-            test_results_df <- rbind(test_results_df, new_row)
-            # run test for the second group
-            result <- wilcox.test(x2,y2,
-                                  alternative = my_alternative, 
-                                  paired = TRUE,
-                                  conf.int = TRUE,
-                                  correct = FALSE,
-                                  conf.level = my_conf_level)
-            # Add the results to dataframe
-            new_row <- data.frame(
-              vars = paste0("Group_2_",my_data_columns[1],"_vs_",my_data_columns[2]),
-              null_val = my_mu,
-              median1 = median(x2, na.rm =TRUE),
-              median2 = median(y2, na.rm =TRUE),
-              median_difference = if(!is.null(result$estimate)) result$estimate else NA,
-              alternative = my_alternative,
-              p_value = if(!is.null(result$p.value)) result$p.value else NA,
-              lowCI = if(!is.null(result$conf.int)) result$conf.int[1] else NA,
-              uppCI = if(!is.null(result$conf.int)) result$conf.int[2] else NA,
-              conf_level = my_conf_level,
-              statistic =  if(!is.null(result$statistic)) result$statistic else NA,
-              parameter = if(!is.null(result$parameter)) result$parameter else NA,
-              samples_group1 = length(x2),
-              samples_group2 = length(y2),
-              stringsAsFactors = FALSE
-            )
-            # Append new rows to the original data frame
-            test_results_df <- rbind(test_results_df, new_row)
+              x <- my_data[[test_col]][my_data[[group_col]] == uniq_res[1]]
+              y <- my_data[[test_col]][my_data[[group_col]] == uniq_res[2]]
+              # make sure they are equal lengths
+              if (length(x) < length(y)) {
+                y <- sample(y, length(x), replace = FALSE, prob = NULL)
+              } else if (length(x) > length(y)){
+                x <- sample(x, length(y), replace = FALSE, prob = NULL)
+              }
+              # run the test
+              result <- wilcox.test(x,y,
+                                    alternative = my_alternative, 
+                                    paired = TRUE,
+                                    conf.int = TRUE,
+                                    correct = FALSE,
+                                    conf.level = my_conf_level)
+              print(result)
+              # Add the results to dataframe
+              new_row <- data.frame(
+                vars = paste0(test_col,"_",uniq_res[1],"_vs_",uniq_res[2]),
+                null_val = my_mu,
+                median1 = median(x, na.rm =TRUE),
+                median2 = median(y, na.rm =TRUE),
+                median_difference = if(!is.null(result$estimate)) result$estimate else NA,
+                alternative = my_alternative,
+                p_value = if(!is.null(result$p.value)) result$p.value else NA,
+                lowCI = if(!is.null(result$conf.int)) result$conf.int[1] else NA,
+                uppCI = if(!is.null(result$conf.int)) result$conf.int[2] else NA,
+                conf_level = my_conf_level,
+                statistic =  if(!is.null(result$statistic)) result$statistic else NA,
+                parameter = if(!is.null(result$parameter)) result$parameter else NA,
+                samples_group1 = length(x),
+                samples_group2 = length(y),
+                stringsAsFactors = FALSE
+              )
+              # Append new rows to the original data frame
+              test_results_df <- rbind(test_results_df, new_row)
+            } # end for all variable columns
+            print(test_results_df)
             return(test_results_df)
           } else {
-            print("There are more than 2 unique values in your group")
+            print("There needs to be exactly 2 unique values in your group")
             return(data.frame())
-          }
-        } # end if 2 data columns
-        else {
-          print("Needs exactly 2 data columns to run by group")
-          return(data.frame())
-        }
-      } # end if group was not empty string
+          } # end if there were not exactly 2 unique groups
+        }# end if there any data columns
+        } # end if group was not empty string
+          #################################################
     } # end if there was one group column
     else {
       print("No group column")
