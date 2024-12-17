@@ -1943,8 +1943,8 @@ server <- function(input, output,session) {
           show_error_modal_no_icon("Select one group column for the test.")
         } else {
           if ((test == "Paired t-test" && by_group == FALSE && length(test_columns) == 2) || 
-              (test == "Paired t-test" && by_group == TRUE && length(test_columns) == 2) ||
-              (test == "Paired t-test" && by_group == TRUE && length(test_columns) == 1) ||
+              (test == "Paired t-test" && by_group == TRUE && length(test_columns) > 0) ||
+              # (test == "Paired t-test" && by_group == TRUE && length(test_columns) == 1) ||
               test == "Independent two-sample t-test" ||
               test == "One sample t-test" 
               ) {
@@ -1957,6 +1957,7 @@ server <- function(input, output,session) {
               if (length(group_col) == 0) {
                 group_col <- c()
               }
+              print("before")
               res <- compare_means_parametric(modified_data(),
                                    test_columns,
                                    my_group = group_col,
@@ -1980,6 +1981,7 @@ server <- function(input, output,session) {
               })
               # create plot
             }, error = function(e) {
+              print(e)
               # Handle error
               show_error_modal_with_icon("Problem calculating test results!<br>Try different variables.     ")
             }) # end trycatch
