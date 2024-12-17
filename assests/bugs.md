@@ -31,7 +31,7 @@ Warning: Error in loadNamespace: there is no package called ‘bsicons’
 ## Statistical tests
 1. `parametric` by `groups` -> `plots`?<br>
 **FIXED** 2. remove automatic fill for selected columns...<br>
-3. non-parametric wilocoxon signed rank test needs to run based on group column for multiple variables or between 2 variables
+**FIXED** 3. non-parametric wilocoxon signed rank test needs to run based on group column for multiple variables or between 2 variables
 4. parametric paired t-test needs to run based on group column for multiple variables or between 2 variables
 
 ## Round numbers in the displayed tables

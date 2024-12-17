@@ -1797,7 +1797,6 @@ compare_medians_nonparametric <- function (my_data,
       } # end if group column was empty string
       else { #group was not empty string
         if (length(my_data_columns) > 0) {
-          print("paired and by group")
           # the test is for 2 groups only, so check if the group column has exactly 2 unique values
           group_col = my_group[1]
           # print(is.numeric(my_data[[group_col]]))
@@ -1842,7 +1841,6 @@ compare_medians_nonparametric <- function (my_data,
                                     conf.int = TRUE,
                                     correct = FALSE,
                                     conf.level = my_conf_level)
-              print(result)
               # Add the results to dataframe
               new_row <- data.frame(
                 vars = paste0(test_col,"_",uniq_res[1],"_vs_",uniq_res[2]),
@@ -2257,63 +2255,78 @@ plot_medians_nonparametric <- function(df,
         # Convert the grouping column to a factor
         df[[my_group_col]] <- as.factor(df[[my_group_col]])
         
-        # Reshape the data from wide to long format
-        df_long <- df %>%
-          select(all_of(c(my_group_col, columns_to_test))) %>%  # Select relevant columns
-          pivot_longer(cols = all_of(columns_to_test), 
-                       names_to = "Variable", 
-                       values_to = "Value") %>%
-          mutate(Variable = factor(Variable, levels = columns_to_test))  # Set order of 'Variable' as per 'columns_to_test'
-        
         # Filter out rows where the grouping variable is NA
-        filtered_df <- df_long %>% filter(!is.na(!!sym(my_group_col)))
-        if (length(levels(filtered_df[[my_group_col]])) == 2) { # if there are 2 unique groups
-          # Create an 'id' column for paired observations
-          filtered_df <- filtered_df %>%
-            group_by(!!sym(my_group_col)) %>%                             # Group by the grouping variable (e.g., Gender)
-            mutate(id = as.integer((row_number() + 1) %/% 2)) %>%  # Assign the same ID to every two rows within each group
-            ungroup()
-          # print(filtered_df)
-          # Modify the factor column by adding the column name as prefix
-          filtered_df[[my_group_col]] <- factor(paste(my_group_col, filtered_df[[my_group_col]], sep = "_"))
-       
-          # Create the boxplot, faceting by my_group_col and grouping by Variable
+        df <- df %>% filter(!is.na(!!sym(my_group_col)))
+        if (length(levels(df[[my_group_col]])) == 2) { # if there are 2 unique groups
+          my_groups <- levels(df[[my_group_col]])
+          
+          df_selected <- df %>%
+            select(all_of(c(my_group_col, columns_to_test)))
+      
+          # Split the data
+          group1_rows <- df_selected[get(my_group_col) == my_groups[1]]
+          group2_rows <- df_selected[get(my_group_col) == my_groups[2]]
+          print(group1_rows)
+          # Find the minimum number of rows
+          min_length <- min(nrow(group1_rows), nrow(group2_rows))
+          
+          # Add IDs to pair up to the shortest group
+          group1_rows <- group1_rows[1:min_length][, id := seq_len(.N)]
+          group2_rows <- group2_rows[1:min_length][, id := seq_len(.N)]
+        
+          # Combine the paired rows
+          paired_df <- rbind(group1_rows, group2_rows)
+          setorderv(paired_df, c("id", my_group_col))
+          
+          
+          # Reshape the data from wide to long format
+          df_long <- paired_df %>%
+            pivot_longer(cols = all_of(columns_to_test),
+                         names_to = "Variable",
+                         values_to = "Value") %>%
+            mutate(Variable = factor(Variable, levels = columns_to_test))  # Set order of 'Variable' as per 'columns_to_test'
+
+        
+        # if (length(levels(filtered_df[[my_group_col]])) == 2) { # if there are 2 unique groups
+        
+          print(df_long)
+          
           p <- ggpaired(
-            filtered_df,
-            x = "Variable",  # Grouping variable (e.g., dop1, dop2)
+            df_long,
+            x = my_group_col,  # Grouping variable 
             y = "Value" ,     # Response variable
             id = "id",
             outlier.size = 0.2,   # Set the size of outliers
             size = 0.2,
             line.color = "grey",
             line.size = 0.2
-          ) +
-            facet_wrap(as.formula(paste("~", my_group_col))) +  # Facet by Gender
-            labs(title = plot_title) +
-            theme_minimal() +
-            theme(
-              axis.title.y = element_blank(),
-              axis.title.x = element_blank(),
-              panel.grid = element_blank(),
-              strip.text = element_text(size = 14)
             ) +
-            # Add frames around each facet
-            geom_rect(
-              aes(xmin = -Inf, xmax = Inf, ymin = -Inf, ymax = Inf),
-              fill = NA,           # No fill
-              color = "grey",     # Frame color
-              size = 0.5          # Frame line size
-            )
-          
-          # Position for p-values
-          label_y_pos <- max(filtered_df$Value, na.rm = TRUE) - 0.5
-          
-          p <- p + stat_compare_means( # by default method is wilcoxon
-            method.args = list(mu=my_mu, alternative = my_alternative, conf.level = my_conf_level), 
-            paired = TRUE, 
-            label = "p.format", 
-            label.x = 1.4, 
-            label.y = label_y_pos)
+              facet_wrap(as.formula(paste("~", "Variable"))) +  # Facet by col
+              labs(title = plot_title) +
+              theme_minimal() +
+              theme(
+                axis.title.y = element_blank(),
+                axis.title.x = element_blank(),
+                panel.grid = element_blank(),
+                strip.text = element_text(size = 14)
+              ) +
+              # Add frames around each facet
+              geom_rect(
+                aes(xmin = -Inf, xmax = Inf, ymin = -Inf, ymax = Inf),
+                fill = NA,           # No fill
+                color = "grey",     # Frame color
+                size = 0.5          # Frame line size
+              )
+
+            # Position for p-values
+            label_y_pos <- max(df_long$Value, na.rm = TRUE) - 0.5
+
+            p <- p + stat_compare_means( # by default method is wilcoxon
+              method.args = list(mu=my_mu, alternative = my_alternative, conf.level = my_conf_level),
+              paired = TRUE,
+              label = "p.format",
+              label.x = 1.4,
+              label.y = label_y_pos)
           return(p)
         } # end if not exactly 2 groups
         else {

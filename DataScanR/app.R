@@ -2141,7 +2141,6 @@ server <- function(input, output,session) {
             if (length(group_col) == 0 || by_group == FALSE) {
               group_col <- c()
             }
-            print("before")
             res <- compare_medians_nonparametric(modified_data(),
                                             test_columns,
                                             my_group = group_col,
@@ -2149,8 +2148,6 @@ server <- function(input, output,session) {
                                             my_mu = mu_val,
                                             my_alternative = alternative,
                                             my_conf_level = conf_level)
-            print("after")
-            print(res)
             currently_selected_columns_nonparam_tests(test_columns)
             currently_selected_group_col_nonparam_tests(group_col)
             # round numeric columns to 3 decimals
