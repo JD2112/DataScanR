@@ -564,12 +564,12 @@ parametric_view <- sidebarLayout(
                     multiple = TRUE
         ),
         conditionalPanel(
-          condition = "input.parametric_test_mean == 'Paired t-test'",
+          condition = "input.parametric_test_mean == 'Paired t-test' || input.parametric_test_mean == 'Independent two-sample t-test'",
           # Add a checkbox for group option
           checkboxInput("group_option_parametric", "Run By Group", value = FALSE)
         ),
         conditionalPanel(
-          condition = "input.parametric_test_mean == 'Independent two-sample t-test' || (input.parametric_test_mean == 'Paired t-test' && input.group_option_parametric == true)",
+          condition = "(input.parametric_test_mean == 'Independent two-sample t-test' && input.group_option_parametric == true) || (input.parametric_test_mean == 'Paired t-test' && input.group_option_parametric == true)",
           selectInput("group_column_test_param", "Select Group Column:",  # Predefine an empty selectInput for columns
                       choices = c(),  # Empty choices initially
                       multiple = FALSE
@@ -1938,18 +1938,20 @@ server <- function(input, output,session) {
     conf_level <-input$conf_level_parametric
     if (length(test_columns) > 0) {
       if (length(test_columns) <= MAX_FOR_PREVIEW_PLOT) {
-        if (group_col[1]== "" && test == "Independent two-sample t-test") {
-          # Handle error
-          show_error_modal_no_icon("Select one group column for the test.")
-        } else {
+        # if (group_col[1]== "" && test == "Independent two-sample t-test") {
+        #   # Handle error
+        #   show_error_modal_no_icon("Select one group column for the test.")
+        # } else {
           if ((test == "Paired t-test" && by_group == FALSE && length(test_columns) == 2) || 
               (test == "Paired t-test" && by_group == TRUE && length(test_columns) > 0) ||
               # (test == "Paired t-test" && by_group == TRUE && length(test_columns) == 1) ||
-              test == "Independent two-sample t-test" ||
+              (test == "Independent two-sample t-test" && by_group == TRUE && length(test_columns) > 0) ||
+              (test == "Independent two-sample t-test" && by_group == FALSE && length(test_columns) == 2) ||
               test == "One sample t-test" 
               ) {
             group_col <- c(group_col)
-            if (test == "Paired t-test" && by_group == FALSE) {
+            if ((test == "Paired t-test" && by_group == FALSE) ||
+                (test == "Independent two-sample t-test" && by_group == FALSE)) {
               group_col <- c()
             }
             tryCatch({
@@ -1957,7 +1959,6 @@ server <- function(input, output,session) {
               if (length(group_col) == 0) {
                 group_col <- c()
               }
-              print("before")
               res <- compare_means_parametric(modified_data(),
                                    test_columns,
                                    my_group = group_col,
@@ -1967,15 +1968,26 @@ server <- function(input, output,session) {
                                    my_conf_level = conf_level)
               currently_selected_columns_param_tests(test_columns)
               currently_selected_group_col_param_tests(group_col)
-              # round numeric columns to 3 decimals
-              res <- res %>%
-                mutate(across(where(is.numeric), ~ round(.x, ROUND_DECIMALS)))
-              display_data_parametric_tests(res)
+  
+              if (!is.null(res$result_df)) {
+                # round numeric columns to 3 decimals
+                res$result_df <- res$result_df %>%
+                  mutate(across(where(is.numeric), ~ round(.x, ROUND_DECIMALS)))
+              }
+              display_data_parametric_tests(res$result_df)
+              if (nrow(res$result_df) == 0) { # if returned empty data frame, show error
+                show_error_modal_no_icon(res$my_error)
+              }
+              
               output$param_test_table_title <- renderUI({
                 title_text <- paste0("<br><br>","&nbsp;&nbsp;&nbsp;&nbsp;",test)
-                if (test == "Independent two-sample t-test") {
+                if (by_group == TRUE) {
                   title_text <- paste0("<br><br>","&nbsp;&nbsp;&nbsp;&nbsp;",test,"<br><br>","&nbsp;&nbsp;&nbsp;&nbsp;","Group: ",group_col[1])
                 }
+                # if (test == "Independent two-sample t-test") {
+                #   title_text <- paste0("<br><br>","&nbsp;&nbsp;&nbsp;&nbsp;",test,"<br><br>","&nbsp;&nbsp;&nbsp;&nbsp;")
+                #   # title_text <- paste0("<br><br>","&nbsp;&nbsp;&nbsp;&nbsp;",test,"<br><br>","&nbsp;&nbsp;&nbsp;&nbsp;","Group: ",group_col[1])
+                # }
                 # Render HTML with h5 and the title text
                 HTML(paste0("<h5>", title_text, "</h5>"))
               })
@@ -1988,12 +2000,12 @@ server <- function(input, output,session) {
           } # end if paired t-test conditions passed
           else {
             # Handle error
-            show_error_modal_no_icon("For Paired t-test:<br><br>
+            show_error_modal_no_icon("For Paired t-test and Independent two-sample t-test:<br><br>
                    If one variable is selected,<br>another variable with group must be selected.<br>
                    If two variables are selected,<br>the test can be run either between the selected variables,
                    or additionally: by group.")
             }
-        } # end else
+        # } # end else
     } # end if max for plot satisfied
     else {
       # show error that too many columns
@@ -2037,7 +2049,8 @@ server <- function(input, output,session) {
     by_group <- input$group_option_parametric
     group_col <- input$group_column_test_param 
     test <- input$parametric_test_mean
-    if (!by_group && test == "Paired t-test") {
+    if ((!by_group && test == "Paired t-test")  || 
+        (!by_group && test == "Independent two-sample t-test")) {
       group_col <- c()
     }
     mu_val <- input$mu_parametric
@@ -2152,10 +2165,15 @@ server <- function(input, output,session) {
                                             my_conf_level = conf_level)
             currently_selected_columns_nonparam_tests(test_columns)
             currently_selected_group_col_nonparam_tests(group_col)
-            # round numeric columns to 3 decimals
-            res <- res %>%
-                mutate(across(where(is.numeric), ~ round(.x, ROUND_DECIMALS)))
-            display_data_nonparametric_tests(res)
+            if (!is.null(res$result_df)) {
+              # round numeric columns to 3 decimals
+              res$result_df <- res$result_df %>%
+                  mutate(across(where(is.numeric), ~ round(.x, ROUND_DECIMALS)))
+            }
+            display_data_nonparametric_tests(res$result_df)
+            if (nrow(res$result_df) == 0) { # if returned empty data frame, show error
+              show_error_modal_no_icon(res$my_error)
+            }
             output$nonparam_test_table_title <- renderUI({
               title_text <- paste0("<br><br>","&nbsp;&nbsp;&nbsp;&nbsp;",test)
               if (by_group == TRUE) {

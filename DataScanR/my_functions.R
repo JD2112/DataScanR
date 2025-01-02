@@ -976,7 +976,7 @@ compare_means_parametric <- function (my_data,
                                       my_mu = 0,
                                       my_alternative = "two.sided",
                                       my_conf_level = 0.95) {
-  
+  my_message <- ""
   # one sample t-test 
   if (my_test == "One sample t-test") {
     # Initialize an empty data frame to store the results
@@ -1018,7 +1018,7 @@ compare_means_parametric <- function (my_data,
         stringsAsFactors = FALSE
       ))
     } # end for each col
-    return(test_results_df)
+    return(list(my_error = my_message, result_df = test_results_df))
   } # end one sample ttest
   ######################################3
   # Independent two-sample t-test
@@ -1088,16 +1088,72 @@ compare_means_parametric <- function (my_data,
           test_results_df <- rbind(test_results_df, new_row)
           
         } # end for each column
-        return(test_results_df)
+        return(list(my_error = my_message, result_df = test_results_df))
       } else {
-        print("There are more than 2 unique values in your group")
-        return(data.frame())
+        my_message <- "There are more than 2 unique values in your group."
+        print(my_message)
+        return(list(my_error = my_message, result_df = data.frame()))
       }
     } # end if there was a group
     else {
       print("No group column selected for two-sample t-test")
-      return(data.frame())
-    }
+      # run between 2 variables
+      if (length(my_data_columns) == 2) {
+        # Create dynamic column names based on unique levels
+        estimate1_name <- paste0("estimate_", my_data_columns[1])
+        estimate2_name <- paste0("estimate_", my_data_columns[2])
+        # Initialize an empty data frame to store the results
+        test_results_df <- data.frame(
+          null_val = numeric(),
+          mean1 = numeric(),
+          mean2 = numeric(),
+          alternative = character(),
+          p_value = numeric(),
+          lowCI = numeric(),
+          uppCI = numeric(),
+          conf_level = numeric(),
+          statistic = numeric(),
+          parameter = numeric(),
+          samples = numeric(),
+          stringsAsFactors = FALSE
+        )
+        
+        x <- my_data[[my_data_columns[1]]]
+        y <- my_data[[my_data_columns[2]]]
+       
+        result <- t.test(x,y,
+                           mu= my_mu,
+                           alternative = my_alternative,
+                           conf.level =  my_conf_level,
+                           paired = FALSE)
+       # print(result)
+        # Add the results as a new row in the data frame
+        new_row <- data.frame(
+            null_val = my_mu,
+            mean1 = if(!is.null(result$estimate)) result$estimate[1] else NA,
+            mean2 = if(!is.null(result$estimate)) result$estimate[2] else NA,
+            alternative = my_alternative,
+            p_value = if(!is.null(result$p.value)) result$p.value else NA,
+            lowCI = if(!is.null(result$conf.int)) result$conf.int[1] else NA,
+            uppCI = if(!is.null(result$conf.int)) result$conf.int[2] else NA,
+            conf_level = my_conf_level,
+            statistic = if(!is.null(result$statistic)) result$statistic else NA,
+            parameter = if(!is.null(result$parameter)) result$parameter else NA,
+            samples = length(x),
+            stringsAsFactors = FALSE
+          )
+          
+        # Append new rows to the original data frame
+        test_results_df <- rbind(test_results_df, new_row)
+          
+        return(list(my_error = my_message, result_df = test_results_df))
+      } # end running between 2 columns
+      else {
+        my_message <- "If no group variable provided. The test can run between exactly 2 selected variables."
+        print(my_message)
+        return(list(my_error = my_message, result_df = data.frame()))
+      }
+    } # end if there was no group selected
   } # end Independent two-sample t-test
   # Paired t-test
   else if (my_test == "Paired t-test") {
@@ -1165,38 +1221,46 @@ compare_means_parametric <- function (my_data,
           # Append new rows to the original data frame
           test_results_df <- rbind(test_results_df, new_row)
         } # end for all variable columns
-        return(test_results_df)
+        return(list(my_error = my_message, result_df = test_results_df))
       } else {
-        print("There are more than 2 unique values in your group")
-        return(data.frame())
+        my_message <- "There are more than 2 unique values in your group."
+        print(my_message)
+        return(list(my_error = my_message, result_df = data.frame()))
       }
     } # end by group
-    else { # runt test between 2 selected columns
-      # run test for the second group
-      result <- t.test(my_data[[my_data_columns[1]]],
-                       my_data[[my_data_columns[2]]],
-                       mu= my_mu,
-                       alternative = my_alternative,
-                       conf.level =  my_conf_level,
-                       paired = TRUE)
-      # Initialize an empty data frame to store the results
-      test_results_df <- data.frame(
-        null_val = my_mu,
-        mean1 = mean(my_data[[my_data_columns[1]]], na.rm =TRUE),
-        mean2 = mean(my_data[[my_data_columns[2]]], na.rm =TRUE),
-        mean_difference = if(!is.null(result$estimate)) result$estimate else NA,
-        alternative = my_alternative,
-        p_value = if(!is.null(result$p.value)) result$p.value else NA,
-        lowCI = if(!is.null(result$conf.int)) result$conf.int[1] else NA,
-        uppCI = if(!is.null(result$conf.int)) result$conf.int[2] else NA,
-        conf_level = my_conf_level,
-        statistic = if(!is.null(result$statistic)) result$statistic else NA,
-        parameter = if(!is.null(result$parameter)) result$parameter else NA,
-        samples = length(my_data[[my_data_columns[1]]]),
-        stringsAsFactors = FALSE
-      )
-      return(test_results_df)
-    }
+    else { # run test between 2 selected columns
+      if (length(my_data_columns) ==2) {
+        # run test for the second group
+        result <- t.test(my_data[[my_data_columns[1]]],
+                         my_data[[my_data_columns[2]]],
+                         mu= my_mu,
+                         alternative = my_alternative,
+                         conf.level =  my_conf_level,
+                         paired = TRUE)
+        # Initialize an empty data frame to store the results
+        test_results_df <- data.frame(
+          null_val = my_mu,
+          mean1 = mean(my_data[[my_data_columns[1]]], na.rm =TRUE),
+          mean2 = mean(my_data[[my_data_columns[2]]], na.rm =TRUE),
+          mean_difference = if(!is.null(result$estimate)) result$estimate else NA,
+          alternative = my_alternative,
+          p_value = if(!is.null(result$p.value)) result$p.value else NA,
+          lowCI = if(!is.null(result$conf.int)) result$conf.int[1] else NA,
+          uppCI = if(!is.null(result$conf.int)) result$conf.int[2] else NA,
+          conf_level = my_conf_level,
+          statistic = if(!is.null(result$statistic)) result$statistic else NA,
+          parameter = if(!is.null(result$parameter)) result$parameter else NA,
+          samples = length(my_data[[my_data_columns[1]]]),
+          stringsAsFactors = FALSE
+        )
+        return(list(my_error = my_message, result_df = test_results_df))
+      } # end running between 2 columns
+      else { # if there was not exactly 2 columns selected
+        my_message <- "If no group variable selected. Test runs between exactly 2 selected variables."
+        print(my_message)
+        return(list(my_error = my_message, result_df = data.frame()))
+      }
+    } # end if no group was selected
   } # end Paired t-test
 } # end compare_means_parametric
 ######################################################################################
@@ -1334,10 +1398,80 @@ plot_means_parametric <- function(df,
           return(p)
         } # end if 2 unique groups
         else {
-          print("More than 2 unique groups")
+          print("Required exactly 2 unique groups")
         }
       } # end if group was not empty string
+      else {
+        columns_to_test <- columns_to_show
+        print(columns_to_test)
+        if (length(columns_to_test) == 2) {
+          # Reshape the data to long format for ggplot2
+          df_long <- data.frame(
+            variable = rep(columns_to_test, each = nrow(df)),
+            value = c(df[[columns_to_test[1]]], df[[columns_to_test[2]]])
+          )
+          
+          # Create the boxplot
+          p <- ggplot(df_long, aes(x = variable, y = value)) +
+            geom_boxplot() +
+            labs(title = plot_title,
+                 x = NULL,
+                 y = "Values") +
+            theme_minimal() +
+            theme(
+              axis.title.y = element_blank(),
+              panel.grid = element_blank(),
+              strip.text = element_text(size = 14) 
+            ) +
+            # Add frames around each facet
+            geom_rect(
+              aes(xmin = -Inf, xmax = Inf, ymin = -Inf, ymax = Inf),
+              fill = NA,           # No fill
+              color = "grey",     # Frame color
+              size = 0.5          # Frame line size
+            )
+          return(p)
+        }
+        else {
+          print("Needs exactly 2 variables")
+        }
+      }
     } # end if there was a group
+    else {
+      columns_to_test <- columns_to_show
+      print(columns_to_test)
+      if (length(columns_to_test) == 2) {
+        # Reshape the data to long format for ggplot2
+        df_long <- data.frame(
+          variable = rep(columns_to_test, each = nrow(df)),
+          value = c(df[[columns_to_test[1]]], df[[columns_to_test[2]]])
+        )
+        
+        # Create the boxplot
+        p <- ggplot(df_long, aes(x = variable, y = value)) +
+          geom_boxplot() +
+          labs(title = plot_title,
+               x = NULL,
+               y = "Values") +
+          theme_minimal() +
+          theme(
+            axis.title.y = element_blank(),
+            panel.grid = element_blank(),
+            strip.text = element_text(size = 14) 
+          ) +
+          # Add frames around each facet
+          geom_rect(
+            aes(xmin = -Inf, xmax = Inf, ymin = -Inf, ymax = Inf),
+            fill = NA,           # No fill
+            color = "grey",     # Frame color
+            size = 0.5          # Frame line size
+          )
+        return(p)
+      }
+      else {
+        print("Needs exactly 2 variables")
+      }
+    } # end if no group
   } # end Independent two-sample t-test
   ###########################################################
   if (type_of_test == "Paired t-test") {
@@ -1417,7 +1551,7 @@ plot_means_parametric <- function(df,
           return(p)
         } # end if exactly 2 groups
         else {
-          print("More than 2 unique groups")
+          print("Required exactly 2 unique groups")
         }
       } # end if group was not empty string
       else if (length(columns_to_test) == 2) { # run between columns
@@ -1531,10 +1665,12 @@ compare_medians_nonparametric <- function (my_data,
                                            my_mu = 0,
                                            my_alternative = "two.sided",
                                            my_conf_level = 0.95) {
+  my_message <- ""
   if (my_test == "Wilcoxon rank-sum test") {
     if (!is.null(my_group) && length(my_group) == 1) {
       if (my_group[1] == "") {
-        print("Group column is an empty string")
+        my_message <- "Group column is an empty string"
+        print(my_message)
         if (length(my_data_columns)==2) { # run between 2 columns
           my_data %>% 
             select(all_of(my_data_columns)) -> data_to_test
@@ -1563,9 +1699,11 @@ compare_medians_nonparametric <- function (my_data,
             samples_group2 = length(y),
             stringsAsFactors = FALSE
           )
-          return(test_results_df)
+          return(list(my_error = my_message, result_df = test_results_df))
         } else {
-          return(data.frame())
+          my_message <- "If no group Variable selected, the test runs between exactly 2 selected variables."
+          print(my_message)
+          return(list(my_error = my_message, result_df = data.frame()))
         }
       } else { # group col selected
         cols_to_keep <- append(my_data_columns,my_group)
@@ -1622,11 +1760,17 @@ compare_medians_nonparametric <- function (my_data,
             # Append new rows to the original data frame
             test_results_df <- rbind(test_results_df, new_row)
           } # end for all data columns
-          return(test_results_df)
+          return(list(my_error = my_message, result_df = test_results_df))
         } # end if there are 2 groups
+        else {
+          my_message <- "There needs to be exactly 2 unique values in your group."
+          print(my_message)
+          return(list(my_error = my_message, result_df = data.frame()))
+        }
       } # end if group column name is not empty string
     } else {
-      print("No group column")
+      my_message <- "No group column"
+      print(my_message)
       if (length(my_data_columns)==2) { # run between 2 columns
         my_data %>% 
           select(all_of(my_data_columns)) -> data_to_test
@@ -1655,9 +1799,11 @@ compare_medians_nonparametric <- function (my_data,
           samples_group2 = length(y),
           stringsAsFactors = FALSE
         )
-        return(test_results_df)
+        return(list(my_error = my_message, result_df = test_results_df))
       } else {
-        return(data.frame())
+        my_message <- "If no group Variable selected, the test runs between exactly 2 selected variables."
+        print(my_message)
+        return(list(my_error = my_message, result_df = data.frame()))
       }
     }
   } # end "Wilcoxon rank-sum test"
@@ -1665,7 +1811,8 @@ compare_medians_nonparametric <- function (my_data,
   if ( my_test == "Wilcoxon signed-rank test") {
     if (!is.null(my_group) && length(my_group) == 1) {
       if (my_group[1] == "") {
-        print("Group column is an empty string")
+        my_message <- "Group column is an empty string"
+        print(my_message)
         if (length(my_data_columns)==2) { # run between 2 columns
           my_data %>% 
             select(all_of(my_data_columns)) -> data_to_test
@@ -1694,10 +1841,10 @@ compare_medians_nonparametric <- function (my_data,
             samples_group2 = length(y),
             stringsAsFactors = FALSE
           )
-          return(test_results_df)
+          return(list(my_error = my_message, result_df = test_results_df))
         } # end running between 2 columns
         else {
-          return(data.frame())
+          return(list(my_error = my_message, result_df = data.frame()))
         }
       } # end if group column was empty string
       else { #group was not empty string
@@ -1767,18 +1914,19 @@ compare_medians_nonparametric <- function (my_data,
               # Append new rows to the original data frame
               test_results_df <- rbind(test_results_df, new_row)
             } # end for all variable columns
-            print(test_results_df)
-            return(test_results_df)
+            return(list(my_error = my_message, result_df = test_results_df))
           } else {
-            print("There needs to be exactly 2 unique values in your group")
-            return(data.frame())
+            my_message <- "There needs to be exactly 2 unique values in your group."
+            print(my_message)
+            return(list(my_error = my_message, result_df = data.frame()))
           } # end if there were not exactly 2 unique groups
         }# end if there any data columns
         } # end if group was not empty string
           #################################################
     } # end if there was one group column
     else {
-      print("No group column")
+      my_message <- "No group column"
+      print(my_message)
       if (length(my_data_columns)==2) { # run between 2 columns
         my_data %>% 
           select(all_of(my_data_columns)) -> data_to_test
@@ -1807,9 +1955,9 @@ compare_medians_nonparametric <- function (my_data,
           samples_group2 = length(y),
           stringsAsFactors = FALSE
         )
-        return(test_results_df)
+        return(list(my_error = my_message, result_df = test_results_df))
       } else {
-        return(data.frame())
+        return(list(my_error = my_message, result_df = data.frame()))
       }
     } # end no group column
   } #end "Wilcoxon signed-rank test"
@@ -1827,7 +1975,7 @@ compare_medians_nonparametric <- function (my_data,
             df = if(!is.null(result$parameter)) result$parameter else NA,
             stringsAsFactors = FALSE
           )
-          return(test_results_df)
+          return(list(my_error = my_message, result_df = test_results_df))
         } # end if group column was empty string
         else { # if group column name was provided
           print("run multiple data columns for each group")
@@ -1857,11 +2005,11 @@ compare_medians_nonparametric <- function (my_data,
               # Append new rows to the original data frame
               test_results_df <- rbind(test_results_df, new_row)
             } # end for loop
-            return(test_results_df)
+            return(list(my_error = my_message, result_df = test_results_df))
           } else {
-            print(my_group_col)
-            print("Less than 3 groups. Use a different test")
-            return(data.frame())
+            my_message <- "Less than 3 groups. Use a different test"
+            print(my_message)
+            return(list(my_error = my_message, result_df = data.frame()))
           } # end if there were less than 3 groups in group column
         } # if group column name was provided
       } # end if there was a group column
@@ -1875,7 +2023,7 @@ compare_medians_nonparametric <- function (my_data,
           df = if(!is.null(result$parameter)) result$parameter else NA,
           stringsAsFactors = FALSE
         )
-        return(test_results_df)
+        return(list(my_error = my_message, result_df = test_results_df))
       } # end no group
     } # end if there are more than 2 data columns
     else { # less than 3 data columns
@@ -1908,77 +2056,80 @@ compare_medians_nonparametric <- function (my_data,
               # Append new rows to the original data frame
               test_results_df <- rbind(test_results_df, new_row)
             } # end for loop
-            return(test_results_df)
+            return(list(my_error = my_message, result_df = test_results_df))
           } else {
-            print("You need more than 2 groups for Kruskal-Wallis test.")
-            return(data.frame())
+            my_message <- "You need more than 2 groups for Kruskal-Wallis test."
+            print(my_message)
+            return(list(my_error = my_message, result_df = data.frame()))
           } # end if there were less than 3 groups in group column
         }# if group column was not empty string
         else {
-          print("too few data columns, no group")
-          return(data.frame())
+          my_message <- "Too few data columns, no group."
+          print(my_message)
+          return(list(my_error = my_message, result_df = data.frame()))
         }
       } # if there was a group column
       else {
-        print("too few data columns, no group")
-        return(data.frame())
+        my_message <- "Too few data columns, no group."
+        print(my_message)
+        return(list(my_error = my_message, result_df = data.frame()))
       }
       
     } # less than 3 data columns
   } # end "Kruskal-Wallis test"
   ##############################################
-  if (my_test == "Friedman test") {
-    if (length(my_data_columns) > 2) { # if there were more than 2 variables
-      if (!is.null(my_group) && length(my_group) == 1) {
-        if (my_group[1] == "") { # if there was no group (group = empty string)
-          # run between columns
-          # make a matrix
-          my_matrix <- as.matrix(my_data[, ..my_data_columns])
-          result <- friedman.test(my_matrix)
-          test_results_df <- data.frame(
-            p_value = if(!is.null(result$p.value)) result$p.value else NA,
-            Friedman_chi_squared =  if(!is.null(result$statistic)) result$statistic else NA,
-            df = if(!is.null(result$parameter)) result$parameter else NA,
-            stringsAsFactors = FALSE
-          )
-          return(test_results_df)
-        } # end if group was empty string
-        else { # there was a group column
-          my_group_col <- my_group[1]
-          # print(is.numeric(my_data[[group_col]]))
-          my_data <- factor_columns(my_data,my_group)
-          # print(is.numeric(my_data[[group_col]]))
-          uniq_res <- levels(my_data[[my_group_col]])
-          print(uniq_res)
-          if (length(uniq_res) > 2) { # if there were at least 3 groups
-            # change to long format
-            my_req_columns <- append(my_group,my_data_columns)
-            my_new_data <- my_data %>%
-              select(all_of(my_req_columns))
-            my_new_data <- my_new_data %>%
-              pivot_longer(cols = my_data_columns, 
-                           names_to = "vars", 
-                           values_to = "values")
-            # Ensure no missing data and that each group has all values for each "vars"
-            my_new_data <- my_new_data %>%
-              drop_na() %>%  # Remove any rows with missing values
-              group_by(!!sym(my_group_col), vars) %>%
-              filter(n() == length(my_data_columns))  # Keep only complete blocks
-            
-            # Now, use as.formula() to construct the correct formula for friedman.test
-            result <- friedman.test(as.formula(paste("values ~ vars |", my_group_col)), data = my_new_data)
-            
-            print(result)
-          } # end if there were at least 3 groups
-          else {
-            print("You need more than 2 groups for Friedman test.")
-            return(data.frame())
-          }
-        } # end if there was a group column name
-      }
-    } # end if there were more than 2 variables
-    
-  } # end Friedman test
+  # if (my_test == "Friedman test") {
+  #   if (length(my_data_columns) > 2) { # if there were more than 2 variables
+  #     if (!is.null(my_group) && length(my_group) == 1) {
+  #       if (my_group[1] == "") { # if there was no group (group = empty string)
+  #         # run between columns
+  #         # make a matrix
+  #         my_matrix <- as.matrix(my_data[, ..my_data_columns])
+  #         result <- friedman.test(my_matrix)
+  #         test_results_df <- data.frame(
+  #           p_value = if(!is.null(result$p.value)) result$p.value else NA,
+  #           Friedman_chi_squared =  if(!is.null(result$statistic)) result$statistic else NA,
+  #           df = if(!is.null(result$parameter)) result$parameter else NA,
+  #           stringsAsFactors = FALSE
+  #         )
+  #         return(test_results_df)
+  #       } # end if group was empty string
+  #       else { # there was a group column
+  #         my_group_col <- my_group[1]
+  #         # print(is.numeric(my_data[[group_col]]))
+  #         my_data <- factor_columns(my_data,my_group)
+  #         # print(is.numeric(my_data[[group_col]]))
+  #         uniq_res <- levels(my_data[[my_group_col]])
+  #         print(uniq_res)
+  #         if (length(uniq_res) > 2) { # if there were at least 3 groups
+  #           # change to long format
+  #           my_req_columns <- append(my_group,my_data_columns)
+  #           my_new_data <- my_data %>%
+  #             select(all_of(my_req_columns))
+  #           my_new_data <- my_new_data %>%
+  #             pivot_longer(cols = my_data_columns, 
+  #                          names_to = "vars", 
+  #                          values_to = "values")
+  #           # Ensure no missing data and that each group has all values for each "vars"
+  #           my_new_data <- my_new_data %>%
+  #             drop_na() %>%  # Remove any rows with missing values
+  #             group_by(!!sym(my_group_col), vars) %>%
+  #             filter(n() == length(my_data_columns))  # Keep only complete blocks
+  #           
+  #           # Now, use as.formula() to construct the correct formula for friedman.test
+  #           result <- friedman.test(as.formula(paste("values ~ vars |", my_group_col)), data = my_new_data)
+  #           
+  #           print(result)
+  #         } # end if there were at least 3 groups
+  #         else {
+  #           print("You need more than 2 groups for Friedman test.")
+  #           return(data.frame())
+  #         }
+  #       } # end if there was a group column name
+  #     }
+  #   } # end if there were more than 2 variables
+  #   
+  # } # end Friedman test
   
 } # end compare_medians_nonparametric
 
@@ -2063,7 +2214,7 @@ plot_medians_nonparametric <- function(df,
           return(p)
         } # end if there were 2 unique groups
         else {
-          print("More than 2 unique groups.")
+          print("Required exactly 2 unique groups.")
         }
       } # end if group was not empty string
       else if (length(columns_to_test) == 2) { # run between columns
@@ -2229,7 +2380,7 @@ plot_medians_nonparametric <- function(df,
           return(p)
         } # end if not exactly 2 groups
         else {
-          print("More than 2 unique groups.")
+          print("Required exactly 2 unique groups.")
         }
       } # end if group was not empty string
       else {
