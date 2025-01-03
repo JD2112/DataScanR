@@ -1,7 +1,31 @@
+"
+ Copyright (c) 2025 CSAN_LiU
+ Centrum för social och affektiv neurovetenskap, Linköping University,
+ Linköping, Sweden
+ Core Facility, Faculty of Medicine and Health Sciences, Linköping University, 
+ Linköping, Sweden 
+ Clinical Genomics Linköping, Science for Life Laboratory, Sweden
 
+ This program is free software: you can redistribute it and/or modify
+ it under the terms of the GNU General Public License as published by
+ the Free Software Foundation, either version 3 of the License, or
+ (at your option) any later version.
 
-# see the example app:
-# bslib::bs_theme_preview()
+ This program is distributed in the hope that it will be useful,
+ but WITHOUT ANY WARRANTY; without even the implied warranty of
+ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ GNU General Public License for more details.
+
+ You should have received a copy of the GNU General Public License
+ along with this program.  If not, see <https://www.gnu.org/licenses/>.
+ 
+Created on Tue 10 Dec 2024 15∶16∶02
+
+@author: ilo21 (Ilona Szczot)
+
+@collaborator: JD2112 (Jyotirmoy Das)
+
+"
 
 source("my_functions.R")
 library(shiny)
@@ -1021,6 +1045,9 @@ ui <- page_navbar(
               tabPanel("Non-parametric",
                        non_parametric_view)
             ) # end tabsetPanel
+  ), # end nav_panel
+  nav_panel("Documentation"
+            
   ) # end nav_panel
 )# end page_navbar
 

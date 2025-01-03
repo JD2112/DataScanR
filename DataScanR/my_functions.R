@@ -1,5 +1,34 @@
-########################################
-# FUNCTIONS USED FOR EDA PIPELINE/APP
+"
+ Copyright (c) 2025 CSAN_LiU
+ Centrum för social och affektiv neurovetenskap, Linköping University,
+ Linköping, Sweden
+ Core Facility, Faculty of Medicine and Health Sciences, Linköping University, 
+ Linköping, Sweden 
+ Clinical Genomics Linköping, Science for Life Laboratory, Sweden
+
+ This program is free software: you can redistribute it and/or modify
+ it under the terms of the GNU General Public License as published by
+ the Free Software Foundation, either version 3 of the License, or
+ (at your option) any later version.
+
+ This program is distributed in the hope that it will be useful,
+ but WITHOUT ANY WARRANTY; without even the implied warranty of
+ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ GNU General Public License for more details.
+
+ You should have received a copy of the GNU General Public License
+ along with this program.  If not, see <https://www.gnu.org/licenses/>.
+ 
+Created on Tue 10 Dec 2024 15∶16∶02
+
+@author: ilosz01 (Ilona Szczot)
+
+@collaborator: JD2112 (Jyotirmoy Das)
+
+"
+
+###################################
+# FUNCTIONS USED FOR DataScanR app
 
 #library(readr)
 library(dplyr)
@@ -31,19 +60,19 @@ One can compare medians either between two selected variables or select multiple
 Kruskal-Wallis test:<br>Non-parametric alternative to one-way ANOVA, compares more than two independent groups.
 One can compare medians either between multiple selected variables or select multiple variables and compare by the group variable that has more than 2 unique groups."
 PLOT_NOTMALITY_INFO = "Select up till 6 variables from the table to the left.<br>For normality diagnosis plot, select only one variable at a time."
-SIGNIFICANCE_LEVEL_CORR_INFO = "Value 1 will show all correlation coefficients values on the plot. Regardless of whether they are signifcant or not.
-<br><br>Set this value to your own significance level to see on the plot which correlation coefficients are not signifficant."
+SIGNIFICANCE_LEVEL_CORR_INFO = "Value 1 will show all correlation coefficients values on the plot. Regardless of whether they are significant or not.
+<br><br>Set this value to your own significance level to see on the plot which correlation coefficients are not significant."
 NORMAITY_METHOD_INFO = "Methods to check whether your data is normally distributed.<br><br>Shapiro-Wilk:<br>Recommended for dataset < 2000 observations.
 <br><br>Kolmogorov-Smirnov:<br>Recommended for dataset > 2000 observations.<br><br>p-value < 0.05 and statistic close to 1 tell us that we can 
 reject the null hypothesis of the normally distributed data."
 CORRELATION_PLOT_TYPE_INFO = "full<br>This plot type will show clustering squares only if hclust is selected in Order Variables drop down menu (Advanced Options).<br>
-<br>conficence_interval<br>This plot type will show confidence intervals only if they were calculated in the table above."
+<br>conficence_interval<br>This plot type will show confidence intervals only if they were calculated in the result table."
 CORRELATION_VARIABLES_INFO = "Only numerical variables with at least 3 non-NA values"
 CORRELATION_ORDER_VARIABLES_INFO = "original<br>the original order<br><br>AOE<br>the angular order of the eigenvectors<br><br>
 FPC<br>the first principal component order<br><br>hclust<br>the hierarchical clustering order<br><br>
 alphabet<br>alphabetical order"
 NBCLUST_INFO = "This can take a moment.<br>It will calculate the optimal number of clusters.<br>
-<br>If there are many missing values, the number of clusters migh vary between calculation runs."
+<br>If there are many missing values, the number of clusters might vary between calculation runs."
 ###########################################################################################
 # a function to read a csv file with all known csv separators, or return empty data frame
 # if there are comas in the column, it will try to convert that column to numerical
