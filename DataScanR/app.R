@@ -44,6 +44,7 @@ ROUND_DECIMALS = 3       # to how many decimals should the tables show
 SHAPIRO_THRESHOLD = 2000 # max rows to use shapiro for normality
 MAX_FOR_PREVIEW_PLOT = 6
 MESSAGE_COLOR = " #488fda"
+DOC_FILE = "DataScanR_Quick_Guide.pdf"
 
 #################################################
 # Define a functions to show the error modals
@@ -728,7 +729,10 @@ non_parametric_view <- sidebarLayout(
                       selected = "two.sided",
                       multiple = FALSE
           ),
-          numericInput("mu_nonparametric", "mu:", value = 0),
+          conditionalPanel(
+            condition = "input.nonparametric_test_median == 'Wilcoxon rank-sum test'",
+            numericInput("mu_nonparametric", "mu:", value = 0),
+          ),
           sliderInput("conf_level_nonparametric", 
                       "Select Level Of Confidence:",
                       min = 0, 
@@ -1046,8 +1050,11 @@ ui <- page_navbar(
                        non_parametric_view)
             ) # end tabsetPanel
   ), # end nav_panel
-  nav_panel("Documentation"
-            
+  nav_panel("Documentation",
+            tags$iframe(
+              style = "height: calc(100vh - 170px); width: 100%; border: none;", # Adjust based on header/footer height
+              src = DOC_FILE
+            )
   ) # end nav_panel
 )# end page_navbar
 
@@ -1081,6 +1088,30 @@ server <- function(input, output,session) {
   # Reactive expression to read the uploaded file
   data <- reactive({
     req(input$data_file)  # Ensure file is uploaded
+    ####################################################
+    # before reading new data, clear all previous info
+    display_data <- reactiveVal(NULL)
+    modified_data <- reactiveVal(NULL)
+    original_data <- reactiveVal(NULL)
+    currently_selected_columns_data <- reactiveVal(c())
+    removed_columns_data <- reactiveVal(c())
+    current_plot <- reactiveVal("empty")
+    # normality_results <- reactiveVal(NULL)
+    normality_df <- reactiveVal(NULL)
+    display_data_normality <- reactiveVal(NULL)
+    missing_data_exists <- reactiveVal(TRUE)
+    error_displayed <- reactiveVal(FALSE)
+    current_data_normality <- reactiveVal(NULL)
+    columns_plot_normality <- reactiveVal(c())
+    correlation_result <- reactiveVal(NULL)
+    currently_selected_columns_corr <- reactiveVal(NULL)
+    currently_selected_columns_param_tests <- reactiveVal(NULL)
+    currently_selected_group_col_param_tests <- reactiveVal(NULL)
+    display_data_parametric_tests <- reactiveVal((NULL))
+    currently_selected_columns_nonparam_tests <- reactiveVal(NULL)
+    currently_selected_group_col_nonparam_tests <- reactiveVal(NULL)
+    display_data_nonparametric_tests <- reactiveVal((NULL))
+    #####################################################
     data_original <- fread(input$data_file$datapath)  # Read the CSV file
     # clean content of text column values
     char_columnnames <- names(data_original)[sapply(data_original, is.character)]
@@ -1913,13 +1944,13 @@ server <- function(input, output,session) {
       if (! is.null(current_data) && nrow(current_data) > 0) {
         # Dynamically update the column selector when the data is loaded
         column_names <- colnames(modified_data())  # Get column names from the loaded data
+
         selected_cols_param_tests <- currently_selected_columns_param_tests()
         selected_cols_nonparam_tests <- currently_selected_columns_nonparam_tests()
         
         selected_group_col_param_tests <- currently_selected_group_col_param_tests()
         selected_group_col_nonparam_tests <- currently_selected_group_col_nonparam_tests()
         
-        # selected_cols_corr <- currently_selected_columns_corr()
         # fill out parametric test sidebar
         if (!is.null(selected_cols_param_tests) && length(selected_cols_param_tests) > 0) {
           updateSelectInput(session, "columns_test_param", choices = c(column_names), selected = selected_cols_param_tests)
@@ -1927,10 +1958,6 @@ server <- function(input, output,session) {
             updateSelectInput(session, "group_column_test_param", choices = c(column_names), selected = selected_group_col_param_tests)
           }
         } 
-        # else if (!is.null(selected_cols_corr) && length(selected_cols_corr) > 0) {
-        #   updateSelectInput(session, "columns_test_param", choices = column_names, selected = selected_cols_corr)
-        #   updateSelectInput(session, "group_column_test_param", choices = c("",column_names), selected = "")
-        # }
         else {
           updateSelectInput(session, "columns_test_param", choices = column_names, selected = c())
           updateSelectInput(session, "group_column_test_param", choices = c("",column_names), selected = "")
@@ -1942,10 +1969,6 @@ server <- function(input, output,session) {
             updateSelectInput(session, "group_column_test_nonparam", choices = c(column_names), selected = selected_group_col_nonparam_tests)
           }
         } 
-        # else if (!is.null(selected_cols_corr) && length(selected_cols_corr) > 0) {
-        #   updateSelectInput(session, "columns_test_nonparam", choices = column_names, selected = selected_cols_corr)
-        #   updateSelectInput(session, "group_column_test_nonparam", choices = c("",column_names), selected = "")
-        # }
         else {
           updateSelectInput(session, "columns_test_nonparam", choices = column_names, selected = c())
           updateSelectInput(session, "group_column_test_nonparam", choices = c("",column_names), selected = "")
