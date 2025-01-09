@@ -1,5 +1,34 @@
-########################################
-# FUNCTIONS USED FOR EDA PIPELINE/APP
+"
+ Copyright (c) 2025 CSAN_LiU
+ Centrum för social och affektiv neurovetenskap, Linköping University,
+ Linköping, Sweden
+ Core Facility, Faculty of Medicine and Health Sciences, Linköping University, 
+ Linköping, Sweden 
+ Clinical Genomics Linköping, Science for Life Laboratory, Sweden
+
+ This program is free software: you can redistribute it and/or modify
+ it under the terms of the GNU General Public License as published by
+ the Free Software Foundation, either version 3 of the License, or
+ (at your option) any later version.
+
+ This program is distributed in the hope that it will be useful,
+ but WITHOUT ANY WARRANTY; without even the implied warranty of
+ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ GNU General Public License for more details.
+
+ You should have received a copy of the GNU General Public License
+ along with this program.  If not, see <https://www.gnu.org/licenses/>.
+ 
+Created on Tue 10 Dec 2024 15∶16∶02
+
+@author: ilosz01 (Ilona Szczot)
+
+@collaborator: JD2112 (Jyotirmoy Das)
+
+"
+
+###################################
+# FUNCTIONS USED FOR DataScanR app
 
 #library(readr)
 library(dplyr)
@@ -9,12 +38,12 @@ library(patchwork)
 library(ggpubr)
 library(hrbrthemes)
 library(ggdist)
-library(GGally)
 library(corrplot)
 library(pals)
 library(dlookr)
 library(NbClust)
-#library(stringr)
+library(mice)
+
 
 MAX_FOR_PREVIEW_PLOT = 6
 UNIQUE_FOR_VARIATION = 3
@@ -31,11 +60,19 @@ One can compare medians either between two selected variables or select multiple
 Kruskal-Wallis test:<br>Non-parametric alternative to one-way ANOVA, compares more than two independent groups.
 One can compare medians either between multiple selected variables or select multiple variables and compare by the group variable that has more than 2 unique groups."
 PLOT_NOTMALITY_INFO = "Select up till 6 variables from the table to the left.<br>For normality diagnosis plot, select only one variable at a time."
-SIGNIFICANCE_LEVEL_CORR_INFO = "Value 1 will show all correlation coefficients values on the plot. Regardless of whether they are signifcant or not.
-<br><br>Set this value to your own significance level to see on the plot which correlation coefficients are not signifficant."
+SIGNIFICANCE_LEVEL_CORR_INFO = "Value 1 will show all correlation coefficients values on the plot. Regardless of whether they are significant or not.
+<br><br>Set this value to your own significance level to see on the plot which correlation coefficients are not significant."
 NORMAITY_METHOD_INFO = "Methods to check whether your data is normally distributed.<br><br>Shapiro-Wilk:<br>Recommended for dataset < 2000 observations.
 <br><br>Kolmogorov-Smirnov:<br>Recommended for dataset > 2000 observations.<br><br>p-value < 0.05 and statistic close to 1 tell us that we can 
 reject the null hypothesis of the normally distributed data."
+CORRELATION_PLOT_TYPE_INFO = "full<br>This plot type will show clustering squares only if hclust is selected in Order Variables drop down menu (Advanced Options).<br>
+<br>conficence_interval<br>This plot type will show confidence intervals only if they were calculated in the result table."
+CORRELATION_VARIABLES_INFO = "Only numerical variables with at least 3 non-NA values"
+CORRELATION_ORDER_VARIABLES_INFO = "original<br>the original order<br><br>AOE<br>the angular order of the eigenvectors<br><br>
+FPC<br>the first principal component order<br><br>hclust<br>the hierarchical clustering order<br><br>
+alphabet<br>alphabetical order"
+NBCLUST_INFO = "This can take a moment.<br>It will calculate the optimal number of clusters.<br>
+<br>If there are many missing values, the number of clusters might vary between calculation runs."
 ###########################################################################################
 # a function to read a csv file with all known csv separators, or return empty data frame
 # if there are comas in the column, it will try to convert that column to numerical
@@ -446,44 +483,6 @@ get_normality_ks <- function(df) {
   return(ks_results_df_sorted)
 } # end get_normality_ks
 
-######################################################################################
-# function to calculate correlation of up till 10 variables, group_by till 2 variables
-# arguments: df and vector with column names and normality_results
-# normality_results is a list with 2 vectors: normal_columnnames, non_normal_columnnames
-calculate_cor_short <- function(df, my_columnnames = c(), normality_results) {
-  
-  # ensure the column names exist in the data 
-  columns_to_select <- my_columnnames[my_columnnames %in% colnames(df)]
-  
-  if (length(columns_to_select) == 0)  {
-    print("No variables found in the dataset")
-    return(data.frame())
-  }
-  # make sure there are not more than 10 variables
-  if (length(columns_to_select) > MAX_FOR_CORR) {
-    print("Select less variables")
-    return(data.frame())
-  }
-  normal_distribution_colnames <- normality_results$normal_columnnames
-  non_normal_distribution_colnames <- normality_results$non_normal_columnnames
-  # support only if all columns have same type of distribution
-  all_normal <- all(columns_to_select %in% normal_distribution_colnames)
-  all_non_normal <- all(columns_to_select %in% non_normal_distribution_colnames)
-  if (all_non_normal) {
-    df %>% 
-      select(all_of(columns_to_select)) %>% # select only given column names
-      correlate(method = "spearman") -> correlation_df
-  } else if (all_normal) {
-    df %>% 
-      select(all_of(columns_to_select)) %>% # select only given column names
-      correlate(method = "pearson") -> correlation_df
-  } else {
-    correlation_df <- data.frame()
-  }
-  return(correlation_df)
-  
-} # end calculate_cor
-
 ##############################################################
 # function to create a complete correlation matrix
 # lets user decide which method to apply
@@ -537,12 +536,21 @@ calculate_corr_matrix <- function(df, my_columnnames = c(), corr_alternative, co
   col_names <- colnames(cor_matrix)[col(cor_matrix)[lower.tri(cor_matrix)]]
   
   # Create a data frame
-  corr_df <- data.frame(var1 = row_names,
-                   var2 = col_names,
-                   corr_coef = lower_values_corr, 
-                   p = lower_values_p, 
-                   lowCI = lower_values_lowCI,
-                   uppCI = lower_values_uppCI)
+  # don't show CI columns if all values were NA
+  if (all(is.na(lower_values_lowCI)) && all(is.na(lower_values_uppCI))) {
+    corr_df <- data.frame(var1 = row_names,
+                          var2 = col_names,
+                          corr_coef = lower_values_corr, 
+                          p = lower_values_p)
+  } else {
+    # Create a data frame with CI columns
+    corr_df <- data.frame(var1 = row_names,
+                          var2 = col_names,
+                          corr_coef = lower_values_corr, 
+                          p = lower_values_p, 
+                          lowCI = lower_values_lowCI,
+                          uppCI = lower_values_uppCI)
+  }
   # Return the correlation matrix and significance matrix
   return(list(cor_coef_matrix = cor_matrix, significance_matrix = significance_matrix,correlation_df = corr_df))
 } # end calculate_corr_matrix
@@ -565,13 +573,14 @@ corr_plot_from_result <- function(corr_matrix_result, plot_type = "upper",
                                   my_hclust_method = "complete",
                                   my_add_rect = 2,
                                   my_title = "",
-                                  color_map_pos = "bottom") {
+                                  color_map_pos = "bottom",
+                                  show_coefs = NULL) {
   
   cor_coef_matrix <- corr_matrix_result$cor_coef_matrix
   significant_coef_matrix <- corr_matrix_result$significance_matrix
   my_angle = 0
   my_plotCI = "n"
-  my_coef_col = "black"
+  my_coef_col = show_coefs # NULL for no coefficients on the plot, "black" to show
   my_diag = FALSE
   
   if (color_map_pos == "bottom") {
@@ -639,7 +648,7 @@ corr_plot_from_result <- function(corr_matrix_result, plot_type = "upper",
            mar=c(0,0,3,0))
 }# end corr_plot_from_corr_matrix
 
-##############################################################
+######################################################################################
 # function to find optimal number of clusters
 get_optimal_no_clusters <- function (df, my_cols = c(), my_distance_method="euclidean",my_method = "complete") {
   if (length(my_cols) == 0) {
@@ -655,17 +664,29 @@ get_optimal_no_clusters <- function (df, my_cols = c(), my_distance_method="eucl
   nb <- 0
   tryCatch({
     pdf(file = NULL)
+    # if there are still many NA values
+    # try to impute them first
+    missing_no <- sum(is.na(df_numeric))  # Total number of NA values
+    print("Missing values before:")
+    print(missing_no)
+    if (missing_no > 0) {
+      df_numeric <- complete(mice(df_numeric))
+      missing_no <- sum(is.na(df_numeric))
+      print("Missing values after imputing:")
+      print(missing_no)
+    }
     result <- NbClust(df_numeric, distance = my_distance_method, method = my_method)
     dev.off()
     nb <- length(unique(result$Best.partition))
   }, error = function(e) {
     print("There was a problem calculating number of clusters")
+    print(e)
   })
   return(nb)
 } # end get_optimal_no_clusters
 
-#############################################################################################
-# from dlookr github: https://github.com/choonghyunryu/dlookr/blob/HEAD/R/missing.R
+#########################################################################################################
+# modified from dlookr github: https://github.com/choonghyunryu/dlookr/blob/HEAD/R/missing.R
 plot_na_pareto_modified <- function (x, only_na = FALSE, relative = FALSE, main = NULL, col = "black",
                                      grade = list(Good = 0.05, OK = 0.1, NotBad = 0.2, Bad = 0.5, Remove = 1),
                                      plot = TRUE, typographic = TRUE, base_family = NULL)
@@ -731,26 +752,32 @@ plot_na_pareto_modified <- function (x, only_na = FALSE, relative = FALSE, main 
               "#E31A1C", "#BD0026", "#800026")
   }  
   
+  
   p <- ggplot(info_na, aes(x = variable)) +
+    # geom_bar(aes(y = frequencies, fill = grade,
+    #              text = paste0("Variable: ", variable, "\nGrade: ", grade,
+    #                            "\nFrequency: ", frequencies,
+    #                            "\nPercentage: ", round(ratio * 100, 1), "%")
+    #              ), color = "darkgray", stat = "identity") +
     geom_bar(aes(y = frequencies, fill = grade,
                  text = paste0("Variable: ", variable, "\nGrade: ", grade,
-                               "\nFrequency: ", frequencies,
-                               "\nPercentage: ", round(ratio * 100, 1), "%")
-    ), color = "darkgray", stat = "identity") +
+                                                         "\nFrequency: ", frequencies,
+                                                         "\nPercentage: ", round(ratio * 100, 1), "%")
+                 ),stat = "identity") +
     # geom_text(aes(y = frequencies, 
     #               label = paste(round(ratio * 100, 1), "%")),
     #           position = position_dodge(width = 0.9), vjust = -0.25) + 
     geom_path(aes(y = cumulative / scaleRight, group = 1), 
-              colour = col, size = 0.4) +
+              colour = col, size = 0.1) +
     geom_point(aes(y = cumulative / scaleRight, group = 1), 
-               colour = col, size = 1.5) +
+               colour = col, size = 0.2) +
     scale_y_continuous(sec.axis = sec_axis(~.*scaleRight, name = "Cumulative (%)")) +
     labs(title = main, x = xlab, y = ylab) + 
-    theme_grey(base_family = base_family) +    
+    # theme_grey(base_family = base_family) +    
     theme(
       axis.text.x = element_blank(),
       # axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1),
-      legend.position = "top") +
+          legend.position = "top") +
     scale_fill_manual(values = pals,
                       drop = FALSE,
                       name = "Missing Grade",
@@ -758,19 +785,31 @@ plot_na_pareto_modified <- function (x, only_na = FALSE, relative = FALSE, main 
   
   if (typographic) {
     p <- p +
-      theme_ipsum(base_family = "Roboto Condensed") +
+      # theme_ipsum(base_family = "Roboto Condensed") +
       theme(legend.position = "top",
             axis.title.x = element_text(size = 12),
             axis.title.y = element_text(size = 12),
             axis.title.y.right = element_text(size = 12),
-            axis.text.x = element_blank()
+            axis.text.x = element_blank(),
+            axis.ticks.x = element_blank(),
+            panel.grid = element_blank(),
+            panel.background = element_rect(fill = "white")
             # axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1)
-      )
+            )
   }
   
-  ggplotly(p,tooltip = "text")
+  p_plotly <- ggplotly(p,tooltip = "text")
+  # Adjust the color if necessary after conversion
+  p_plotly <- p_plotly %>% layout(
+    legend = list(title = list(text = "Missing Grade")),
+    paper_bgcolor = 'white',  # Ensure background is white
+    plot_bgcolor = 'white'     # Ensure plot area is white
+  )
 }
+
 #########################################################################################
+# modified from
+# https://github.com/choonghyunryu/dlookr/blob/master/R/missing.R
 plot_na_intersect_modified <- function (x, only_na = TRUE, n_intersacts = NULL, 
                                         n_vars = NULL, main = NULL)
 {
@@ -852,6 +891,7 @@ plot_na_intersect_modified <- function (x, only_na = TRUE, n_intersacts = NULL,
   # Create a plotly object
   p <- plot_ly()
   # Create hover text combining value and corresponding name
+  my_variable_names <- names(x) 
   my_variable_names <- names(x) # get variable names 
   my_missing_values <- marginal_var$n_var # get missing values per variable from top plot
   # print(length(my_variable_names))
@@ -865,6 +905,8 @@ plot_na_intersect_modified <- function (x, only_na = TRUE, n_intersacts = NULL,
   # dframe$hover_text <- paste("Value:", dframe$value, "<br>Name:", my_variable_names[dframe$Var1])
   # dframe$hover_text <- paste("Name:", my_variable_names[dframe$Var1])
   dframe$hover_text <- paste("X:", dframe$Var1, "<br>Y:", dframe$Var2,"<br>Missing values:",my_missing_values[dframe$Var1], "<br>Name:", my_variable_names[dframe$Var1])
+  
+  # dframe$hover_text <- paste("X:", dframe$Var1, "<br>Y:", dframe$Var2,"<br>Name:", my_variable_names[dframe$Var1])
   
   # Add trace for tile representation using scatter plot
   p <- p %>%
@@ -951,19 +993,20 @@ get_melt <- function(x) {
   
   df
 } 
+
 ##################################################################
 # TESTS
 # my_test: "One sample t-test", "Independent two-sample t-test", "Paired t-test"
 # my_alternative: "two.sided", "greater", "less"
 compare_means_parametric <- function (my_data,
-                           my_data_columns = c(), 
-                           my_group = NULL,
-                           my_test = "One sample t-test",
-                           my_mu = 0,
-                           my_alternative = "two.sided",
-                           my_conf_level = 0.95) {
-  
-# one sample t-test 
+                                      my_data_columns = c(), 
+                                      my_group = NULL,
+                                      my_test = "One sample t-test",
+                                      my_mu = 0,
+                                      my_alternative = "two.sided",
+                                      my_conf_level = 0.95) {
+  my_message <- ""
+  # one sample t-test 
   if (my_test == "One sample t-test") {
     # Initialize an empty data frame to store the results
     test_results_df <- data.frame(
@@ -983,11 +1026,11 @@ compare_means_parametric <- function (my_data,
     for (col in my_data_columns) {
       # perform ttest
       result <- t.test(my_data[[col]],
-             mu= my_mu,
-             alternative = my_alternative,
-             conf.level =  my_conf_level,
-             paired = FALSE
-             )
+                       mu= my_mu,
+                       alternative = my_alternative,
+                       conf.level =  my_conf_level,
+                       paired = FALSE
+      )
       # Add the results as a new row in the data frame
       test_results_df <- rbind(test_results_df, data.frame(
         vars = col,
@@ -1004,10 +1047,10 @@ compare_means_parametric <- function (my_data,
         stringsAsFactors = FALSE
       ))
     } # end for each col
-    return(test_results_df)
+    return(list(my_error = my_message, result_df = test_results_df))
   } # end one sample ttest
   ######################################3
-# Independent two-sample t-test
+  # Independent two-sample t-test
   else if (my_test == "Independent two-sample t-test") {
     if (!is.null(my_group) && length(my_group) == 1) {
       # the test is for 2 groups only, so check if the group column has exactly 2 unique values
@@ -1044,10 +1087,10 @@ compare_means_parametric <- function (my_data,
           x <- my_data[[test_col]][my_data[[group_col]] == uniq_res[1]]
           y <- my_data[[test_col]][my_data[[group_col]] == uniq_res[2]]
           result <- t.test(x,y,
-                 mu= my_mu,
-                 alternative = my_alternative,
-                 conf.level =  my_conf_level,
-                 paired = FALSE)
+                           mu= my_mu,
+                           alternative = my_alternative,
+                           conf.level =  my_conf_level,
+                           paired = FALSE)
           # print(result)
           # print(result$estimate[1])
           # Add the results as a new row in the data frame
@@ -1072,24 +1115,81 @@ compare_means_parametric <- function (my_data,
           
           # Append new rows to the original data frame
           test_results_df <- rbind(test_results_df, new_row)
-    
+          
         } # end for each column
-        return(test_results_df)
+        return(list(my_error = my_message, result_df = test_results_df))
       } else {
-        print("There are more than 2 unique values in your group")
-        return(data.frame())
+        my_message <- "There are more than 2 unique values in your group."
+        print(my_message)
+        return(list(my_error = my_message, result_df = data.frame()))
       }
     } # end if there was a group
     else {
       print("No group column selected for two-sample t-test")
-      return(data.frame())
-    }
+      # run between 2 variables
+      if (length(my_data_columns) == 2) {
+        # Create dynamic column names based on unique levels
+        estimate1_name <- paste0("estimate_", my_data_columns[1])
+        estimate2_name <- paste0("estimate_", my_data_columns[2])
+        # Initialize an empty data frame to store the results
+        test_results_df <- data.frame(
+          null_val = numeric(),
+          mean1 = numeric(),
+          mean2 = numeric(),
+          alternative = character(),
+          p_value = numeric(),
+          lowCI = numeric(),
+          uppCI = numeric(),
+          conf_level = numeric(),
+          statistic = numeric(),
+          parameter = numeric(),
+          samples = numeric(),
+          stringsAsFactors = FALSE
+        )
+        
+        x <- my_data[[my_data_columns[1]]]
+        y <- my_data[[my_data_columns[2]]]
+       
+        result <- t.test(x,y,
+                           mu= my_mu,
+                           alternative = my_alternative,
+                           conf.level =  my_conf_level,
+                           paired = FALSE)
+       # print(result)
+        # Add the results as a new row in the data frame
+        new_row <- data.frame(
+            null_val = my_mu,
+            mean1 = if(!is.null(result$estimate)) result$estimate[1] else NA,
+            mean2 = if(!is.null(result$estimate)) result$estimate[2] else NA,
+            alternative = my_alternative,
+            p_value = if(!is.null(result$p.value)) result$p.value else NA,
+            lowCI = if(!is.null(result$conf.int)) result$conf.int[1] else NA,
+            uppCI = if(!is.null(result$conf.int)) result$conf.int[2] else NA,
+            conf_level = my_conf_level,
+            statistic = if(!is.null(result$statistic)) result$statistic else NA,
+            parameter = if(!is.null(result$parameter)) result$parameter else NA,
+            samples = length(x),
+            stringsAsFactors = FALSE
+          )
+          
+        # Append new rows to the original data frame
+        test_results_df <- rbind(test_results_df, new_row)
+          
+        return(list(my_error = my_message, result_df = test_results_df))
+      } # end running between 2 columns
+      else {
+        my_message <- "If no group variable provided. The test can run between exactly 2 selected variables."
+        print(my_message)
+        return(list(my_error = my_message, result_df = data.frame()))
+      }
+    } # end if there was no group selected
   } # end Independent two-sample t-test
   # Paired t-test
   else if (my_test == "Paired t-test") {
-    if (!is.null(my_group) && length(my_group) == 1 && length(my_data_columns) == 1) { # for a single column and one group col
+    if (!is.null(my_group) && length(my_group) == 1 && length(my_data_columns) > 0) {
       # the test is for 2 groups only, so check if the group column has exactly 2 unique values
       group_col = my_group[1]
+
       # print(is.numeric(my_data[[group_col]]))
       my_data <- factor_columns(my_data,my_group)
       # print(is.numeric(my_data[[group_col]]))
@@ -1113,181 +1213,83 @@ compare_means_parametric <- function (my_data,
           samples = numeric(),
           stringsAsFactors = FALSE
         )
-        # Split the 'value' column into two separate vectors based on 'group'
-        test_col <- my_data_columns[1]
-        x <- my_data[[test_col]][my_data[[group_col]] == uniq_res[1]]
-        y <- my_data[[test_col]][my_data[[group_col]] == uniq_res[2]]
-        # make sure they are equal lengths
-        if (length(x) < length(y)) {
-          y <- sample(y, length(x), replace = FALSE, prob = NULL)
-        } else {
-          x <- sample(x, length(y), replace = FALSE, prob = NULL)
-        }
-        # run test for the first group
-        result <- t.test(x,y,
-                         mu= my_mu,
-                         alternative = my_alternative,
-                         conf.level =  my_conf_level,
-                         paired = TRUE)
-        test_results_df <- data.frame(
-          null_val = my_mu,
-          mean1 = mean(x, na.rm =TRUE),
-          mean2 = mean(y, na.rm =TRUE),
-          mean_difference = if(!is.null(result$estimate)) result$estimate else NA,
-          alternative = my_alternative,
-          p_value = if(!is.null(result$p.value)) result$p.value else NA,
-          lowCI = if(!is.null(result$conf.int)) result$conf.int[1] else NA,
-          uppCI = if(!is.null(result$conf.int)) result$conf.int[2] else NA,
-          conf_level = my_conf_level,
-          statistic = if(!is.null(result$statistic)) result$statistic else NA,
-          parameter = if(!is.null(result$parameter)) result$parameter else NA,
-          samples = length(x),
-          stringsAsFactors = FALSE
-        )
-        return(test_results_df)
-      } else {
-        print("There are more than 2 unique values in your group")
-        return(data.frame())
-      }
-    }
-    else if (!is.null(my_group) && length(my_group) == 1 && length(my_data_columns) == 2) { # for 2 columns and one group col
-      # the test is for 2 groups only, so check if the group column has exactly 2 unique values
-      group_col = my_group[1]
-      # print(is.numeric(my_data[[group_col]]))
-      my_data <- factor_columns(my_data,my_group)
-      # print(is.numeric(my_data[[group_col]]))
-      uniq_res <- levels(my_data[[group_col]])
-      # print(uniq_res)
-      if (length(uniq_res) == 2) {
-        # Initialize an empty data frame to store the results
-        test_results_df <- data.frame(
-          vars = character(),
-          null_val = numeric(),
-          mean1 = numeric(),
-          mean2 = numeric(),
-          mean_difference = numeric(),
-          alternative = character(),
-          p_value = numeric(),
-          lowCI = numeric(),
-          uppCI = numeric(),
-          conf_level = numeric(),
-          statistic = numeric(),
-          parameter = numeric(),
-          samples = numeric(),
-          stringsAsFactors = FALSE
-        )
-        x1 <- c()
-        y1 <- c()
-        x2 <- c()
-        y2 <- c()
-        for (i in seq_along(my_data_columns)) { # assume 2 columns (i.e. before and after)
+        for (i in seq_along(my_data_columns)) { # each col will be split by the group
           # Split the 'value' column into two separate vectors based on 'group'
           test_col <- my_data_columns[i]
-          if (i==1) { # get x data based on groups 
-            x1 <- my_data[[test_col]][my_data[[group_col]] == uniq_res[1]]
-            x2 <- my_data[[test_col]][my_data[[group_col]] == uniq_res[2]]
-            # print(length(x1))
-            # print(length(x2))
-          } else {# get y data based on groups 
-            y1 <- my_data[[test_col]][my_data[[group_col]] == uniq_res[1]]
-            y2 <- my_data[[test_col]][my_data[[group_col]] == uniq_res[2]]
-            # print(length(y1))
-            # print(length(y2))
-          } # end creating data for tests
-        } # end for
-        # make sure they are equal lengths
-        if (length(x1) < length(y1)) {
-          y1 <- sample(y1, length(x1), replace = FALSE, prob = NULL)
-        } else if (length(x1) > length(y1)){
-          x1 <- sample(x1, length(y1), replace = FALSE, prob = NULL)
-        }
-        if (length(x2) < length(y2)) {
-          y2 <- sample(y2, length(x2), replace = FALSE, prob = NULL)
-        } else if (length(x2) > length(y2)){
-          x2 <- sample(x2, length(y2), replace = FALSE, prob = NULL)
-        }
-        # run test for the first group
-        result <- t.test(x1,y1,
-                         mu= my_mu,
-                         alternative = my_alternative,
-                         conf.level =  my_conf_level,
-                         paired = TRUE)
-        # Add the results to dataframe
-        new_row <- data.frame(
-          vars = paste0("Group_",uniq_res[1]),
-          null_val = my_mu,
-          mean1 = mean(x1, na.rm =TRUE),
-          mean2 = mean(y1, na.rm =TRUE),
-          mean_difference = if(!is.null(result$estimate)) result$estimate else NA,
-          alternative = my_alternative,
-          p_value = if(!is.null(result$p.value)) result$p.value else NA,
-          lowCI = if(!is.null(result$conf.int)) result$conf.int[1] else NA,
-          uppCI = if(!is.null(result$conf.int)) result$conf.int[2] else NA,
-          conf_level = my_conf_level,
-          statistic = if(!is.null(result$statistic)) result$statistic else NA,
-          parameter = if(!is.null(result$parameter)) result$parameter else NA,
-          samples = length(x1),
-          stringsAsFactors = FALSE
-        )
-        # Append new rows to the original data frame
-        test_results_df <- rbind(test_results_df, new_row)
-        # run test for the second group
-        result <- t.test(x2,y2,
-                         mu= my_mu,
-                         alternative = my_alternative,
-                         conf.level =  my_conf_level,
-                         paired = TRUE)
-        # Add the results to dataframe
-        new_row <- data.frame(
-          vars = paste0("Group_",uniq_res[2]),
-          null_val = my_mu,
-          mean1 = mean(x2, na.rm =TRUE),
-          mean2 = mean(y2, na.rm =TRUE),
-          mean_difference = if(!is.null(result$estimate)) result$estimate else NA,
-          alternative = my_alternative,
-          p_value = if(!is.null(result$p.value)) result$p.value else NA,
-          lowCI = if(!is.null(result$conf.int)) result$conf.int[1] else NA,
-          uppCI = if(!is.null(result$conf.int)) result$conf.int[2] else NA,
-          conf_level = my_conf_level,
-          statistic = if(!is.null(result$statistic)) result$statistic else NA,
-          parameter = if(!is.null(result$parameter)) result$parameter else NA,
-          samples = length(x2),
-          stringsAsFactors = FALSE
-        )
-        # Append new rows to the original data frame
-        test_results_df <- rbind(test_results_df, new_row)
-        return(test_results_df)
+          x <- my_data[[test_col]][my_data[[group_col]] == uniq_res[1]]
+          y <- my_data[[test_col]][my_data[[group_col]] == uniq_res[2]]
+          # make sure they are equal lengths
+          if (length(x) < length(y)) {
+            y <- sample(y, length(x), replace = FALSE, prob = NULL)
+          } else if (length(x) > length(y)){
+            x <- sample(x, length(y), replace = FALSE, prob = NULL)
+          }
+          # run the test
+          result <- t.test(x,y,
+                           mu= my_mu,
+                           alternative = my_alternative,
+                           conf.level =  my_conf_level,
+                           paired = TRUE)
+          # Add the results to dataframe
+          new_row <- data.frame(
+            vars = paste0(test_col,"_",uniq_res[1],"_vs_",uniq_res[2]),
+            null_val = my_mu,
+            mean1 = mean(x, na.rm =TRUE),
+            mean2 = mean(y, na.rm =TRUE),
+            mean_difference = if(!is.null(result$estimate)) result$estimate else NA,
+            alternative = my_alternative,
+            p_value = if(!is.null(result$p.value)) result$p.value else NA,
+            lowCI = if(!is.null(result$conf.int)) result$conf.int[1] else NA,
+            uppCI = if(!is.null(result$conf.int)) result$conf.int[2] else NA,
+            conf_level = my_conf_level,
+            statistic = if(!is.null(result$statistic)) result$statistic else NA,
+            parameter = if(!is.null(result$parameter)) result$parameter else NA,
+            samples = length(x),
+            stringsAsFactors = FALSE
+          )
+          # Append new rows to the original data frame
+          test_results_df <- rbind(test_results_df, new_row)
+        } # end for all variable columns
+        return(list(my_error = my_message, result_df = test_results_df))
       } else {
-        print("There are more than 2 unique values in your group")
-        return(data.frame())
+        my_message <- "There are more than 2 unique values in your group."
+        print(my_message)
+        return(list(my_error = my_message, result_df = data.frame()))
       }
-    } # end if there was a group
+    } # end by group
     else { # run test between 2 selected columns
-      # run test for the second group
-      result <- t.test(my_data[[my_data_columns[1]]],
-                       my_data[[my_data_columns[2]]],
-                       mu= my_mu,
-                       alternative = my_alternative,
-                       conf.level =  my_conf_level,
-                       paired = TRUE)
-      # Initialize an empty data frame to store the results
-      test_results_df <- data.frame(
-        null_val = my_mu,
-        mean1 = mean(my_data[[my_data_columns[1]]], na.rm =TRUE),
-        mean2 = mean(my_data[[my_data_columns[2]]], na.rm =TRUE),
-        mean_difference = if(!is.null(result$estimate)) result$estimate else NA,
-        alternative = my_alternative,
-        p_value = if(!is.null(result$p.value)) result$p.value else NA,
-        lowCI = if(!is.null(result$conf.int)) result$conf.int[1] else NA,
-        uppCI = if(!is.null(result$conf.int)) result$conf.int[2] else NA,
-        conf_level = my_conf_level,
-        statistic = if(!is.null(result$statistic)) result$statistic else NA,
-        parameter = if(!is.null(result$parameter)) result$parameter else NA,
-        samples = length(my_data[[my_data_columns[1]]]),
-        stringsAsFactors = FALSE
-      )
-      return(test_results_df)
-    }
+      if (length(my_data_columns) ==2) {
+        # run test for the second group
+        result <- t.test(my_data[[my_data_columns[1]]],
+                         my_data[[my_data_columns[2]]],
+                         mu= my_mu,
+                         alternative = my_alternative,
+                         conf.level =  my_conf_level,
+                         paired = TRUE)
+        # Initialize an empty data frame to store the results
+        test_results_df <- data.frame(
+          null_val = my_mu,
+          mean1 = mean(my_data[[my_data_columns[1]]], na.rm =TRUE),
+          mean2 = mean(my_data[[my_data_columns[2]]], na.rm =TRUE),
+          mean_difference = if(!is.null(result$estimate)) result$estimate else NA,
+          alternative = my_alternative,
+          p_value = if(!is.null(result$p.value)) result$p.value else NA,
+          lowCI = if(!is.null(result$conf.int)) result$conf.int[1] else NA,
+          uppCI = if(!is.null(result$conf.int)) result$conf.int[2] else NA,
+          conf_level = my_conf_level,
+          statistic = if(!is.null(result$statistic)) result$statistic else NA,
+          parameter = if(!is.null(result$parameter)) result$parameter else NA,
+          samples = length(my_data[[my_data_columns[1]]]),
+          stringsAsFactors = FALSE
+        )
+        return(list(my_error = my_message, result_df = test_results_df))
+      } # end running between 2 columns
+      else { # if there was not exactly 2 columns selected
+        my_message <- "If no group variable selected. Test runs between exactly 2 selected variables."
+        print(my_message)
+        return(list(my_error = my_message, result_df = data.frame()))
+      }
+    } # end if no group was selected
   } # end Paired t-test
 } # end compare_means_parametric
 ######################################################################################
@@ -1309,8 +1311,8 @@ plot_means_parametric <- function(df,
                                   my_alternative = "two.sided",
                                   my_conf_level = 0.95,
                                   plot_title = ""
-                                  ) {
-
+) {
+  
   # Plot if it's a One-sample t-test
   if (type_of_test == "One sample t-test") {
     # Get columns
@@ -1332,8 +1334,8 @@ plot_means_parametric <- function(df,
     p <- ggplot(test_result, aes(x = vars, y = estimate)) +
       geom_point() +
       geom_errorbar(data = test_result_filtered, aes(
-        ymin = ifelse(is.infinite(lowCI), estimate - 0.5, lowCI),  # Set a placeholder position for lowCI Inf
-        ymax = ifelse(is.infinite(uppCI), estimate + 0.5, uppCI)   # Set a placeholder position for uppCI Inf
+        ymin = ifelse(is.infinite(lowCI), estimate - 0.3, lowCI),  # Set a placeholder position for lowCI Inf
+        ymax = ifelse(is.infinite(uppCI), estimate + 0.3, uppCI)   # Set a placeholder position for uppCI Inf
       ), 
       width = 0.1
       ) +
@@ -1352,8 +1354,8 @@ plot_means_parametric <- function(df,
       geom_text(
         data = test_result_filtered, 
         aes(
-          y = ifelse(is.infinite(uppCI), estimate + 0.5, 
-                     ifelse(is.infinite(lowCI), estimate - 0.5, uppCI + 0.1)),
+          y = ifelse(is.infinite(uppCI), estimate + 0.3, 
+                     ifelse(is.infinite(lowCI), estimate - 0.3, uppCI + 0.1)),
           label = ifelse(is.infinite(uppCI), "Inf", 
                          ifelse(is.infinite(lowCI), "Inf", paste("p =", round(p_value, 3))))
         ),
@@ -1371,18 +1373,18 @@ plot_means_parametric <- function(df,
         # Filter out rows where the grouping variable is NA
         # Assuming my_group is a character vector with the name of the grouping variable
         my_group_col <- my_group[1]
-          
+        
         # Convert the grouping column to a factor
         df[[my_group_col]] <- as.factor(df[[my_group_col]])
-          
+        
         # Reshape the data from wide to long format
         df_long <- df %>%
           select(all_of(c(my_group_col, columns_to_test))) %>%  # Select relevant columns
           pivot_longer(cols = all_of(columns_to_test), 
-                         names_to = "Variable", 
-                         values_to = "Value") %>%
+                       names_to = "Variable", 
+                       values_to = "Value") %>%
           mutate(Variable = factor(Variable, levels = columns_to_test))  # Set order of 'Variable' as per 'columns_to_test'
-          
+        
         # Filter out rows where the grouping variable is NA
         filtered_df <- df_long %>% filter(!is.na(!!sym(my_group_col)))
         if (length(levels(filtered_df[[my_group_col]])) == 2) { # if there are 2 unique groups
@@ -1390,31 +1392,31 @@ plot_means_parametric <- function(df,
           # print(levels(filtered_df[[my_group_col]]))  # This should not include "NA"
           # Create the boxplot, faceting by Variable and grouping by my_group_col
           p <- ggboxplot(
-              filtered_df,
-              x = my_group_col,  # Grouping variable (e.g., Gender)
-              y = "Value" ,     # Response variable
-              outlier.size = 0.2,   # Set the size of outliers
-              size = 0.2
-              # color = my_group_col,
-              # palette = "jco"
+            filtered_df,
+            x = my_group_col,  # Grouping variable (e.g., Gender)
+            y = "Value" ,     # Response variable
+            outlier.size = 0.2,   # Set the size of outliers
+            size = 0.2
+            # color = my_group_col,
+            # palette = "jco"
+          ) +
+            facet_wrap(~ Variable) +  # Facet by Variable (e.g., gluc, chol)
+            labs(title = plot_title,
+                 x = my_group_col,
             ) +
-              facet_wrap(~ Variable) +  # Facet by Variable (e.g., gluc, chol)
-              labs(title = plot_title,
-                   x = my_group_col,
-                   ) +
-              theme_minimal() +
-              theme(
-                axis.title.y = element_blank(),
-                panel.grid = element_blank(),
-                strip.text = element_text(size = 14) 
-              ) +
+            theme_minimal() +
+            theme(
+              axis.title.y = element_blank(),
+              panel.grid = element_blank(),
+              strip.text = element_text(size = 14) 
+            ) +
             # Add frames around each facet
-              geom_rect(
-                aes(xmin = -Inf, xmax = Inf, ymin = -Inf, ymax = Inf),
-                fill = NA,           # No fill
-                color = "grey",     # Frame color
-                size = 0.5          # Frame line size
-              )
+            geom_rect(
+              aes(xmin = -Inf, xmax = Inf, ymin = -Inf, ymax = Inf),
+              fill = NA,           # No fill
+              color = "grey",     # Frame color
+              size = 0.5          # Frame line size
+            )
           # check the y position of p_value
           label_y_pos <- max(filtered_df$Value, na.rm = TRUE) - 0.5
           p <- p + stat_compare_means(method = "t.test", 
@@ -1425,10 +1427,80 @@ plot_means_parametric <- function(df,
           return(p)
         } # end if 2 unique groups
         else {
-          print("More than 2 unique groups")
+          print("Required exactly 2 unique groups")
         }
       } # end if group was not empty string
+      else {
+        columns_to_test <- columns_to_show
+        print(columns_to_test)
+        if (length(columns_to_test) == 2) {
+          # Reshape the data to long format for ggplot2
+          df_long <- data.frame(
+            variable = rep(columns_to_test, each = nrow(df)),
+            value = c(df[[columns_to_test[1]]], df[[columns_to_test[2]]])
+          )
+          
+          # Create the boxplot
+          p <- ggplot(df_long, aes(x = variable, y = value)) +
+            geom_boxplot() +
+            labs(title = plot_title,
+                 x = NULL,
+                 y = "Values") +
+            theme_minimal() +
+            theme(
+              axis.title.y = element_blank(),
+              panel.grid = element_blank(),
+              strip.text = element_text(size = 14) 
+            ) +
+            # Add frames around each facet
+            geom_rect(
+              aes(xmin = -Inf, xmax = Inf, ymin = -Inf, ymax = Inf),
+              fill = NA,           # No fill
+              color = "grey",     # Frame color
+              size = 0.5          # Frame line size
+            )
+          return(p)
+        }
+        else {
+          print("Needs exactly 2 variables")
+        }
+      }
     } # end if there was a group
+    else {
+      columns_to_test <- columns_to_show
+      print(columns_to_test)
+      if (length(columns_to_test) == 2) {
+        # Reshape the data to long format for ggplot2
+        df_long <- data.frame(
+          variable = rep(columns_to_test, each = nrow(df)),
+          value = c(df[[columns_to_test[1]]], df[[columns_to_test[2]]])
+        )
+        
+        # Create the boxplot
+        p <- ggplot(df_long, aes(x = variable, y = value)) +
+          geom_boxplot() +
+          labs(title = plot_title,
+               x = NULL,
+               y = "Values") +
+          theme_minimal() +
+          theme(
+            axis.title.y = element_blank(),
+            panel.grid = element_blank(),
+            strip.text = element_text(size = 14) 
+          ) +
+          # Add frames around each facet
+          geom_rect(
+            aes(xmin = -Inf, xmax = Inf, ymin = -Inf, ymax = Inf),
+            fill = NA,           # No fill
+            color = "grey",     # Frame color
+            size = 0.5          # Frame line size
+          )
+        return(p)
+      }
+      else {
+        print("Needs exactly 2 variables")
+      }
+    } # end if no group
   } # end Independent two-sample t-test
   ###########################################################
   if (type_of_test == "Paired t-test") {
@@ -1442,64 +1514,73 @@ plot_means_parametric <- function(df,
         # Convert the grouping column to a factor
         df[[my_group_col]] <- as.factor(df[[my_group_col]])
         
-        # Reshape the data from wide to long format
-        df_long <- df %>%
-          select(all_of(c(my_group_col, columns_to_test))) %>%  # Select relevant columns
-          pivot_longer(cols = all_of(columns_to_test), 
-                       names_to = "Variable", 
-                       values_to = "Value") %>%
-          mutate(Variable = factor(Variable, levels = columns_to_test))  # Set order of 'Variable' as per 'columns_to_test'
-        # print(df_long)
         # Filter out rows where the grouping variable is NA
-        filtered_df <- df_long %>% filter(!is.na(!!sym(my_group_col)))
-        # Modify the factor column by adding the column name as prefix
-        filtered_df[[my_group_col]] <- factor(paste(my_group_col, filtered_df[[my_group_col]], sep = "_"))
-        if (length(levels(filtered_df[[my_group_col]])) == 2) { # if there are 2 unique groups
-          # Create an 'id' column for paired observations
-          filtered_df <- filtered_df %>%
-            group_by(!!sym(my_group_col)) %>%                             # Group by the grouping variable (e.g., Gender)
-            mutate(id = as.integer((row_number() + 1) %/% 2)) %>%  # Assign the same ID to every two rows within each group
-            ungroup()
-          # print(filtered_df)
+        df <- df %>% filter(!is.na(!!sym(my_group_col)))
+        if (length(levels(df[[my_group_col]])) == 2) { # if there are 2 unique groups
+          my_groups <- levels(df[[my_group_col]])
           
-          # Create the boxplot, faceting by my_group_col and grouping by Variable
-          p <- ggpaired(
-            filtered_df,
-            x = "Variable",  # Grouping variable (e.g., dop1, dop2)
-            y = "Value" ,     # Response variable
-            id = "id",
-            outlier.size = 0.2,   # Set the size of outliers
-            size = 0.2,
-            line.color = "grey",
-            line.size = 0.2
+          df_selected <- df %>%
+            select(all_of(c(my_group_col, columns_to_test)))
+          
+          # Split the data
+          group1_rows <- df_selected[get(my_group_col) == my_groups[1]]
+          group2_rows <- df_selected[get(my_group_col) == my_groups[2]]
+        
+          # Find the minimum number of rows
+          min_length <- min(nrow(group1_rows), nrow(group2_rows))
+          
+          # Add IDs to pair up to the shortest group
+          group1_rows <- group1_rows[1:min_length][, id := seq_len(.N)]
+          group2_rows <- group2_rows[1:min_length][, id := seq_len(.N)]
+          
+          # Combine the paired rows
+          paired_df <- rbind(group1_rows, group2_rows)
+          setorderv(paired_df, c("id", my_group_col))
+          
+          
+          # Reshape the data from wide to long format
+          df_long <- paired_df %>%
+            pivot_longer(cols = all_of(columns_to_test),
+                         names_to = "Variable",
+                         values_to = "Value") %>%
+            mutate(Variable = factor(Variable, levels = columns_to_test))  # Set order of 'Variable' as per 'columns_to_test'
+        print(df_long)
+        p <- ggpaired(
+          df_long,
+          x = my_group_col,  # Grouping variable 
+          y = "Value" ,     # Response variable
+          id = "id",
+          outlier.size = 0.2,   # Set the size of outliers
+          size = 0.2,
+          line.color = "grey",
+          line.size = 0.2
+        ) +
+          facet_wrap(as.formula(paste("~", "Variable"))) +  # Facet by col
+          labs(title = plot_title) +
+          theme_minimal() +
+          theme(
+            axis.title.y = element_blank(),
+            axis.title.x = element_blank(),
+            panel.grid = element_blank(),
+            strip.text = element_text(size = 14)
           ) +
-            facet_wrap(as.formula(paste("~", my_group_col))) +  # Facet by Gender
-            labs(title = plot_title) +
-            theme_minimal() +
-            theme(
-              axis.title.y = element_blank(),
-              axis.title.x = element_blank(),
-              panel.grid = element_blank(),
-              strip.text = element_text(size = 14)
-            ) +
-            # Add frames around each facet
-            geom_rect(
-              aes(xmin = -Inf, xmax = Inf, ymin = -Inf, ymax = Inf),
-              fill = NA,           # No fill
-              color = "grey",     # Frame color
-              size = 0.5          # Frame line size
-            )
-          
-          # Position for p-values
-          label_y_pos <- max(filtered_df$Value, na.rm = TRUE) - 0.5
-         
-          p <- p + stat_compare_means(method = "t.test", 
-                                      method.args = list(mu=my_mu, alternative = my_alternative, conf.level = my_conf_level), 
+          # Add frames around each facet
+          geom_rect(
+            aes(xmin = -Inf, xmax = Inf, ymin = -Inf, ymax = Inf),
+            fill = NA,           # No fill
+            color = "grey",     # Frame color
+            size = 0.5          # Frame line size
+          )
+        
+        # Position for p-values
+        label_y_pos <- max(df_long$Value, na.rm = TRUE) - 0.5
+          p <- p + stat_compare_means(method = "t.test",
+                                      method.args = list(mu=my_mu, alternative = my_alternative, conf.level = my_conf_level),
                                       paired = TRUE, label = "p.format", label.x = 1.4, label.y = label_y_pos)
           return(p)
         } # end if exactly 2 groups
         else {
-          print("More than 2 unique groups")
+          print("Required exactly 2 unique groups")
         }
       } # end if group was not empty string
       else if (length(columns_to_test) == 2) { # run between columns
@@ -1607,16 +1688,18 @@ plot_means_parametric <- function(df,
 # my_test: "Wilcoxon rank-sum test", "Wilcoxon signed-rank test", "Kruskal-Wallis test", "Friedman test"
 # my_alternative: "two.sided", "greater", "less"
 compare_medians_nonparametric <- function (my_data,
-                                      my_data_columns = c(), 
-                                      my_group = c(),
-                                      my_test = "Wilcoxon rank-sum test",
-                                      my_mu = 0,
-                                      my_alternative = "two.sided",
-                                      my_conf_level = 0.95) {
+                                           my_data_columns = c(), 
+                                           my_group = c(),
+                                           my_test = "Wilcoxon rank-sum test",
+                                           my_mu = 0,
+                                           my_alternative = "two.sided",
+                                           my_conf_level = 0.95) {
+  my_message <- ""
   if (my_test == "Wilcoxon rank-sum test") {
     if (!is.null(my_group) && length(my_group) == 1) {
       if (my_group[1] == "") {
-        print("Group column is an empty string")
+        my_message <- "Group column is an empty string"
+        print(my_message)
         if (length(my_data_columns)==2) { # run between 2 columns
           my_data %>% 
             select(all_of(my_data_columns)) -> data_to_test
@@ -1645,9 +1728,11 @@ compare_medians_nonparametric <- function (my_data,
             samples_group2 = length(y),
             stringsAsFactors = FALSE
           )
-          return(test_results_df)
+          return(list(my_error = my_message, result_df = test_results_df))
         } else {
-          return(data.frame())
+          my_message <- "If no group Variable selected, the test runs between exactly 2 selected variables."
+          print(my_message)
+          return(list(my_error = my_message, result_df = data.frame()))
         }
       } else { # group col selected
         cols_to_keep <- append(my_data_columns,my_group)
@@ -1678,11 +1763,11 @@ compare_medians_nonparametric <- function (my_data,
             x <- data_to_test[[col]][data_to_test[[my_group[1]]] == uniq_res[1]]
             y <- data_to_test[[col]][data_to_test[[my_group[1]]] == uniq_res[2]]
             result <- wilcox.test(x,y,
-                                         alternative = my_alternative, 
-                                         paired = FALSE,
-                                         conf.int = TRUE,
-                                         correct = FALSE,
-                                         conf.level = my_conf_level)
+                                  alternative = my_alternative, 
+                                  paired = FALSE,
+                                  conf.int = TRUE,
+                                  correct = FALSE,
+                                  conf.level = my_conf_level)
             # Add the results to dataframe
             new_row <- data.frame(
               vars = col,
@@ -1704,11 +1789,17 @@ compare_medians_nonparametric <- function (my_data,
             # Append new rows to the original data frame
             test_results_df <- rbind(test_results_df, new_row)
           } # end for all data columns
-          return(test_results_df)
+          return(list(my_error = my_message, result_df = test_results_df))
         } # end if there are 2 groups
-        } # end if group column name is not empty string
+        else {
+          my_message <- "There needs to be exactly 2 unique values in your group."
+          print(my_message)
+          return(list(my_error = my_message, result_df = data.frame()))
+        }
+      } # end if group column name is not empty string
     } else {
-      print("No group column")
+      my_message <- "No group column"
+      print(my_message)
       if (length(my_data_columns)==2) { # run between 2 columns
         my_data %>% 
           select(all_of(my_data_columns)) -> data_to_test
@@ -1737,9 +1828,11 @@ compare_medians_nonparametric <- function (my_data,
           samples_group2 = length(y),
           stringsAsFactors = FALSE
         )
-        return(test_results_df)
+        return(list(my_error = my_message, result_df = test_results_df))
       } else {
-        return(data.frame())
+        my_message <- "If no group Variable selected, the test runs between exactly 2 selected variables."
+        print(my_message)
+        return(list(my_error = my_message, result_df = data.frame()))
       }
     }
   } # end "Wilcoxon rank-sum test"
@@ -1747,7 +1840,8 @@ compare_medians_nonparametric <- function (my_data,
   if ( my_test == "Wilcoxon signed-rank test") {
     if (!is.null(my_group) && length(my_group) == 1) {
       if (my_group[1] == "") {
-        print("Group column is an empty string")
+        my_message <- "Group column is an empty string"
+        print(my_message)
         if (length(my_data_columns)==2) { # run between 2 columns
           my_data %>% 
             select(all_of(my_data_columns)) -> data_to_test
@@ -1776,14 +1870,14 @@ compare_medians_nonparametric <- function (my_data,
             samples_group2 = length(y),
             stringsAsFactors = FALSE
           )
-          return(test_results_df)
+          return(list(my_error = my_message, result_df = test_results_df))
         } # end running between 2 columns
         else {
-          return(data.frame())
+          return(list(my_error = my_message, result_df = data.frame()))
         }
       } # end if group column was empty string
       else { #group was not empty string
-        if (length(my_data_columns)==2) {
+        if (length(my_data_columns) > 0) {
           # the test is for 2 groups only, so check if the group column has exactly 2 unique values
           group_col = my_group[1]
           # print(is.numeric(my_data[[group_col]]))
@@ -1791,7 +1885,7 @@ compare_medians_nonparametric <- function (my_data,
           # print(is.numeric(my_data[[group_col]]))
           uniq_res <- levels(my_data[[group_col]])
           # print(uniq_res)
-          if (length(uniq_res) == 2) {
+          if (length(uniq_res) == 2) { # there are exactly 2 unique groups
             # Initialize an empty data frame to store the results
             test_results_df <- data.frame(
               vars = character(),
@@ -1810,104 +1904,58 @@ compare_medians_nonparametric <- function (my_data,
               samples_group2 = numeric(),
               stringsAsFactors = FALSE
             )
-            x1 <- c()
-            y1 <- c()
-            x2 <- c()
-            y2 <- c()
-            for (i in seq_along(my_data_columns)) { # assume 2 columns (i.e. before and after)
+            for (i in seq_along(my_data_columns)) { # each col will be split by the group
               # Split the 'value' column into two separate vectors based on 'group'
               test_col <- my_data_columns[i]
-              if (i==1) { # get x data based on groups 
-                x1 <- my_data[[test_col]][my_data[[group_col]] == uniq_res[1]]
-                x2 <- my_data[[test_col]][my_data[[group_col]] == uniq_res[2]]
-                # print(length(x1))
-                # print(length(x2))
-              } else {# get y data based on groups 
-                y1 <- my_data[[test_col]][my_data[[group_col]] == uniq_res[1]]
-                y2 <- my_data[[test_col]][my_data[[group_col]] == uniq_res[2]]
-                # print(length(y1))
-                # print(length(y2))
-              } # end creating data for tests
-            } # end for
-            # make sure they are equal lengths
-            if (length(x1) < length(y1)) {
-              y1 <- sample(y1, length(x1), replace = FALSE, prob = NULL)
-            } else if (length(x1) > length(y1)){
-              x1 <- sample(x1, length(y1), replace = FALSE, prob = NULL)
-            }
-            if (length(x2) < length(y2)) {
-              y2 <- sample(y2, length(x2), replace = FALSE, prob = NULL)
-            } else if (length(x2) > length(y2)){
-              x2 <- sample(x2, length(y2), replace = FALSE, prob = NULL)
-            }
-            # run test for the first group
-            result <- wilcox.test(x1,y1,
-                                  alternative = my_alternative, 
-                                  paired = TRUE,
-                                  conf.int = TRUE,
-                                  correct = FALSE,
-                                  conf.level = my_conf_level)
-            # Add the results to dataframe
-            new_row <- data.frame(
-              vars = paste0("Group_1_",my_data_columns[1],"_vs_",my_data_columns[2]),
-              null_val = my_mu,
-              median1 = median(x1, na.rm =TRUE),
-              median2 = median(y1, na.rm =TRUE),
-              median_difference = if(!is.null(result$estimate)) result$estimate else NA,
-              alternative = my_alternative,
-              p_value = if(!is.null(result$p.value)) result$p.value else NA,
-              lowCI = if(!is.null(result$conf.int)) result$conf.int[1] else NA,
-              uppCI = if(!is.null(result$conf.int)) result$conf.int[2] else NA,
-              conf_level = my_conf_level,
-              statistic =  if(!is.null(result$statistic)) result$statistic else NA,
-              parameter = if(!is.null(result$parameter)) result$parameter else NA,
-              samples_group1 = length(x1),
-              samples_group2 = length(y1),
-              stringsAsFactors = FALSE
-            )
-            # Append new rows to the original data frame
-            test_results_df <- rbind(test_results_df, new_row)
-            # run test for the second group
-            result <- wilcox.test(x2,y2,
-                                  alternative = my_alternative, 
-                                  paired = TRUE,
-                                  conf.int = TRUE,
-                                  correct = FALSE,
-                                  conf.level = my_conf_level)
-            # Add the results to dataframe
-            new_row <- data.frame(
-              vars = paste0("Group_2_",my_data_columns[1],"_vs_",my_data_columns[2]),
-              null_val = my_mu,
-              median1 = median(x2, na.rm =TRUE),
-              median2 = median(y2, na.rm =TRUE),
-              median_difference = if(!is.null(result$estimate)) result$estimate else NA,
-              alternative = my_alternative,
-              p_value = if(!is.null(result$p.value)) result$p.value else NA,
-              lowCI = if(!is.null(result$conf.int)) result$conf.int[1] else NA,
-              uppCI = if(!is.null(result$conf.int)) result$conf.int[2] else NA,
-              conf_level = my_conf_level,
-              statistic =  if(!is.null(result$statistic)) result$statistic else NA,
-              parameter = if(!is.null(result$parameter)) result$parameter else NA,
-              samples_group1 = length(x2),
-              samples_group2 = length(y2),
-              stringsAsFactors = FALSE
-            )
-            # Append new rows to the original data frame
-            test_results_df <- rbind(test_results_df, new_row)
-            return(test_results_df)
+              x <- my_data[[test_col]][my_data[[group_col]] == uniq_res[1]]
+              y <- my_data[[test_col]][my_data[[group_col]] == uniq_res[2]]
+              # make sure they are equal lengths
+              if (length(x) < length(y)) {
+                y <- sample(y, length(x), replace = FALSE, prob = NULL)
+              } else if (length(x) > length(y)){
+                x <- sample(x, length(y), replace = FALSE, prob = NULL)
+              }
+              # run the test
+              result <- wilcox.test(x,y,
+                                    alternative = my_alternative, 
+                                    paired = TRUE,
+                                    conf.int = TRUE,
+                                    correct = FALSE,
+                                    conf.level = my_conf_level)
+              # Add the results to dataframe
+              new_row <- data.frame(
+                vars = paste0(test_col,"_",uniq_res[1],"_vs_",uniq_res[2]),
+                null_val = my_mu,
+                median1 = median(x, na.rm =TRUE),
+                median2 = median(y, na.rm =TRUE),
+                median_difference = if(!is.null(result$estimate)) result$estimate else NA,
+                alternative = my_alternative,
+                p_value = if(!is.null(result$p.value)) result$p.value else NA,
+                lowCI = if(!is.null(result$conf.int)) result$conf.int[1] else NA,
+                uppCI = if(!is.null(result$conf.int)) result$conf.int[2] else NA,
+                conf_level = my_conf_level,
+                statistic =  if(!is.null(result$statistic)) result$statistic else NA,
+                parameter = if(!is.null(result$parameter)) result$parameter else NA,
+                samples_group1 = length(x),
+                samples_group2 = length(y),
+                stringsAsFactors = FALSE
+              )
+              # Append new rows to the original data frame
+              test_results_df <- rbind(test_results_df, new_row)
+            } # end for all variable columns
+            return(list(my_error = my_message, result_df = test_results_df))
           } else {
-            print("There are more than 2 unique values in your group")
-            return(data.frame())
-          }
-        } # end if 2 data columns
-        else {
-          print("Needs exactly 2 data columns to run by group")
-          return(data.frame())
-        }
-      } # end if group was not empty string
+            my_message <- "There needs to be exactly 2 unique values in your group."
+            print(my_message)
+            return(list(my_error = my_message, result_df = data.frame()))
+          } # end if there were not exactly 2 unique groups
+        }# end if there any data columns
+        } # end if group was not empty string
+          #################################################
     } # end if there was one group column
     else {
-      print("No group column")
+      my_message <- "No group column"
+      print(my_message)
       if (length(my_data_columns)==2) { # run between 2 columns
         my_data %>% 
           select(all_of(my_data_columns)) -> data_to_test
@@ -1936,9 +1984,9 @@ compare_medians_nonparametric <- function (my_data,
           samples_group2 = length(y),
           stringsAsFactors = FALSE
         )
-        return(test_results_df)
+        return(list(my_error = my_message, result_df = test_results_df))
       } else {
-        return(data.frame())
+        return(list(my_error = my_message, result_df = data.frame()))
       }
     } # end no group column
   } #end "Wilcoxon signed-rank test"
@@ -1956,7 +2004,7 @@ compare_medians_nonparametric <- function (my_data,
             df = if(!is.null(result$parameter)) result$parameter else NA,
             stringsAsFactors = FALSE
           )
-          return(test_results_df)
+          return(list(my_error = my_message, result_df = test_results_df))
         } # end if group column was empty string
         else { # if group column name was provided
           print("run multiple data columns for each group")
@@ -1986,11 +2034,11 @@ compare_medians_nonparametric <- function (my_data,
               # Append new rows to the original data frame
               test_results_df <- rbind(test_results_df, new_row)
             } # end for loop
-            return(test_results_df)
+            return(list(my_error = my_message, result_df = test_results_df))
           } else {
-            print(my_group_col)
-            print("Less than 3 groups. Use a different test")
-            return(data.frame())
+            my_message <- "Less than 3 groups. Use a different test"
+            print(my_message)
+            return(list(my_error = my_message, result_df = data.frame()))
           } # end if there were less than 3 groups in group column
         } # if group column name was provided
       } # end if there was a group column
@@ -2004,7 +2052,7 @@ compare_medians_nonparametric <- function (my_data,
           df = if(!is.null(result$parameter)) result$parameter else NA,
           stringsAsFactors = FALSE
         )
-        return(test_results_df)
+        return(list(my_error = my_message, result_df = test_results_df))
       } # end no group
     } # end if there are more than 2 data columns
     else { # less than 3 data columns
@@ -2037,77 +2085,80 @@ compare_medians_nonparametric <- function (my_data,
               # Append new rows to the original data frame
               test_results_df <- rbind(test_results_df, new_row)
             } # end for loop
-            return(test_results_df)
+            return(list(my_error = my_message, result_df = test_results_df))
           } else {
-            print("You need more than 2 groups for Kruskal-Wallis test.")
-            return(data.frame())
+            my_message <- "You need more than 2 groups for Kruskal-Wallis test."
+            print(my_message)
+            return(list(my_error = my_message, result_df = data.frame()))
           } # end if there were less than 3 groups in group column
         }# if group column was not empty string
         else {
-          print("too few data columns, no group")
-          return(data.frame())
+          my_message <- "Too few data columns, no group."
+          print(my_message)
+          return(list(my_error = my_message, result_df = data.frame()))
         }
       } # if there was a group column
       else {
-        print("too few data columns, no group")
-        return(data.frame())
+        my_message <- "Too few data columns, no group."
+        print(my_message)
+        return(list(my_error = my_message, result_df = data.frame()))
       }
       
     } # less than 3 data columns
   } # end "Kruskal-Wallis test"
   ##############################################
-  if (my_test == "Friedman test") {
-    if (length(my_data_columns) > 2) { # if there were more than 2 variables
-      if (!is.null(my_group) && length(my_group) == 1) {
-        if (my_group[1] == "") { # if there was no group (group = empty string)
-          # run between columns
-          # make a matrix
-          my_matrix <- as.matrix(my_data[, ..my_data_columns])
-          result <- friedman.test(my_matrix)
-          test_results_df <- data.frame(
-            p_value = if(!is.null(result$p.value)) result$p.value else NA,
-            Friedman_chi_squared =  if(!is.null(result$statistic)) result$statistic else NA,
-            df = if(!is.null(result$parameter)) result$parameter else NA,
-            stringsAsFactors = FALSE
-          )
-          return(test_results_df)
-        } # end if group was empty string
-        else { # there was a group column
-          my_group_col <- my_group[1]
-          # print(is.numeric(my_data[[group_col]]))
-          my_data <- factor_columns(my_data,my_group)
-          # print(is.numeric(my_data[[group_col]]))
-          uniq_res <- levels(my_data[[my_group_col]])
-          print(uniq_res)
-          if (length(uniq_res) > 2) { # if there were at least 3 groups
-            # change to long format
-            my_req_columns <- append(my_group,my_data_columns)
-            my_new_data <- my_data %>%
-              select(all_of(my_req_columns))
-            my_new_data <- my_new_data %>%
-              pivot_longer(cols = my_data_columns, 
-                           names_to = "vars", 
-                           values_to = "values")
-            # Ensure no missing data and that each group has all values for each "vars"
-            my_new_data <- my_new_data %>%
-              drop_na() %>%  # Remove any rows with missing values
-              group_by(!!sym(my_group_col), vars) %>%
-              filter(n() == length(my_data_columns))  # Keep only complete blocks
-            
-            # Now, use as.formula() to construct the correct formula for friedman.test
-            result <- friedman.test(as.formula(paste("values ~ vars |", my_group_col)), data = my_new_data)
-          
-            print(result)
-          } # end if there were at least 3 groups
-          else {
-            print("You need more than 2 groups for Friedman test.")
-            return(data.frame())
-          }
-        } # end if there was a group column name
-      }
-    } # end if there were more than 2 variables
-    
-  } # end Friedman test
+  # if (my_test == "Friedman test") {
+  #   if (length(my_data_columns) > 2) { # if there were more than 2 variables
+  #     if (!is.null(my_group) && length(my_group) == 1) {
+  #       if (my_group[1] == "") { # if there was no group (group = empty string)
+  #         # run between columns
+  #         # make a matrix
+  #         my_matrix <- as.matrix(my_data[, ..my_data_columns])
+  #         result <- friedman.test(my_matrix)
+  #         test_results_df <- data.frame(
+  #           p_value = if(!is.null(result$p.value)) result$p.value else NA,
+  #           Friedman_chi_squared =  if(!is.null(result$statistic)) result$statistic else NA,
+  #           df = if(!is.null(result$parameter)) result$parameter else NA,
+  #           stringsAsFactors = FALSE
+  #         )
+  #         return(test_results_df)
+  #       } # end if group was empty string
+  #       else { # there was a group column
+  #         my_group_col <- my_group[1]
+  #         # print(is.numeric(my_data[[group_col]]))
+  #         my_data <- factor_columns(my_data,my_group)
+  #         # print(is.numeric(my_data[[group_col]]))
+  #         uniq_res <- levels(my_data[[my_group_col]])
+  #         print(uniq_res)
+  #         if (length(uniq_res) > 2) { # if there were at least 3 groups
+  #           # change to long format
+  #           my_req_columns <- append(my_group,my_data_columns)
+  #           my_new_data <- my_data %>%
+  #             select(all_of(my_req_columns))
+  #           my_new_data <- my_new_data %>%
+  #             pivot_longer(cols = my_data_columns, 
+  #                          names_to = "vars", 
+  #                          values_to = "values")
+  #           # Ensure no missing data and that each group has all values for each "vars"
+  #           my_new_data <- my_new_data %>%
+  #             drop_na() %>%  # Remove any rows with missing values
+  #             group_by(!!sym(my_group_col), vars) %>%
+  #             filter(n() == length(my_data_columns))  # Keep only complete blocks
+  #           
+  #           # Now, use as.formula() to construct the correct formula for friedman.test
+  #           result <- friedman.test(as.formula(paste("values ~ vars |", my_group_col)), data = my_new_data)
+  #           
+  #           print(result)
+  #         } # end if there were at least 3 groups
+  #         else {
+  #           print("You need more than 2 groups for Friedman test.")
+  #           return(data.frame())
+  #         }
+  #       } # end if there was a group column name
+  #     }
+  #   } # end if there were more than 2 variables
+  #   
+  # } # end Friedman test
   
 } # end compare_medians_nonparametric
 
@@ -2192,7 +2243,7 @@ plot_medians_nonparametric <- function(df,
           return(p)
         } # end if there were 2 unique groups
         else {
-          print("More than 2 unique groups.")
+          print("Required exactly 2 unique groups.")
         }
       } # end if group was not empty string
       else if (length(columns_to_test) == 2) { # run between columns
@@ -2282,74 +2333,83 @@ plot_medians_nonparametric <- function(df,
     columns_to_test <- columns_to_show
     if (!is.null(my_group) && length(my_group) == 1) {
       if (my_group[1] != "") {
-        # Filter out rows where the grouping variable is NA
         # Assuming my_group is a character vector with the name of the grouping variable
         my_group_col <- my_group[1]
         
         # Convert the grouping column to a factor
         df[[my_group_col]] <- as.factor(df[[my_group_col]])
         
-        # Reshape the data from wide to long format
-        df_long <- df %>%
-          select(all_of(c(my_group_col, columns_to_test))) %>%  # Select relevant columns
-          pivot_longer(cols = all_of(columns_to_test), 
-                       names_to = "Variable", 
-                       values_to = "Value") %>%
-          mutate(Variable = factor(Variable, levels = columns_to_test))  # Set order of 'Variable' as per 'columns_to_test'
-        
         # Filter out rows where the grouping variable is NA
-        filtered_df <- df_long %>% filter(!is.na(!!sym(my_group_col)))
-        if (length(levels(filtered_df[[my_group_col]])) == 2) { # if there are 2 unique groups
-          # Create an 'id' column for paired observations
-          filtered_df <- filtered_df %>%
-            group_by(!!sym(my_group_col)) %>%                             # Group by the grouping variable (e.g., Gender)
-            mutate(id = as.integer((row_number() + 1) %/% 2)) %>%  # Assign the same ID to every two rows within each group
-            ungroup()
-          # print(filtered_df)
-          # Modify the factor column by adding the column name as prefix
-          filtered_df[[my_group_col]] <- factor(paste(my_group_col, filtered_df[[my_group_col]], sep = "_"))
-         
-          # Create the boxplot, faceting by my_group_col and grouping by Variable
+        df <- df %>% filter(!is.na(!!sym(my_group_col)))
+        if (length(levels(df[[my_group_col]])) == 2) { # if there are 2 unique groups
+          my_groups <- levels(df[[my_group_col]])
+          
+          df_selected <- df %>%
+            select(all_of(c(my_group_col, columns_to_test)))
+      
+          # Split the data
+          group1_rows <- df_selected[get(my_group_col) == my_groups[1]]
+          group2_rows <- df_selected[get(my_group_col) == my_groups[2]]
+
+          # Find the minimum number of rows
+          min_length <- min(nrow(group1_rows), nrow(group2_rows))
+          
+          # Add IDs to pair up to the shortest group
+          group1_rows <- group1_rows[1:min_length][, id := seq_len(.N)]
+          group2_rows <- group2_rows[1:min_length][, id := seq_len(.N)]
+        
+          # Combine the paired rows
+          paired_df <- rbind(group1_rows, group2_rows)
+          setorderv(paired_df, c("id", my_group_col))
+          
+          
+          # Reshape the data from wide to long format
+          df_long <- paired_df %>%
+            pivot_longer(cols = all_of(columns_to_test),
+                         names_to = "Variable",
+                         values_to = "Value") %>%
+            mutate(Variable = factor(Variable, levels = columns_to_test))  # Set order of 'Variable' as per 'columns_to_test'
+          
           p <- ggpaired(
-            filtered_df,
-            x = "Variable",  # Grouping variable (e.g., dop1, dop2)
+            df_long,
+            x = my_group_col,  # Grouping variable 
             y = "Value" ,     # Response variable
             id = "id",
             outlier.size = 0.2,   # Set the size of outliers
             size = 0.2,
             line.color = "grey",
             line.size = 0.2
-          ) +
-            facet_wrap(as.formula(paste("~", my_group_col))) +  # Facet by Gender
-            labs(title = plot_title) +
-            theme_minimal() +
-            theme(
-              axis.title.y = element_blank(),
-              axis.title.x = element_blank(),
-              panel.grid = element_blank(),
-              strip.text = element_text(size = 14)
             ) +
-            # Add frames around each facet
-            geom_rect(
-              aes(xmin = -Inf, xmax = Inf, ymin = -Inf, ymax = Inf),
-              fill = NA,           # No fill
-              color = "grey",     # Frame color
-              size = 0.5          # Frame line size
-            )
-          
-          # Position for p-values
-          label_y_pos <- max(filtered_df$Value, na.rm = TRUE) - 0.5
-          
-          p <- p + stat_compare_means( # by default method is wilcoxon
-            method.args = list(mu=my_mu, alternative = my_alternative, conf.level = my_conf_level), 
-            paired = TRUE, 
-            label = "p.format", 
-            label.x = 1.4, 
-            label.y = label_y_pos)
+              facet_wrap(as.formula(paste("~", "Variable"))) +  # Facet by col
+              labs(title = plot_title) +
+              theme_minimal() +
+              theme(
+                axis.title.y = element_blank(),
+                axis.title.x = element_blank(),
+                panel.grid = element_blank(),
+                strip.text = element_text(size = 14)
+              ) +
+              # Add frames around each facet
+              geom_rect(
+                aes(xmin = -Inf, xmax = Inf, ymin = -Inf, ymax = Inf),
+                fill = NA,           # No fill
+                color = "grey",     # Frame color
+                size = 0.5          # Frame line size
+              )
+
+            # Position for p-values
+            label_y_pos <- max(df_long$Value, na.rm = TRUE) - 0.5
+
+            p <- p + stat_compare_means( # by default method is wilcoxon
+              method.args = list(mu=my_mu, alternative = my_alternative, conf.level = my_conf_level),
+              paired = TRUE,
+              label = "p.format",
+              label.x = 1.4,
+              label.y = label_y_pos)
           return(p)
         } # end if not exactly 2 groups
         else {
-          print("More than 2 unique groups.")
+          print("Required exactly 2 unique groups.")
         }
       } # end if group was not empty string
       else {
@@ -2512,13 +2572,13 @@ plot_medians_nonparametric <- function(df,
           # check the y position of p_value
           label_y_pos <- max(filtered_df$Value, na.rm = TRUE) + length(my_comparisons)-1 
           p <- p + 
-            stat_compare_means(
-              method = "kruskal.test",
-              method.args = list(mu=my_mu, alternative = my_alternative, conf.level = my_conf_level),
-              # label = "p.format",
-              label.x = mean(as.numeric(unique(filtered_df[[my_group_col]]))),  # Center horizontally
-              label.y = label_y_pos   # Set above the other comparisons
-            ) +
+            # stat_compare_means(
+            #   method = "kruskal.test",
+            #   method.args = list(mu=my_mu, alternative = my_alternative, conf.level = my_conf_level),
+            #   # label = "p.format",
+            #   label.x = mean(as.numeric(unique(filtered_df[[my_group_col]]))),  # Center horizontally
+            #   label.y = label_y_pos   # Set above the other comparisons
+            # ) +
             stat_compare_means(comparisons = my_comparisons) 
           
           return(p)
@@ -2561,13 +2621,13 @@ plot_medians_nonparametric <- function(df,
           # check the y position of p_value
           label_y_pos <- max(df_long$Value, na.rm = TRUE) + length(my_comparisons)
           p <- p + 
-            stat_compare_means(
-              method = "kruskal.test",
-              method.args = list(mu=my_mu, alternative = my_alternative, conf.level = my_conf_level),
-              # label = "p.format",
-              label.x = as.numeric(length(columns_to_test)/2+0.2),  # Center horizontally
-              label.y = label_y_pos  # Set above the other comparisons
-            ) +
+            # stat_compare_means(
+            #   method = "kruskal.test",
+            #   method.args = list(mu=my_mu, alternative = my_alternative, conf.level = my_conf_level),
+            #   # label = "p.format",
+            #   label.x = as.numeric(length(columns_to_test)/2+0.2),  # Center horizontally
+            #   label.y = label_y_pos  # Set above the other comparisons
+            # ) +
             stat_compare_means(comparisons = my_comparisons) 
           return(p)
         } # end running between columns
@@ -2610,13 +2670,13 @@ plot_medians_nonparametric <- function(df,
         # check the y position of p_value
         label_y_pos <- max(df_long$Value, na.rm = TRUE) + length(my_comparisons)
         p <- p + 
-          stat_compare_means(
-            method = "kruskal.test",
-            method.args = list(mu=my_mu, alternative = my_alternative, conf.level = my_conf_level),
-            # label = "p.format",
-            label.x = as.numeric(length(columns_to_test)/2+0.2),  # Center horizontally
-            label.y = label_y_pos  # Set above the other comparisons
-          ) +
+          # stat_compare_means(
+          #   method = "kruskal.test",
+          #   method.args = list(mu=my_mu, alternative = my_alternative, conf.level = my_conf_level),
+          #   # label = "p.format",
+          #   label.x = as.numeric(length(columns_to_test)/2+0.2),  # Center horizontally
+          #   label.y = label_y_pos  # Set above the other comparisons
+          # ) +
           stat_compare_means(comparisons = my_comparisons) 
         return(p)
       } # end running between columns
@@ -2627,3 +2687,6 @@ plot_medians_nonparametric <- function(df,
   } # end if Kruskal-Wallis test 
   
 } # end plot_medians_nonparametric
+
+
+

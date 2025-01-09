@@ -2058,6 +2058,8 @@ server <- function(input, output,session) {
         # } # end else
     } # end if max for plot satisfied
     else {
+      # clear previous selection
+      display_data_parametric_tests(data.frame())
       # show error that too many columns
       show_error_modal_with_icon("Max 6 variables at a time allowed.     ")
     }
@@ -2240,6 +2242,8 @@ server <- function(input, output,session) {
         } # end else (if the group column was selected)
     } # end if max number od selected columns satisfied
     else {
+      # clear previous selection
+      display_data_nonparametric_tests(data.frame())
       # show message
       show_error_modal_with_icon("Max 6 variables at a time allowed.     ")
     }
