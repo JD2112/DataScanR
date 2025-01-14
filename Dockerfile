@@ -9,7 +9,7 @@ COPY ./DataScanR/ /srv/shiny-server/
 COPY helpers/ /helpers/
 
 # install shiny and Cairo
-RUN Rscript /helpers/install.R shiny DT ggplot2 bslib data.table dlookr tidyr shinycssloaders dplyr patchwork ggpubr hrbrthemes ggdist corrplot pals NbClust
+RUN Rscript /helpers/install.R shiny DT ggplot2 bslib data.table dlookr tidyr shinycssloaders dplyr patchwork ggpubr hrbrthemes ggdist corrplot pals NbClust mice
 
 RUN Rscript /helpers/install.R plotly bsicons
 
