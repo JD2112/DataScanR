@@ -14,9 +14,8 @@
 [1] "Normality tab selected!"
 Warning: Error in loadNamespace: there is no package called ‘bsicons’
 ```
-**fixed** package added to the docker image **added to library imports**
-
-**FIXED** 2. automatically calculates normality and prompt `problem calculating normality`!!! **- when there are less than 3 non-NA values, the normality crashed. Added automatic removing of variables with less than 3 non-NA variables to perform normality check**
+**fixed by J** 1. ‘bsicons’package added to the docker image **added to library imports**‘bsicons’
+**FIXED**      2. automatically calculates normality and prompt `problem calculating normality`!!! **- when there are less than 3 non-NA values, the normality crashed. Added automatic removing of variables with less than 3 non-NA variables to perform normality check**
 
 ## Correlation
 **FIXED** 1. should have a notification, `select numeric variables` **- only numerical variables are in the dropdown**<br>
@@ -29,11 +28,10 @@ Warning: Error in loadNamespace: there is no package called ‘bsicons’
 
 
 ## Statistical tests
-1. `parametric` by `groups` -> `plots`?<br>
-**FIXED** 2. remove automatic fill for selected columns...<br>
-**FIXED** 3. non-parametric wilocoxon signed rank test needs to run based on group column for multiple variables or between 2 variables
-**FIXED** 4. parametric paired t-test needs to run based on group column for multiple variables or between 2 variables
-**FIXED** 5. parametric two-sample ttest needs to run between 2 columns
+**FIXED** 1. remove automatic fill for selected columns...<br>
+**FIXED** 2. non-parametric wilocoxon signed rank test needs to run based on group column for multiple variables or between 2 variables<br>
+**FIXED** 3. parametric paired t-test needs to run based on group column for multiple variables or between 2 variables<br>
+**FIXED** 4. parametric two-sample ttest needs to run between 2 columns<br>
 **FIXED** 5. Add more comprehensive feedback if something was not calculated
 
 ## Round numbers in the displayed tables
