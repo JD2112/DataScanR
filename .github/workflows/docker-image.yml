@@ -21,7 +21,7 @@ jobs:
         id: meta
         uses: docker/metadata-action@v4
         with:
-          images: jd21/datascanr
+          images: ilo24/datascanrtest
           tags: |
             type=raw,value={{date 'YYYYMMDD'}}        
       -
@@ -38,4 +38,4 @@ jobs:
           push: true
           tags: |
             ${{ steps.meta.outputs.tags }} 
-            jd21/datascanr:latest
+            ilo24/datascanrtest:latest
