@@ -1,12 +1,12 @@
 # Start from the official Shiny image
-FROM jd21/methylr2:241016
+FROM jd21/datascanr:test
 LABEL authors="Jyotirmoy Das (jyotirmoy.das@liu.se)" \
     description="Exploratory Data Analysis from Clinical Data"
 
 # Copy your Shiny app files into the container
 RUN rm -rf /srv/shiny-server/
 COPY ./DataScanR/ /srv/shiny-server/
-
+COPY helpers/ /helpers/
 
 # install shiny and Cairo
 RUN Rscript /helpers/install.R shiny DT ggplot2 bslib data.table dlookr tidyr shinycssloaders dplyr patchwork ggpubr hrbrthemes ggdist corrplot pals NbClust
