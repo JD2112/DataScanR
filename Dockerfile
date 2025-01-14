@@ -1,5 +1,5 @@
 # Start from the official Shiny image
-FROM jd21/datascanr:latest
+FROM jd21/datascanr:test
 LABEL authors="Jyotirmoy Das (jyotirmoy.das@liu.se)" \
     description="Exploratory Data Analysis from Clinical Data"
 
