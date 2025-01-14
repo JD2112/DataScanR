@@ -14,7 +14,7 @@
 [1] "Normality tab selected!"
 Warning: Error in loadNamespace: there is no package called ‘bsicons’
 ```
-**fixed by J** 1. ‘bsicons’package added to the docker image **added to library imports**‘bsicons’
+**fixed by J** 1. ‘bsicons’package added to the docker image **added to library imports** ‘bsicons’<br>
 **FIXED**      2. automatically calculates normality and prompt `problem calculating normality`!!! **- when there are less than 3 non-NA values, the normality crashed. Added automatic removing of variables with less than 3 non-NA variables to perform normality check**
 
 ## Correlation
