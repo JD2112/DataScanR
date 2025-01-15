@@ -40,6 +40,8 @@ library(data.table)
 library(dlookr)
 library(tidyr)
 library(shinycssloaders)
+citation('corrplot')
+citation('dlookr')
 
 SIDEBAR_WIDTH_CLEAN_DATA = 200
 ROUND_DECIMALS = 3       # to how many decimals should the tables show
@@ -1118,10 +1120,10 @@ server <- function(input, output,session) {
     # clean content of text column values
     char_columnnames <- names(data_original)[sapply(data_original, is.character)]
     data_original <- trim_values_in_columns(data_original,custom_colnames=char_columnnames)
-    # if the first column is numeric, than change column name to "sXXX"
-    if (is.numeric(data_original[[1]])) {
-      colnames(data_original)[1] <- "sXXX"
-    }
+    # # if the first column is numeric, than change column name to "sXXX"
+    # if (is.numeric(data_original[[1]])) {
+    #   colnames(data_original)[1] <- "sXXX"
+    # }
     removed_columns_data(c()) # reset previously removed columns after new data is loaded
     return(data_original) 
   })
