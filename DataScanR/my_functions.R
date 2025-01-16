@@ -1236,7 +1236,7 @@ compare_means_parametric <- function (my_data,
             null_val = my_mu,
             mean1 = mean(x, na.rm =TRUE),
             mean2 = mean(y, na.rm =TRUE),
-            mean_difference = if(!is.null(result$estimate)) result$estimate else NA,
+            mean_difference = if(!is.na(mean(x, na.rm =TRUE)) & !is.na(mean(y, na.rm =TRUE))) abs(mean(y, na.rm =TRUE)-mean(x, na.rm =TRUE)) else NA,
             alternative = my_alternative,
             p_value = if(!is.null(result$p.value)) result$p.value else NA,
             lowCI = if(!is.null(result$conf.int)) result$conf.int[1] else NA,
@@ -1271,7 +1271,7 @@ compare_means_parametric <- function (my_data,
           null_val = my_mu,
           mean1 = mean(my_data[[my_data_columns[1]]], na.rm =TRUE),
           mean2 = mean(my_data[[my_data_columns[2]]], na.rm =TRUE),
-          mean_difference = if(!is.null(result$estimate)) result$estimate else NA,
+          mean_difference = if(!is.na(mean(x, na.rm =TRUE)) & !is.na(mean(y, na.rm =TRUE))) abs(mean(y, na.rm =TRUE)-mean(x, na.rm =TRUE)) else NA,
           alternative = my_alternative,
           p_value = if(!is.null(result$p.value)) result$p.value else NA,
           lowCI = if(!is.null(result$conf.int)) result$conf.int[1] else NA,
@@ -1716,7 +1716,7 @@ compare_medians_nonparametric <- function (my_data,
             null_val = my_mu,
             median1 = median(x, na.rm =TRUE),
             median2 = median(y, na.rm =TRUE),
-            median_difference = if(!is.null(result$estimate)) result$estimate else NA,
+            median_difference = if(!is.na(median(x, na.rm =TRUE)) & !is.na(median(y, na.rm =TRUE))) abs(median(y, na.rm =TRUE)-median(x, na.rm =TRUE)) else NA,
             alternative = my_alternative,
             p_value = if(!is.null(result$p.value)) result$p.value else NA,
             lowCI = if(!is.null(result$conf.int)) result$conf.int[1] else NA,
@@ -1774,7 +1774,7 @@ compare_medians_nonparametric <- function (my_data,
               null_val = my_mu,
               median1 = median(x, na.rm =TRUE),
               median2 = median(y, na.rm =TRUE),
-              median_difference = if(!is.null(result$estimate)) result$estimate else NA,
+              median_difference = if(!is.na(median(x, na.rm =TRUE)) & !is.na(median(y, na.rm =TRUE))) abs(median(y, na.rm =TRUE)-median(x, na.rm =TRUE)) else NA,
               alternative = my_alternative,
               p_value = if(!is.null(result$p.value)) result$p.value else NA,
               lowCI = if(!is.null(result$conf.int)) result$conf.int[1] else NA,
@@ -1816,7 +1816,7 @@ compare_medians_nonparametric <- function (my_data,
           null_val = my_mu,
           median1 = median(x, na.rm =TRUE),
           median2 = median(y, na.rm =TRUE),
-          median_difference = if(!is.null(result$estimate)) result$estimate else NA,
+          median_difference = if(!is.na(median(x, na.rm =TRUE)) & !is.na(median(y, na.rm =TRUE))) abs(median(y, na.rm =TRUE)-median(x, na.rm =TRUE)) else NA,
           alternative = my_alternative,
           p_value = if(!is.null(result$p.value)) result$p.value else NA,
           lowCI = if(!is.null(result$conf.int)) result$conf.int[1] else NA,
@@ -1858,7 +1858,7 @@ compare_medians_nonparametric <- function (my_data,
             null_val = my_mu,
             median1 = median(x, na.rm =TRUE),
             median2 = median(y, na.rm =TRUE),
-            median_difference = if(!is.null(result$estimate)) result$estimate else NA,
+            median_difference = if(!is.na(median(x, na.rm =TRUE)) & !is.na(median(y, na.rm =TRUE))) abs(median(y, na.rm =TRUE)-median(x, na.rm =TRUE)) else NA,
             alternative = my_alternative,
             p_value = if(!is.null(result$p.value)) result$p.value else NA,
             lowCI = if(!is.null(result$conf.int)) result$conf.int[1] else NA,
@@ -1928,7 +1928,7 @@ compare_medians_nonparametric <- function (my_data,
                 null_val = my_mu,
                 median1 = median(x, na.rm =TRUE),
                 median2 = median(y, na.rm =TRUE),
-                median_difference = if(!is.null(result$estimate)) result$estimate else NA,
+                median_difference = if(!is.na(median(x, na.rm =TRUE)) & !is.na(median(y, na.rm =TRUE))) abs(median(y, na.rm =TRUE)-median(x, na.rm =TRUE)) else NA,
                 alternative = my_alternative,
                 p_value = if(!is.null(result$p.value)) result$p.value else NA,
                 lowCI = if(!is.null(result$conf.int)) result$conf.int[1] else NA,
@@ -1972,7 +1972,7 @@ compare_medians_nonparametric <- function (my_data,
           null_val = my_mu,
           median1 = median(x, na.rm =TRUE),
           median2 = median(y, na.rm =TRUE),
-          median_difference = if(!is.null(result$estimate)) result$estimate else NA,
+          median_difference = if(!is.na(median(x, na.rm =TRUE)) & !is.na(median(y, na.rm =TRUE))) abs(median(y, na.rm =TRUE)-median(x, na.rm =TRUE)) else NA,
           alternative = my_alternative,
           p_value = if(!is.null(result$p.value)) result$p.value else NA,
           lowCI = if(!is.null(result$conf.int)) result$conf.int[1] else NA,
@@ -2106,59 +2106,6 @@ compare_medians_nonparametric <- function (my_data,
       
     } # less than 3 data columns
   } # end "Kruskal-Wallis test"
-  ##############################################
-  # if (my_test == "Friedman test") {
-  #   if (length(my_data_columns) > 2) { # if there were more than 2 variables
-  #     if (!is.null(my_group) && length(my_group) == 1) {
-  #       if (my_group[1] == "") { # if there was no group (group = empty string)
-  #         # run between columns
-  #         # make a matrix
-  #         my_matrix <- as.matrix(my_data[, ..my_data_columns])
-  #         result <- friedman.test(my_matrix)
-  #         test_results_df <- data.frame(
-  #           p_value = if(!is.null(result$p.value)) result$p.value else NA,
-  #           Friedman_chi_squared =  if(!is.null(result$statistic)) result$statistic else NA,
-  #           df = if(!is.null(result$parameter)) result$parameter else NA,
-  #           stringsAsFactors = FALSE
-  #         )
-  #         return(test_results_df)
-  #       } # end if group was empty string
-  #       else { # there was a group column
-  #         my_group_col <- my_group[1]
-  #         # print(is.numeric(my_data[[group_col]]))
-  #         my_data <- factor_columns(my_data,my_group)
-  #         # print(is.numeric(my_data[[group_col]]))
-  #         uniq_res <- levels(my_data[[my_group_col]])
-  #         print(uniq_res)
-  #         if (length(uniq_res) > 2) { # if there were at least 3 groups
-  #           # change to long format
-  #           my_req_columns <- append(my_group,my_data_columns)
-  #           my_new_data <- my_data %>%
-  #             select(all_of(my_req_columns))
-  #           my_new_data <- my_new_data %>%
-  #             pivot_longer(cols = my_data_columns, 
-  #                          names_to = "vars", 
-  #                          values_to = "values")
-  #           # Ensure no missing data and that each group has all values for each "vars"
-  #           my_new_data <- my_new_data %>%
-  #             drop_na() %>%  # Remove any rows with missing values
-  #             group_by(!!sym(my_group_col), vars) %>%
-  #             filter(n() == length(my_data_columns))  # Keep only complete blocks
-  #           
-  #           # Now, use as.formula() to construct the correct formula for friedman.test
-  #           result <- friedman.test(as.formula(paste("values ~ vars |", my_group_col)), data = my_new_data)
-  #           
-  #           print(result)
-  #         } # end if there were at least 3 groups
-  #         else {
-  #           print("You need more than 2 groups for Friedman test.")
-  #           return(data.frame())
-  #         }
-  #       } # end if there was a group column name
-  #     }
-  #   } # end if there were more than 2 variables
-  #   
-  # } # end Friedman test
   
 } # end compare_medians_nonparametric
 

@@ -121,7 +121,9 @@ sidebar_data <- layout_sidebar(
     actionButton("removeColButton", "Remove Selected Variables"),  # remove button
     actionButton("showColButton", "Show Selected Variables"),  # show selected button
     actionButton("summarizeSelectedButton", "Summarize Selected Data"), # button to show summary stats
-    actionButton("restoreOriginalButton", "*Restore Original Data")  # restore button
+    actionButton("restoreOriginalButton", "*Restore Original Data"),  # restore button
+    # Direct download link to the file in the www folder
+    downloadButton("downloadExample", "Download Example Data"),
   ), # end sidebar
   htmlOutput("data_table_title"),  # Output placeholder for the title
   # # Download button
@@ -849,6 +851,17 @@ ui <- page_navbar(
         margin-bottom: 1em; /* Space between scrollbar and buttons */
       }
       
+      #downloadExample {
+        background: none;
+        border: none;
+        color: #337ab7;
+        text-decoration: underline;
+        font-size: 10px !important; 
+        cursor: pointer;
+        padding: 0; /* Remove extra padding */
+        margin: 0; /* Remove extra margin */
+      }
+      
       /* Style for file input placeholder text */
       .sidebar input[type='file'] {
         font-size: 12px !important; /* Adjusts the font size for the file input */
@@ -1128,6 +1141,17 @@ server <- function(input, output,session) {
     return(data_original) 
   })
   
+  # Download handler for the example
+  output$downloadExample <- downloadHandler(
+    filename = function() {
+      "heartfailure.csv"  # Specify the name of the file
+    },
+    content = function(file) {
+      # Copy the file from www to the download location
+      file.copy("www/heartfailure.csv", file)
+    }
+  )
+  
   # observe when the file is uploaded
   observeEvent(data(), {
     modified_data(data())  # set modified_data to the read CSV data
@@ -1390,7 +1414,7 @@ server <- function(input, output,session) {
           error_displayed <- TRUE
           error_displayed(error_displayed)
           # Handle error
-          show_error_modal_with_icon("\n\nNo missing data to show ")
+          show_error_modal_no_icon("\n\nNo missing data to show ")
         })# end try/catch
       } else if (current_plot() == "intersect") {
         tryCatch({
@@ -1403,7 +1427,7 @@ server <- function(input, output,session) {
           error_displayed <- TRUE
           error_displayed(error_displayed)
           # Handle error
-          show_error_modal_with_icon("\n\nNo missing data to show ")
+          show_error_modal_no_icon("\n\nNo missing data to show ")
         })# end try/catch
       } # END IF INTERSECT
     }# end if missing data exists
@@ -1955,26 +1979,39 @@ server <- function(input, output,session) {
         selected_group_col_param_tests <- currently_selected_group_col_param_tests()
         selected_group_col_nonparam_tests <- currently_selected_group_col_nonparam_tests()
         
+        # Dynamically update the column selector when the data is loaded
+        # Select only numerical columns
+        data <- modified_data()
+        numerical_data <- data %>% select_if(is.numeric)
+        
+        # # remove limited variation numerical columns 
+        # numerical_data <- remove_limited_variation(numerical_data,3)
+        # Filter variables with at least 3 non-NA values
+        numerical_data <- numerical_data %>%
+          select(where(~ sum(!is.na(.)) >= 3))
+        
+        column_names_numerical <- colnames(numerical_data)
+        
         # fill out parametric test sidebar
         if (!is.null(selected_cols_param_tests) && length(selected_cols_param_tests) > 0) {
-          updateSelectInput(session, "columns_test_param", choices = c(column_names), selected = selected_cols_param_tests)
+          updateSelectInput(session, "columns_test_param", choices = c(column_names_numerical), selected = selected_cols_param_tests)
           if (!is.null(selected_group_col_param_tests) && length(selected_group_col_param_tests) > 0) {
             updateSelectInput(session, "group_column_test_param", choices = c(column_names), selected = selected_group_col_param_tests)
           }
         } 
         else {
-          updateSelectInput(session, "columns_test_param", choices = column_names, selected = c())
+          updateSelectInput(session, "columns_test_param", choices = column_names_numerical, selected = c())
           updateSelectInput(session, "group_column_test_param", choices = c("",column_names), selected = "")
         }
         # fill out nonparametric test sidebar
         if (!is.null(selected_cols_nonparam_tests) && length(selected_cols_nonparam_tests) > 0) {
-          updateSelectInput(session, "columns_test_nonparam", choices = c(column_names), selected = selected_cols_nonparam_tests)
+          updateSelectInput(session, "columns_test_nonparam", choices = c(column_names_numerical), selected = selected_cols_nonparam_tests)
           if (!is.null(selected_group_col_nonparam_tests) && length(selected_group_col_nonparam_tests) > 0) {
             updateSelectInput(session, "group_column_test_nonparam", choices = c(column_names), selected = selected_group_col_nonparam_tests)
           }
         } 
         else {
-          updateSelectInput(session, "columns_test_nonparam", choices = column_names, selected = c())
+          updateSelectInput(session, "columns_test_nonparam", choices = column_names_numerical, selected = c())
           updateSelectInput(session, "group_column_test_nonparam", choices = c("",column_names), selected = "")
         }
       } # end if modified data loaded
