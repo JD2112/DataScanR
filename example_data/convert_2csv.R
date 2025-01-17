@@ -34,16 +34,16 @@ heartfailure_with_missing_data$family_history <- sample(c("yes", "no", "unknown"
 # Generate realistic values with some NA values for each column
 set.seed(123)  # For reproducibility
 # Create a few additional variables with missing data
-# Cholesterol: Random values between 150 and 250 (mg/dL) with 80% NA
+# Cholesterol: Random values between 150 and 250 (mg/dL) with NA
 heartfailure_with_missing_data$cholesterol <- sample(c(sample(150:250, total_rows * 0.8, replace = TRUE), rep(NA, total_rows * 0.8)), total_rows)
 
-# BMI: Random values between 18 and 35 with 60% NA
+# BMI: Random values between 18 and 35 
 heartfailure_with_missing_data$bmi <- sample(c(runif(total_rows * 0.85, min = 18, max = 35), rep(NA, total_rows * 0.6)), total_rows)
 
-# Exercise Frequency: Random integers (0-7 sessions per week) with 45% NA
+# Exercise Frequency: Random integers (0-7 sessions per week)
 heartfailure_with_missing_data$exercise_frequency <- sample(c(0:7, rep(NA, total_rows * 0.45)), total_rows, replace = TRUE)
 
-
+diagnose(heartfailure_with_missing_data)
 
 write.csv(heartfailure_with_missing_data , csv_file, row.names = FALSE)
 
