@@ -1,22 +1,30 @@
-# DataScanR
-
-[![DOI](https://zenodo.org/badge/490592846.svg)](https://doi.org/10.5281/zenodo.11105016)
-[![](https://img.shields.io/badge/Shiny-shinyapps.io-447099"?style=flat&labelColor=white&logo=Posit&logoColor=447099")](https://jyotirmoydas.shinyapps.io/datascanr/)
+# <div align="center">DataScanR<br>[![DOI](https://zenodo.org/badge/490592846.svg)](https://doi.org/10.5281/zenodo.11105016)[![](https://img.shields.io/badge/Shiny-shinyapps.io-447099"?style=flat&labelColor=white&logo=Posit&logoColor=447099")](https://jyotirmoydas.shinyapps.io/datascanr/)
+</div>
 
 Data exploration analysis from the clinical meta information. This package helps to clean the data, reports the missing/NA values (using pareto graph), performs a set of various statistical analyses (e.g., correlation, t-test, MW-test, KS-test, and more) on the data resulting in tables and graphs.
+<br>![DataCleaning1](https://github.com/user-attachments/assets/4c22043f-859a-4415-9f3f-d44d7f32edaa)
+<br>
 
 ## How to use
+We provide a simple web application that allows to explore the data that is stored in a standard comma separated file format.<br> Check our [Qick Guide](https://github.com/ilo21/DataScanR/blob/main/DataScanR/www/DataScanR_Quick_Guide.pdf) if you would like to start working with DataScanR or learn more about the tests it can perform.
+<br><br> <p align="center">
+![workflow_gray](https://github.com/user-attachments/assets/d9410ca8-54fb-4a5c-bb3c-f74f0933bb4a)
+</p>
+
+### Web application
+The application is currently hosted on the [SciLifeLab Serve](https://serve.scilifelab.se/).
+<br>You can access it under the following link:<br>
+- [DataScanR](https://serve.scilifelab.se/)-to be updated when it is up and running
 
 ### Local use
 User can use the docker image -
 
 ```
-docker run --rm -p 3838:3838 jd21/datascanr:latest
+docker run --rm -p 3838:3838 ilo24/datascanr:latest
 ```
 
-### Webserver
-
-[https://jyotirmoydas.shinyapps.io/datascanr](https://jyotirmoydas.shinyapps.io/datascanr)
+## Example Data
+The user can test DataScanR using the [example data](https://github.com/ilo21/DataScanR/blob/main/example_data/heartfailure.csv) that is available to download through the application interface. That data comes from [dlookr](https://github.com/choonghyunryu/dlookr/tree/master) package, and additional variables were [simulated](https://github.com/ilo21/DataScanR/blob/main/example_data/convert_2csv.R) to be able to demonstrate all options of DataScanR.
 
 
 ## Credits
