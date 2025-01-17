@@ -1883,7 +1883,11 @@ server <- function(input, output,session) {
       show_coefs <- NULL
     }
     results <- correlation_result()
-    if (nrow(cor_df)>0) {
+    # check if there are not too many clusters selected
+    if (cor_order == "hclust" & cor_no_clusters >= nrow(results$cor_coef_matrix)) {
+      show_error_modal_no_icon("Connot create that many clusters for current data selection.")
+    }
+    else if (nrow(cor_df)>0) {
       corr_plot_from_result(results,
                             plot_type=type_of_plot,
                             my_ordering = cor_order,
@@ -1893,7 +1897,7 @@ server <- function(input, output,session) {
                             my_title=plot_title,
                             color_map_pos = col_pos,
                             show_coefs = show_coefs)
-    }
+    } # end plot
   })
   
   # Conditional rendering of the download button
