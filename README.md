@@ -14,7 +14,7 @@ We provide a simple web application that allows to explore the data that is stor
 ### Web application
 The application is currently hosted on the [SciLifeLab Serve](https://serve.scilifelab.se/).
 <br>You can access it under the following link:<br>
-- [DataScanR](https://serve.scilifelab.se/)-to be updated when it is up and running
+- [DataScanR](https://datascanr.serve.scilifelab.se/app/datascanr)
 
 ### Local use
 User can use the docker image -
