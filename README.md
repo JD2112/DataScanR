@@ -1,7 +1,7 @@
 # <div align="center">DataScanR<br>[![DOI](https://zenodo.org/badge/490592846.svg)](https://doi.org/10.5281/zenodo.11105016)[![](https://img.shields.io/badge/Shiny-shinyapps.io-447099"?style=flat&labelColor=white&logo=Posit&logoColor=447099")](https://jyotirmoydas.shinyapps.io/datascanr/)
 </div>
 
-Data exploration analysis from the clinical meta information. This package helps to clean the data, reports the missing/NA values (using pareto graph), performs a set of various statistical analyses (e.g., correlation, t-test, MW-test, KS-test, and more) on the data resulting in tables and graphs.
+Data exploration analysis tool. It can help to clean the data, report the missing/NA values (using pareto graph), perform a set of various statistical analyses (e.g., correlation, t-test, MW-test, KS-test, and more) resulting in tables and graphs.
 <br>![DataCleaning1](https://github.com/user-attachments/assets/4c22043f-859a-4415-9f3f-d44d7f32edaa)
 <br>
 
@@ -36,8 +36,8 @@ The user can test DataScanR using the [example data](https://github.com/ilo21/Da
 
 ## Citation
 
-WILL BE UPDATED SOON ONCE THE REPO IS PUBLIC
+WILL BE UPDATED SOON
 
 ## Acknowledgement
 
-We would like to acknowledge the **Core Facility, Faculty of Medicine and Health Sciences, Linköping University, Linköping, Sweden** and **Clinical Genomics Linköping, Science for Life Laboratory, Sweden** for their support.
+We would like to acknowledge the **Core Facility, Faculty of Medicine and Health Sciences, Linköping University, Linköping, Sweden**, **Clinical Genomics Linköping, Science for Life Laboratory, Sweden** and **Center for Social and Affective Neuroscience (CSAN), Linköping University, Linköping, Sweden** for their support.
