@@ -6,7 +6,7 @@ Data exploration analysis tool. It can help to clean the data, report the missin
 <br>
 
 ## How to use
-We provide a simple web application that allows to explore the data that is stored in a standard comma separated file format.<br> Check our [Qick Guide](https://github.com/ilo21/DataScanR/blob/main/DataScanR/www/DataScanR_Quick_Guide.pdf) if you would like to start working with DataScanR or learn more about the tests it can perform.
+We provide a simple web application that allows to explore the data that is stored in a standard comma separated file format.<br> Check our [Quick Guide](https://github.com/ilo21/DataScanR/blob/main/DataScanR/www/DataScanR_Quick_Guide.pdf) if you would like to start working with DataScanR or learn more about the tests it can perform.
 <br><br> <p align="center">
 ![workflow_gray](https://github.com/user-attachments/assets/d9410ca8-54fb-4a5c-bb3c-f74f0933bb4a)
 </p>
