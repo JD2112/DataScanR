@@ -1,4 +1,4 @@
-# <div align="center">DataScanR<br>[![DOI](https://zenodo.org/badge/490592846.svg)](https://doi.org/10.5281/zenodo.11105016)[![](https://img.shields.io/badge/Shiny-shinyapps.io-447099"?style=flat&labelColor=white&logo=Posit&logoColor=447099")](https://jyotirmoydas.shinyapps.io/datascanr/)
+# <div align="center">DataScanR<br>[![DOI](https://zenodo.org/badge/858093145.svg)](https://doi.org/10.5281/zenodo.14728203)[![](https://img.shields.io/badge/Shiny-shinyapps.io-447099"?style=flat&labelColor=white&logo=Posit&logoColor=447099")](https://jyotirmoydas.shinyapps.io/datascanr/)
 </div>
 
 Data exploration analysis tool. It can help to clean the data, report the missing/NA values (using pareto graph), perform a set of various statistical analyses (e.g., correlation, t-test, MW-test, KS-test, and more) resulting in tables and graphs.
@@ -33,10 +33,6 @@ The user can test DataScanR using the [example data](https://github.com/ilo21/Da
 
 - Collaborators:
     - Jyotirmoy Das ([@JD2112](https://github.com/JD2112))
-
-## Citation
-
-WILL BE UPDATED SOON
 
 ## Acknowledgement
 
