@@ -37,3 +37,4 @@ The user can test DataScanR using the [example data](https://github.com/ilo21/Da
 ## Acknowledgement
 
 We would like to acknowledge the **Core Facility, Faculty of Medicine and Health Sciences, Linköping University, Linköping, Sweden**, **Clinical Genomics Linköping, Science for Life Laboratory, Sweden** and **Center for Social and Affective Neuroscience (CSAN), Linköping University, Linköping, Sweden** for their support.
+Part of the coding and analysis were enabled by resources provided by the National Academic Infrastructure for Supercomputing in Sweden (NAISS), partially funded by the Swedish Research Council through grant agreement no. 2022-06725.
